@@ -1,0 +1,32 @@
+{
+  "name": "Oil",
+  "scopeName": "source.oil",
+  "patterns": [
+    {
+      "include": "#expression"
+    }
+  ],
+  "repository": {
+    "expression": {
+      "patterns": [
+        {
+          "match": "\\b(if|else|for|while|switch|case|default|break|continue|return|function)\\b",
+          "name": "keyword.control.oil"
+        },
+        {
+          "match": "\\b[A-Za-z][A-Za-z0-9_]*\\/$",
+          "name": "entity.name.directory.oil"
+        },
+        {
+          "match": "\\b[A-Za-z][A-Za-z0-9_\\.]*\\b",
+          "name": "variable.other.oil"
+        },
+        {
+          "begin": "#",
+          "end": "$",
+          "name": "comment.line.number-sign.oil"
+        }
+      ]
+    }
+  }
+}

@@ -21,6 +21,26 @@
         "command": "oil-code.select",
         "title": "Oil: Select - Open entry under the cursor"
       }
+    ],
+    "languages": [
+      {
+        "id": "oil",
+        "aliases": [
+          "Oil",
+          "oil"
+        ],
+        "extensions": [
+          ".oil"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "oil",
+        "scopeName": "source.oil",
+        "path": "./syntaxes/oil.tmLanguage.json"
+      }
     ]
   },
   "scripts": {

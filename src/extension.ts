@@ -65,6 +65,9 @@ async function openParentFolderFiles() {
       let uri = vscode.Uri.file(tempFilePath);
       let doc = await vscode.workspace.openTextDocument(uri);
       await vscode.window.showTextDocument(doc, { preview: true });
+      // Set the language mode to "oil"
+      await vscode.languages.setTextDocumentLanguage(doc, "oil");
+      
       await checkAndDisableAutoSave();
     } catch (error) {
       vscode.window.showErrorMessage("Failed to create or open the temp file.");
@@ -180,7 +183,7 @@ async function onActiveTextEditorChangeHandler(
 }
 
 // This method is called when your extension is activated
-export function activate(context: vscode.ExtensionContext) {
+export function activate(context: vscode.ExtensionContext) {  
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(onActiveTextEditorChangeHandler),
     vscode.commands.registerCommand("oil-code.open", openParentFolderFiles),
