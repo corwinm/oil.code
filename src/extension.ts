@@ -67,7 +67,7 @@ async function openParentFolderFiles() {
       await vscode.window.showTextDocument(doc, { preview: true });
       // Set the language mode to "oil"
       await vscode.languages.setTextDocumentLanguage(doc, "oil");
-      
+
       await checkAndDisableAutoSave();
     } catch (error) {
       vscode.window.showErrorMessage("Failed to create or open the temp file.");
@@ -91,9 +91,11 @@ async function getDirectoryListing(folderPath: string): Promise<string> {
       : 1;
   });
 
-  let listings = results.map(([name, type]) => {
-    return type & vscode.FileType.Directory ? `${name}/` : name;
-  });
+  let listings = results
+    .map(([name, type]) => {
+      return type & vscode.FileType.Directory ? `${name}/` : name;
+    })
+    .filter((name) => name !== tempFileName);
 
   let hasParent = path.dirname(folderPath) !== folderPath;
   if (hasParent) {
@@ -110,8 +112,8 @@ async function selectUnderCursor() {
     vscode.window.showErrorMessage("No active editor found.");
     return;
   }
-  if (!(activeEditor.document.fileName !== tempFileName)) {
-    vscode.window.showErrorMessage("Command doesn't work on this file.");
+  // Check if the current file is our oil temp file by comparing just the filename
+  if (path.basename(activeEditor.document.uri.fsPath) !== tempFileName) {
     return;
   }
 
@@ -183,7 +185,7 @@ async function onActiveTextEditorChangeHandler(
 }
 
 // This method is called when your extension is activated
-export function activate(context: vscode.ExtensionContext) {  
+export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(onActiveTextEditorChangeHandler),
     vscode.commands.registerCommand("oil-code.open", openParentFolderFiles),

@@ -35,6 +35,34 @@
         "configuration": "./language-configuration.json"
       }
     ],
+    "keybindings": [
+      {
+        "command": "oil-code.open",
+        "key": "ctrl+o",
+        "mac": "cmd+o",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "oil-code.open",
+        "key": "-",
+        "when": "editorTextFocus && vim.mode == 'Normal'"
+      },
+      {
+        "command": "oil-code.open",
+        "key": "-",
+        "when": "editorTextFocus && neovim.mode == normal"
+      },
+      {
+        "command": "oil-code.select",
+        "key": "enter",
+        "when": "editorLangId == oil"
+      },
+      {
+        "command": "oil-code.open",
+        "key": "-",
+        "when": "editorLangId == oil"
+      }
+    ],
     "grammars": [
       {
         "language": "oil",
