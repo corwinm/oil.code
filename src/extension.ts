@@ -374,12 +374,35 @@ async function handleOilFileSave(
     const oldPath = path.join(currentPath, oldName);
     const newPath = path.join(currentPath, newName);
 
-    try {
-      fs.renameSync(oldPath, newPath);
-    } catch (error) {
-      vscode.window.showErrorMessage(
-        `Failed to rename: ${oldName} to ${newName}`
-      );
+    // Check if this is a rename including directories
+    if (
+      newName.includes("/") &&
+      !newName.endsWith("/") &&
+      !oldName.includes("/")
+    ) {
+      try {
+        // Create directory structure if needed
+        const dirPath = path.dirname(newPath);
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true });
+        }
+
+        // Move the file to the new location
+        fs.renameSync(oldPath, newPath);
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to rename and move: ${oldName} to ${newName} - ${error}`
+        );
+      }
+    } else {
+      // Regular rename
+      try {
+        fs.renameSync(oldPath, newPath);
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to rename: ${oldName} to ${newName} - ${error}`
+        );
+      }
     }
   }
 
@@ -397,6 +420,13 @@ async function handleOilFileSave(
     } else {
       // Create empty file
       try {
+        // If it's a file in subfolders, ensure the folders exist
+        if (line.includes("/")) {
+          const dirPath = path.dirname(newFilePath);
+          if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+          }
+        }
         fs.writeFileSync(newFilePath, "");
       } catch (error) {
         vscode.window.showErrorMessage(`Failed to create file: ${line}`);
