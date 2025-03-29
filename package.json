@@ -55,10 +55,10 @@
       {
         "command": "oil-code.select",
         "key": "enter",
-        "when": "editorLangId == oil"
+        "when": "editorTextFocus && editorLangId == oil"
       },
       {
-        "command": "oil-code.open",
+        "command": "oil-code.openParentFolderFiles",
         "key": "-",
         "when": "editorLangId == oil"
       }

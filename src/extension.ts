@@ -105,7 +105,7 @@ async function getDirectoryListing(folderPath: string): Promise<string> {
   return listings.join("\n");
 }
 
-async function selectUnderCursor() {
+async function selectUnderCursor(overRideLineText?: string) {
   const activeEditor = vscode.window.activeTextEditor;
 
   if (!activeEditor) {
@@ -119,7 +119,8 @@ async function selectUnderCursor() {
 
   const document = activeEditor.document;
   const cursorPosition = activeEditor.selection.active;
-  const lineText = document.lineAt(cursorPosition.line).text;
+  const lineText =
+    overRideLineText ?? document.lineAt(cursorPosition.line).text;
   const fileName = lineText.trim();
 
   if (!fileName) {
@@ -139,10 +140,6 @@ async function selectUnderCursor() {
     try {
       const directoryContent = await getDirectoryListing(targetPath);
       fs.writeFileSync(tempFilePath!, directoryContent);
-      const doc = await vscode.workspace.openTextDocument(
-        vscode.Uri.file(tempFilePath!)
-      );
-      await vscode.window.showTextDocument(doc, { preview: true });
       currentPath = targetPath;
       return;
     } catch (error) {
@@ -164,6 +161,10 @@ async function selectUnderCursor() {
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
   }
+}
+
+async function openParentFolderFilesHandler() {
+  await selectUnderCursor("../");
 }
 
 let lastActiveEditorWasOil = false;
@@ -190,6 +191,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor(onActiveTextEditorChangeHandler),
     vscode.commands.registerCommand("oil-code.open", openParentFolderFiles),
     vscode.commands.registerCommand("oil-code.select", selectUnderCursor),
+    vscode.commands.registerCommand(
+      "oil-code.openParentFolderFiles",
+      openParentFolderFilesHandler
+    ),
 
     // Add an event listener for file saves
     vscode.workspace.onDidSaveTextDocument(async (document) => {
