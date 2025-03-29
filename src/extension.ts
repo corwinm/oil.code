@@ -440,21 +440,40 @@ async function handleOilFileSave(
 
     try {
       if (line.endsWith("/")) {
-        // This is a directory
-        // For safety, we'll only delete empty directories
-        if (fs.readdirSync(filePath).length === 0) {
-          fs.rmdirSync(filePath);
-        } else {
-          vscode.window.showWarningMessage(`Directory not empty: ${line}`);
-        }
+        // This is a directory - remove recursively
+        await removeDirectoryRecursively(filePath);
       } else {
         // This is a file
         fs.unlinkSync(filePath);
       }
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to delete: ${line}`);
+      vscode.window.showErrorMessage(`Failed to delete: ${line} - ${error}`);
     }
   }
+}
+
+// Helper function to recursively remove a directory and its contents
+async function removeDirectoryRecursively(dirPath: string): Promise<void> {
+  if (!fs.existsSync(dirPath)) {
+    return;
+  }
+
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+
+    if (entry.isDirectory()) {
+      // Recursively remove subdirectories
+      await removeDirectoryRecursively(fullPath);
+    } else {
+      // Remove files
+      fs.unlinkSync(fullPath);
+    }
+  }
+
+  // Remove the now-empty directory
+  fs.rmdirSync(dirPath);
 }
 
 // This method is called when your extension is deactivated
