@@ -1198,6 +1198,57 @@ async function closePreview() {
   }
 }
 
+async function onDidSaveTextDocument(document: vscode.TextDocument) {
+  // Check if the saved document is our oil file
+  if (tempFilePath && document.uri.fsPath === tempFilePath) {
+    try {
+      // Process changes - now we need to handle both current changes
+      // and any pending changes from navigation
+      // Read the current content of the file
+      const content = document.getText();
+      const lines = content.split("\n");
+
+      // Get the current directory
+      if (!currentPath) {
+        vscode.window.showErrorMessage("Current directory path is not set.");
+        return;
+      }
+
+      // Get the existing directory listing
+      const currentDirectoryContent = await getDirectoryListing(currentPath);
+      const currentLines = currentDirectoryContent.split("\n");
+
+      // Process the changes
+      await handleOilFileSave(currentPath, currentLines, lines);
+
+      // Refresh the directory listing after changes
+      const updatedContent = await getDirectoryListing(currentPath);
+
+      // Update the file without triggering the save event again
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(
+        document.uri,
+        new vscode.Range(
+          new vscode.Position(0, 0),
+          document.positionAt(document.getText().length)
+        ),
+        updatedContent
+      );
+
+      await vscode.workspace.applyEdit(edit);
+
+      // Reset the pending changes and modified flag
+      pendingChanges = {
+        addedFiles: new Set(),
+        deletedFiles: new Set(),
+        renamedFiles: new Map(),
+      };
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to process changes: ${error}`);
+    }
+  }
+}
+
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
   // Reset file tracking
@@ -1234,65 +1285,10 @@ export function activate(context: vscode.ExtensionContext) {
       openParentFolderFilesHandler
     ),
     vscode.commands.registerCommand("oil-code.preview", previewLineUnderCursor),
-
-    // Add an event listener for file saves
-    vscode.workspace.onDidSaveTextDocument(async (document) => {
-      // Check if the saved document is our oil file
-      if (tempFilePath && document.uri.fsPath === tempFilePath) {
-        try {
-          // Process changes - now we need to handle both current changes
-          // and any pending changes from navigation
-
-          // Read the current content of the file
-          const content = document.getText();
-          const lines = content.split("\n");
-
-          // Get the current directory
-          if (!currentPath) {
-            vscode.window.showErrorMessage(
-              "Current directory path is not set."
-            );
-            return;
-          }
-
-          // Get the existing directory listing
-          const currentDirectoryContent = await getDirectoryListing(
-            currentPath
-          );
-          const currentLines = currentDirectoryContent.split("\n");
-
-          // Process the changes
-          await handleOilFileSave(currentPath, currentLines, lines);
-
-          // Refresh the directory listing after changes
-          const updatedContent = await getDirectoryListing(currentPath);
-
-          // Update the file without triggering the save event again
-          const edit = new vscode.WorkspaceEdit();
-          edit.replace(
-            document.uri,
-            new vscode.Range(
-              new vscode.Position(0, 0),
-              document.positionAt(document.getText().length)
-            ),
-            updatedContent
-          );
-
-          await vscode.workspace.applyEdit(edit);
-
-          // Reset the pending changes and modified flag
-          pendingChanges = {
-            addedFiles: new Set(),
-            deletedFiles: new Set(),
-            renamedFiles: new Map(),
-          };
-        } catch (error) {
-          vscode.window.showErrorMessage(`Failed to process changes: ${error}`);
-        }
-      }
-    })
+    vscode.workspace.onDidSaveTextDocument(onDidSaveTextDocument)
   );
 }
+
 // This method is called when your extension is deactivated
 export function deactivate() {
   // Make sure to clean up by closing any preview
