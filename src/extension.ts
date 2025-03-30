@@ -15,6 +15,7 @@ interface FileTracking {
   previousFiles: string[];
   deletedFiles: Map<string, string>; // Map of filename to full path
   visitedPaths: Set<string>;
+  lastSelectedFile: string; // Track the last selected file or directory
 }
 
 // Initialize tracking state
@@ -23,6 +24,7 @@ let fileTracking: FileTracking = {
   previousFiles: [],
   deletedFiles: new Map(),
   visitedPaths: new Set(),
+  lastSelectedFile: "",
 };
 
 // Track changes across directory navigation
@@ -71,6 +73,9 @@ async function openParentFolderFiles() {
     folderPath = vscode.Uri.file(filePath).with({
       path: require("path").dirname(filePath),
     }).fsPath;
+
+    // Store the file we're coming from
+    fileTracking.lastSelectedFile = path.basename(filePath);
   } else {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders && workspaceFolders.length > 0) {
@@ -90,9 +95,12 @@ async function openParentFolderFiles() {
       // Open the temporary file
       let uri = vscode.Uri.file(tempFilePath);
       let doc = await vscode.workspace.openTextDocument(uri);
-      await vscode.window.showTextDocument(doc, { preview: true });
+      let editor = await vscode.window.showTextDocument(doc, { preview: true });
       // Set the language mode to "oil"
       await vscode.languages.setTextDocumentLanguage(doc, "oil");
+
+      // Position cursor on the previously selected file if it exists in this directory
+      positionCursorOnFile(editor, fileTracking.lastSelectedFile);
 
       await checkAndDisableAutoSave();
     } catch (error) {
@@ -101,6 +109,38 @@ async function openParentFolderFiles() {
   } else {
     vscode.window.showErrorMessage("Unable to determine the folder to open.");
   }
+}
+
+// Function to position cursor on a specific file or on the first line
+function positionCursorOnFile(editor: vscode.TextEditor, fileName: string) {
+  if (!editor) {
+    return;
+  }
+
+  const document = editor.document;
+  const text = document.getText();
+  const lines = text.split("\n");
+
+  // If no filename is provided or it's going up a directory, place cursor on first line
+  if (!fileName || fileName === "../") {
+    editor.selection = new vscode.Selection(0, 0, 0, 0);
+    editor.revealRange(new vscode.Range(0, 0, 0, 0));
+    return;
+  }
+
+  // Find the line number of the file
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() === fileName) {
+      // Position cursor at the beginning of the line
+      editor.selection = new vscode.Selection(i, 0, i, 0);
+      editor.revealRange(new vscode.Range(i, 0, i, 0));
+      return;
+    }
+  }
+
+  // If file not found, position on first line
+  editor.selection = new vscode.Selection(0, 0, 0, 0);
+  editor.revealRange(new vscode.Range(0, 0, 0, 0));
 }
 
 async function getDirectoryListing(folderPath: string): Promise<string> {
@@ -138,9 +178,6 @@ async function getDirectoryListing(folderPath: string): Promise<string> {
 
   return listings.join("\n");
 }
-
-// Track if the current file has been modified
-let fileModified = false;
 
 async function selectUnderCursor(overRideLineText?: string) {
   const activeEditor = vscode.window.activeTextEditor;
@@ -191,6 +228,16 @@ async function selectUnderCursor(overRideLineText?: string) {
   const currentFolderPath = currentPath || path.dirname(currentFilePath);
   const targetPath = path.join(currentFolderPath, fileName);
 
+  // Store the current directory name when going up a directory
+  let isGoingUp = fileName === "../";
+  if (isGoingUp) {
+    // Store current directory name (without full path)
+    fileTracking.lastSelectedFile = `${path.basename(currentFolderPath)}/`;
+  } else {
+    // Store the file/directory name we're navigating to
+    fileTracking.lastSelectedFile = fileName;
+  }
+
   if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
     try {
       // Save current directory content before navigation
@@ -233,10 +280,54 @@ async function selectUnderCursor(overRideLineText?: string) {
       // Update the current path
       currentPath = targetPath;
 
-      // Mark the file as modified if there are pending changes
-      if (hasPendingChanges()) {
-        fileModified = true;
+      // Position cursor appropriately
+      if (isGoingUp) {
+        // When going up a directory, we need to find the directory we came from
+        const lastSelected = fileTracking.lastSelectedFile;
+
+        // Use setTimeout to ensure the editor content is updated
+        setTimeout(() => {
+          if (activeEditor) {
+            // Find the line with the directory name (with trailing slash)
+            const docText = activeEditor.document.getText();
+            const lines = docText.split("\n");
+
+            let foundIndex = -1;
+            // Look for exact match first
+            for (let i = 0; i < lines.length; i++) {
+              if (
+                lines[i] === lastSelected ||
+                lines[i] === `${lastSelected}/`
+              ) {
+                foundIndex = i;
+                break;
+              }
+            }
+
+            if (foundIndex >= 0) {
+              // Position cursor at the found line
+              activeEditor.selection = new vscode.Selection(
+                foundIndex,
+                0,
+                foundIndex,
+                0
+              );
+              activeEditor.revealRange(
+                new vscode.Range(foundIndex, 0, foundIndex, 0)
+              );
+            } else {
+              // Default to first line if not found
+              activeEditor.selection = new vscode.Selection(0, 0, 0, 0);
+            }
+          }
+        }, 100);
       } else {
+        // When going into a directory, position at first line
+        activeEditor.selection = new vscode.Selection(0, 0, 0, 0);
+      }
+
+      // Mark the file as modified if there are pending changes
+      if (!hasPendingChanges()) {
         activeEditor.document.save();
       }
 
@@ -265,6 +356,10 @@ async function selectUnderCursor(overRideLineText?: string) {
 }
 
 async function openParentFolderFilesHandler() {
+  // When going up from the oil file view, store the current directory name
+  if (currentPath) {
+    fileTracking.lastSelectedFile = path.basename(currentPath);
+  }
   await selectUnderCursor("../");
 }
 
@@ -645,7 +740,7 @@ async function handleOilFileSave(
         }
       }
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to delete: ${item} - ${error}`);
+      vscode.window.showErrorMessage(`Failed to delete: ${item}`);
     }
   }
 
@@ -740,7 +835,6 @@ async function captureChangesForNavigation(
 
       // Return early as we've handled these as renames
       if (potentialMoves.size > 0) {
-        fileModified = true;
         console.log(`Rename operations detected: ${potentialMoves.size}`);
         return;
       }
@@ -775,7 +869,6 @@ async function captureChangesForNavigation(
 
   // Mark that we have changes to process
   if (addedEntries.length > 0 || deletedEntries.length > 0) {
-    fileModified = true;
     console.log(`Pending changes detected: ${hasPendingChanges()}`);
     console.log(`Added files: ${[...pendingChanges.addedFiles].join(", ")}`);
     console.log(
@@ -825,6 +918,7 @@ export function activate(context: vscode.ExtensionContext) {
     previousFiles: [],
     deletedFiles: new Map(),
     visitedPaths: new Set(),
+    lastSelectedFile: "",
   };
 
   // Reset pending changes
@@ -834,9 +928,6 @@ export function activate(context: vscode.ExtensionContext) {
     renamedFiles: new Map(),
   };
 
-  // Reset the file modified flag
-  fileModified = false;
-
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(onActiveTextEditorChangeHandler),
     vscode.commands.registerCommand("oil-code.open", openParentFolderFiles),
@@ -845,13 +936,6 @@ export function activate(context: vscode.ExtensionContext) {
       "oil-code.openParentFolderFiles",
       openParentFolderFilesHandler
     ),
-
-    // Track document changes
-    vscode.workspace.onDidChangeTextDocument((event) => {
-      if (tempFilePath && event.document.uri.fsPath === tempFilePath) {
-        fileModified = true;
-      }
-    }),
 
     // Add an event listener for file saves
     vscode.workspace.onDidSaveTextDocument(async (document) => {
@@ -904,17 +988,9 @@ export function activate(context: vscode.ExtensionContext) {
             deletedFiles: new Set(),
             renamedFiles: new Map(),
           };
-          fileModified = false;
         } catch (error) {
           vscode.window.showErrorMessage(`Failed to process changes: ${error}`);
         }
-      }
-    }),
-
-    // Reset the modified flag when a document is opened
-    vscode.workspace.onDidOpenTextDocument((document) => {
-      if (tempFilePath && document.uri.fsPath === tempFilePath) {
-        fileModified = false;
       }
     })
   );
