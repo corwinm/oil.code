@@ -309,6 +309,8 @@ async function handleOilFileSave(
 
   // Check for cross-directory moves
   const movedRenamedPairs: Array<[string, string]> = [];
+  // Keep track of files that have been identified as moved
+  const movedFiles = new Set<string>();
 
   // Track newly deleted files
   for (const deletedFile of deletedEntries) {
@@ -336,6 +338,9 @@ async function handleOilFileSave(
             fullOrigPath,
             path.join(currentPath, addedFile),
           ]);
+
+          // Mark this file as moved so we can exclude it from other operations
+          movedFiles.add(fullOrigPath);
 
           // Remove from regular processing
           const addedIndex = addedEntries.indexOf(addedFile);
@@ -411,6 +416,16 @@ async function handleOilFileSave(
     return;
   }
 
+  // Filter out pending deleted files that are actually being moved
+  const pendingDeletedFiles = new Set<string>();
+
+  // Only include files that aren't part of a move operation
+  for (const item of pendingChanges.deletedFiles) {
+    if (!movedFiles.has(item)) {
+      pendingDeletedFiles.add(item);
+    }
+  }
+
   // Build the confirmation message
   let message = "The following changes will be applied:\n\n";
 
@@ -459,9 +474,9 @@ async function handleOilFileSave(
       message += "\n";
     }
 
-    if (pendingChanges.deletedFiles.size > 0) {
+    if (pendingDeletedFiles.size > 0) {
       message += "Pending items to delete:\n";
-      pendingChanges.deletedFiles.forEach((item) => {
+      pendingDeletedFiles.forEach((item) => {
         message += `  - ${path.relative(currentPath, item)}\n`;
       });
       message += "\n";
@@ -613,12 +628,12 @@ async function handleOilFileSave(
         fs.writeFileSync(item, "");
       }
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to create: ${item} - ${error}`);
+      vscode.window.showErrorMessage(`Failed to create: ${item}`);
     }
   }
 
-  // Process pending deleted files/directories
-  for (const item of pendingChanges.deletedFiles) {
+  // Process pending deleted files/directories, but only those that aren't part of a move
+  for (const item of pendingDeletedFiles) {
     try {
       if (fs.existsSync(item)) {
         if (fs.lstatSync(item).isDirectory()) {
@@ -653,8 +668,6 @@ async function handleOilFileSave(
   }
 
   // Clear the deleted files tracking after successful save
-  // But keep only recent deletions (within the last 5 minutes)
-  const now = Date.now();
   for (const [key, _] of fileTracking.deletedFiles) {
     fileTracking.deletedFiles.delete(key);
   }
@@ -685,6 +698,54 @@ async function captureChangesForNavigation(
   const deletedEntries = expectedLines.filter(
     (line) => !newEntries.has(line) && line !== "../" && line.trim() !== ""
   );
+
+  // First check for potential renames/moves before tracking deletions
+  const potentialMoves = new Map<string, string>();
+
+  // Simple heuristic - if same number of added and deleted files, they might be renames
+  if (
+    addedEntries.length === deletedEntries.length &&
+    addedEntries.length > 0
+  ) {
+    // Check for matching filenames (ignoring paths)
+    const addedBasenames = addedEntries.map((name) =>
+      path.basename(name.replace(/\/$/, ""))
+    );
+    const deletedBasenames = deletedEntries.map((name) =>
+      path.basename(name.replace(/\/$/, ""))
+    );
+
+    // If all basenames match (in any order), treat as renames not deletions
+    const isRenameOperation = addedBasenames.every((name) =>
+      deletedBasenames.includes(name)
+    );
+
+    if (isRenameOperation) {
+      // Match by basename
+      for (const deletedFile of deletedEntries) {
+        const deletedBase = path.basename(deletedFile.replace(/\/$/, ""));
+        const matchingAdded = addedEntries.find(
+          (added) => path.basename(added.replace(/\/$/, "")) === deletedBase
+        );
+
+        if (matchingAdded) {
+          const oldPath = path.join(currentDirPath, deletedFile);
+          const newPath = path.join(currentDirPath, matchingAdded);
+          potentialMoves.set(oldPath, newPath);
+
+          // Add to pending renames instead of deletions
+          pendingChanges.renamedFiles.set(oldPath, newPath);
+        }
+      }
+
+      // Return early as we've handled these as renames
+      if (potentialMoves.size > 0) {
+        fileModified = true;
+        console.log(`Rename operations detected: ${potentialMoves.size}`);
+        return;
+      }
+    }
+  }
 
   // Track deleted files
   for (const deletedFile of deletedEntries) {
@@ -836,8 +897,6 @@ export function activate(context: vscode.ExtensionContext) {
           );
 
           await vscode.workspace.applyEdit(edit);
-
-          vscode.window.showInformationMessage("Directory changes applied");
 
           // Reset the pending changes and modified flag
           pendingChanges = {
