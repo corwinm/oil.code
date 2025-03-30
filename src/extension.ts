@@ -236,6 +236,8 @@ async function selectUnderCursor(overRideLineText?: string) {
       // Mark the file as modified if there are pending changes
       if (hasPendingChanges()) {
         fileModified = true;
+      } else {
+        activeEditor.document.save();
       }
 
       return;
@@ -282,111 +284,6 @@ async function onActiveTextEditorChangeHandler(
   if (editor?.document.uri.fsPath === tempFilePath && tempFilePath) {
     lastActiveEditorWasOil = true;
   }
-}
-
-// This method is called when your extension is activated
-export function activate(context: vscode.ExtensionContext) {
-  // Reset file tracking
-  fileTracking = {
-    previousPath: "",
-    previousFiles: [],
-    deletedFiles: new Map(),
-    visitedPaths: new Set(),
-  };
-
-  // Reset pending changes
-  pendingChanges = {
-    addedFiles: new Set(),
-    deletedFiles: new Set(),
-    renamedFiles: new Map(),
-  };
-
-  // Reset the file modified flag
-  fileModified = false;
-
-  context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(onActiveTextEditorChangeHandler),
-    vscode.commands.registerCommand("oil-code.open", openParentFolderFiles),
-    vscode.commands.registerCommand("oil-code.select", selectUnderCursor),
-    vscode.commands.registerCommand(
-      "oil-code.openParentFolderFiles",
-      openParentFolderFilesHandler
-    ),
-
-    // Track document changes
-    vscode.workspace.onDidChangeTextDocument((event) => {
-      if (tempFilePath && event.document.uri.fsPath === tempFilePath) {
-        fileModified = true;
-      }
-    }),
-
-    // Add an event listener for file saves
-    vscode.workspace.onDidSaveTextDocument(async (document) => {
-      // Check if the saved document is our oil file
-      if (tempFilePath && document.uri.fsPath === tempFilePath) {
-        try {
-          // Process changes - now we need to handle both current changes
-          // and any pending changes from navigation
-
-          // Read the current content of the file
-          const content = document.getText();
-          const lines = content.split("\n");
-
-          // Get the current directory
-          if (!currentPath) {
-            vscode.window.showErrorMessage(
-              "Current directory path is not set."
-            );
-            return;
-          }
-
-          // Get the existing directory listing
-          const currentDirectoryContent = await getDirectoryListing(
-            currentPath
-          );
-          const currentLines = currentDirectoryContent.split("\n");
-
-          // Process the changes
-          await handleOilFileSave(currentPath, currentLines, lines);
-
-          // Refresh the directory listing after changes
-          const updatedContent = await getDirectoryListing(currentPath);
-
-          // Update the file without triggering the save event again
-          const edit = new vscode.WorkspaceEdit();
-          edit.replace(
-            document.uri,
-            new vscode.Range(
-              new vscode.Position(0, 0),
-              document.positionAt(document.getText().length)
-            ),
-            updatedContent
-          );
-
-          await vscode.workspace.applyEdit(edit);
-
-          vscode.window.showInformationMessage("Directory changes applied");
-
-          // Reset the pending changes and modified flag
-          pendingChanges = {
-            addedFiles: new Set(),
-            deletedFiles: new Set(),
-            renamedFiles: new Map(),
-          };
-          fileModified = false;
-        } catch (error) {
-          vscode.window.showErrorMessage(`Failed to process changes: ${error}`);
-        }
-      }
-    }),
-
-    // Reset the modified flag when a document is opened
-    vscode.workspace.onDidOpenTextDocument((document) => {
-      if (tempFilePath && document.uri.fsPath === tempFilePath) {
-        fileModified = false;
-      }
-    })
-  );
 }
 
 // Function to handle oil file changes
@@ -502,12 +399,14 @@ async function handleOilFileSave(
     }
   }
 
-  // If no changes, do nothing
+  // Check if we need to handle pending changes even when no current changes are detected
+  const hasPending = hasPendingChanges();
   if (
     finalAddedEntries.length === 0 &&
     finalDeletedEntries.length === 0 &&
     renamedPairs.length === 0 &&
-    movedRenamedPairs.length === 0
+    movedRenamedPairs.length === 0 &&
+    !hasPending
   ) {
     return;
   }
@@ -547,6 +446,37 @@ async function handleOilFileSave(
     finalDeletedEntries.forEach((item) => {
       message += `  - ${item}\n`;
     });
+    message += "\n";
+  }
+
+  // Add pending changes to the confirmation message
+  if (hasPending) {
+    if (pendingChanges.addedFiles.size > 0) {
+      message += "Pending files/directories to create:\n";
+      pendingChanges.addedFiles.forEach((item) => {
+        message += `  - ${path.relative(currentPath, item)}\n`;
+      });
+      message += "\n";
+    }
+
+    if (pendingChanges.deletedFiles.size > 0) {
+      message += "Pending items to delete:\n";
+      pendingChanges.deletedFiles.forEach((item) => {
+        message += `  - ${path.relative(currentPath, item)}\n`;
+      });
+      message += "\n";
+    }
+
+    if (pendingChanges.renamedFiles.size > 0) {
+      message += "Pending items to rename:\n";
+      pendingChanges.renamedFiles.forEach((newPath, oldPath) => {
+        message += `  - ${path.relative(
+          currentPath,
+          oldPath
+        )} → ${path.relative(currentPath, newPath)}\n`;
+      });
+      message += "\n";
+    }
   }
 
   message += "\nDo you want to apply these changes?";
@@ -667,12 +597,74 @@ async function handleOilFileSave(
     }
   }
 
+  // Process pending added files/directories
+  for (const item of pendingChanges.addedFiles) {
+    try {
+      if (item.endsWith("/") || item.endsWith(path.sep)) {
+        // Create directory
+        fs.mkdirSync(item, { recursive: true });
+      } else {
+        // Create empty file
+        // Ensure parent directories exist
+        const dirPath = path.dirname(item);
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true });
+        }
+        fs.writeFileSync(item, "");
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to create: ${item} - ${error}`);
+    }
+  }
+
+  // Process pending deleted files/directories
+  for (const item of pendingChanges.deletedFiles) {
+    try {
+      if (fs.existsSync(item)) {
+        if (fs.lstatSync(item).isDirectory()) {
+          // This is a directory - remove recursively
+          await removeDirectoryRecursively(item);
+        } else {
+          // This is a file
+          fs.unlinkSync(item);
+        }
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to delete: ${item} - ${error}`);
+    }
+  }
+
+  // Process pending renamed files
+  for (const [oldPath, newPath] of pendingChanges.renamedFiles.entries()) {
+    try {
+      if (fs.existsSync(oldPath)) {
+        // Create directory structure if needed
+        const dirPath = path.dirname(newPath);
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true });
+        }
+        fs.renameSync(oldPath, newPath);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to rename: ${oldPath} to ${newPath} - ${error}`
+      );
+    }
+  }
+
   // Clear the deleted files tracking after successful save
   // But keep only recent deletions (within the last 5 minutes)
   const now = Date.now();
   for (const [key, _] of fileTracking.deletedFiles) {
     fileTracking.deletedFiles.delete(key);
   }
+
+  // Clear pending changes
+  pendingChanges = {
+    addedFiles: new Set(),
+    deletedFiles: new Set(),
+    renamedFiles: new Map(),
+  };
 }
 
 // Helper function to capture changes before navigating
@@ -702,6 +694,10 @@ async function captureChangesForNavigation(
 
       // Also track them for cross-directory moves
       fileTracking.deletedFiles.set(deletedFile, fullPath);
+    } else {
+      // Handle deleted directories too
+      const dirPath = path.join(currentDirPath, deletedFile);
+      pendingChanges.deletedFiles.add(dirPath);
     }
   }
 
@@ -709,12 +705,21 @@ async function captureChangesForNavigation(
   for (const addedFile of addedEntries) {
     if (!addedFile.endsWith("/")) {
       pendingChanges.addedFiles.add(path.join(currentDirPath, addedFile));
+    } else {
+      // Handle added directories too
+      const dirPath = path.join(currentDirPath, addedFile);
+      pendingChanges.addedFiles.add(dirPath);
     }
   }
 
   // Mark that we have changes to process
   if (addedEntries.length > 0 || deletedEntries.length > 0) {
     fileModified = true;
+    console.log(`Pending changes detected: ${hasPendingChanges()}`);
+    console.log(`Added files: ${[...pendingChanges.addedFiles].join(", ")}`);
+    console.log(
+      `Deleted files: ${[...pendingChanges.deletedFiles].join(", ")}`
+    );
   }
 }
 
@@ -751,5 +756,109 @@ async function removeDirectoryRecursively(dirPath: string): Promise<void> {
   fs.rmdirSync(dirPath);
 }
 
+// This method is called when your extension is activated
+export function activate(context: vscode.ExtensionContext) {
+  // Reset file tracking
+  fileTracking = {
+    previousPath: "",
+    previousFiles: [],
+    deletedFiles: new Map(),
+    visitedPaths: new Set(),
+  };
+
+  // Reset pending changes
+  pendingChanges = {
+    addedFiles: new Set(),
+    deletedFiles: new Set(),
+    renamedFiles: new Map(),
+  };
+
+  // Reset the file modified flag
+  fileModified = false;
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(onActiveTextEditorChangeHandler),
+    vscode.commands.registerCommand("oil-code.open", openParentFolderFiles),
+    vscode.commands.registerCommand("oil-code.select", selectUnderCursor),
+    vscode.commands.registerCommand(
+      "oil-code.openParentFolderFiles",
+      openParentFolderFilesHandler
+    ),
+
+    // Track document changes
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (tempFilePath && event.document.uri.fsPath === tempFilePath) {
+        fileModified = true;
+      }
+    }),
+
+    // Add an event listener for file saves
+    vscode.workspace.onDidSaveTextDocument(async (document) => {
+      // Check if the saved document is our oil file
+      if (tempFilePath && document.uri.fsPath === tempFilePath) {
+        try {
+          // Process changes - now we need to handle both current changes
+          // and any pending changes from navigation
+
+          // Read the current content of the file
+          const content = document.getText();
+          const lines = content.split("\n");
+
+          // Get the current directory
+          if (!currentPath) {
+            vscode.window.showErrorMessage(
+              "Current directory path is not set."
+            );
+            return;
+          }
+
+          // Get the existing directory listing
+          const currentDirectoryContent = await getDirectoryListing(
+            currentPath
+          );
+          const currentLines = currentDirectoryContent.split("\n");
+
+          // Process the changes
+          await handleOilFileSave(currentPath, currentLines, lines);
+
+          // Refresh the directory listing after changes
+          const updatedContent = await getDirectoryListing(currentPath);
+
+          // Update the file without triggering the save event again
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(
+            document.uri,
+            new vscode.Range(
+              new vscode.Position(0, 0),
+              document.positionAt(document.getText().length)
+            ),
+            updatedContent
+          );
+
+          await vscode.workspace.applyEdit(edit);
+
+          vscode.window.showInformationMessage("Directory changes applied");
+
+          // Reset the pending changes and modified flag
+          pendingChanges = {
+            addedFiles: new Set(),
+            deletedFiles: new Set(),
+            renamedFiles: new Map(),
+          };
+          fileModified = false;
+        } catch (error) {
+          vscode.window.showErrorMessage(`Failed to process changes: ${error}`);
+        }
+      }
+    }),
+
+    // Reset the modified flag when a document is opened
+    vscode.workspace.onDidOpenTextDocument((document) => {
+      if (tempFilePath && document.uri.fsPath === tempFilePath) {
+        fileModified = false;
+      }
+    })
+  );
+}
 // This method is called when your extension is deactivated
 export function deactivate() {}
