@@ -1,8 +1,9 @@
 import path from "path";
 import * as vscode from "vscode";
 import * as fs from "fs";
+import * as os from "os";
 
-const tempFileName = "[Oil.code]";
+const tempFileName = "《 oil.code 》";
 
 let tempFilePath: string | undefined;
 
@@ -37,12 +38,8 @@ let pendingChanges: PendingChanges = {
   renamedFiles: new Map(),
 };
 
-const workspaceFolders = vscode.workspace.workspaceFolders;
-
-if (workspaceFolders && workspaceFolders.length > 0) {
-  const folderPath = workspaceFolders[0].uri.fsPath;
-  tempFilePath = path.join(folderPath, ".", tempFileName);
-}
+// Initialize temp file path in system temp directory
+tempFilePath = path.join(os.tmpdir(), tempFileName);
 
 let restoreAutoSave = false;
 async function checkAndDisableAutoSave() {
