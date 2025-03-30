@@ -42,9 +42,7 @@
     "keybindings": [
       {
         "command": "oil-code.open",
-        "key": "ctrl+o",
-        "mac": "cmd+o",
-        "when": "editorTextFocus"
+        "key": "alt+o"
       },
       {
         "command": "oil-code.open",
@@ -63,12 +61,11 @@
       },
       {
         "command": "oil-code.openParentFolderFiles",
-        "key": "ctrl+enter",
-        "mac": "cmd+enter",
+        "key": "alt+enter",
         "when": "editorTextFocus && editorLangId == oil"
       },
       {
-        "command": "oil-code.previewFile",
+        "command": "oil-code.preview",
         "key": "alt+p",
         "when": "editorTextFocus && editorLangId == oil"
       }

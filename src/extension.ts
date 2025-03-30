@@ -367,6 +367,15 @@ let lastActiveEditorWasOil = false;
 async function onActiveTextEditorChangeHandler(
   editor: vscode.TextEditor | undefined
 ) {
+  // Close preview when leaving oil view
+  if (
+    editor?.document.uri.fsPath !== tempFilePath &&
+    previewState.previewedFile
+  ) {
+    await closePreview();
+  }
+
+  // Original cleanup functionality
   if (tempFilePath && lastActiveEditorWasOil) {
     lastActiveEditorWasOil = false;
     fs.unlink(tempFilePath, (err) => {
@@ -910,7 +919,24 @@ async function removeDirectoryRecursively(dirPath: string): Promise<void> {
   fs.rmdirSync(dirPath);
 }
 
-async function previewFileUnderCursor() {
+// Add tracking for previewed file
+interface PreviewState {
+  previewedFile: string | null; // Path of currently previewed file/directory
+  previewedEditor: vscode.TextEditor | null; // Reference to preview editor
+  cursorListenerDisposable: vscode.Disposable | null; // For tracking cursor movements
+  isDirectory: boolean; // Whether the preview is showing a directory
+  previewFilePath: string | null; // Path to the temporary preview file for directories
+}
+
+let previewState: PreviewState = {
+  previewedFile: null,
+  previewedEditor: null,
+  cursorListenerDisposable: null,
+  isDirectory: false,
+  previewFilePath: null,
+};
+
+async function previewLineUnderCursor() {
   const activeEditor = vscode.window.activeTextEditor;
 
   if (!activeEditor) {
@@ -928,42 +954,247 @@ async function previewFileUnderCursor() {
   const lineText = document.lineAt(cursorPosition.line).text;
   const fileName = lineText.trim();
 
-  if (!fileName || fileName === "../" || fileName.endsWith("/")) {
+  if (!fileName) {
     vscode.window.showInformationMessage(
-      "Preview is only available for files, not directories."
+      "No file or directory found under cursor."
     );
     return;
   }
 
   const currentFilePath = document.uri.fsPath;
   const currentFolderPath = currentPath || path.dirname(currentFilePath);
-  const targetPath = path.join(currentFolderPath, fileName);
+
+  let targetPath: string;
+
+  // Handle "../" special case
+  if (fileName === "../") {
+    targetPath = path.dirname(currentFolderPath);
+  } else {
+    targetPath = path.join(currentFolderPath, fileName);
+  }
 
   if (!fs.existsSync(targetPath)) {
-    vscode.window.showErrorMessage(`File "${fileName}" does not exist.`);
+    vscode.window.showErrorMessage(`"${fileName}" does not exist.`);
     return;
   }
 
-  if (fs.lstatSync(targetPath).isDirectory()) {
-    vscode.window.showInformationMessage(
-      "Preview is only available for files, not directories."
-    );
+  const isDir = fs.lstatSync(targetPath).isDirectory();
+
+  // If this file/directory is already being previewed, close the preview (toggle behavior)
+  if (previewState.previewedFile === targetPath) {
+    await closePreview();
     return;
   }
 
-  // Use split editor view for preview
+  // Close any existing preview
+  await closePreview();
+
+  // Preview differently based on whether it's a file or directory
+  if (isDir) {
+    await previewDirectory(targetPath);
+  } else {
+    await previewFile(targetPath);
+  }
+}
+
+// Function to preview a file
+async function previewFile(targetPath: string) {
   try {
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
 
     // Open to the side (right split) in preview mode
-    await vscode.window.showTextDocument(fileDoc, {
+    const editor = await vscode.window.showTextDocument(fileDoc, {
       viewColumn: vscode.ViewColumn.Beside, // Opens in the editor group to the right
       preview: true, // Opens in preview mode
       preserveFocus: true, // Keeps focus on the oil file
     });
+
+    // Update preview state
+    previewState.previewedFile = targetPath;
+    previewState.previewedEditor = editor;
+    previewState.isDirectory = false;
+
+    // Start listening for cursor movements if not already listening
+    if (!previewState.cursorListenerDisposable) {
+      previewState.cursorListenerDisposable =
+        vscode.window.onDidChangeTextEditorSelection(
+          updatePreviewBasedOnCursorPosition
+        );
+    }
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to preview file: ${error}`);
+  }
+}
+
+// Function to preview a directory in oil format
+async function previewDirectory(directoryPath: string) {
+  try {
+    // Get directory listing in oil format
+    const directoryContent = await getDirectoryListing(directoryPath);
+
+    // Generate a unique filename based on the directory path to avoid conflicts
+    // Create a hash of the path for uniqueness
+    const pathHash = Buffer.from(directoryPath)
+      .toString("base64")
+      .replace(/[/+=]/g, "_")
+      .substring(0, 10); // Create safe filename
+
+    const previewFileName = `${tempFileName}-preview-${path.basename(
+      directoryPath
+    )}-${pathHash}`;
+    const previewFilePath = path.join(os.tmpdir(), previewFileName);
+
+    fs.writeFileSync(previewFilePath, directoryContent);
+
+    // Open the preview file
+    const fileUri = vscode.Uri.file(previewFilePath);
+    const fileDoc = await vscode.workspace.openTextDocument(fileUri);
+
+    // Set the language mode to "oil" for consistent highlighting
+    await vscode.languages.setTextDocumentLanguage(fileDoc, "oil");
+
+    // Show the document to the side
+    const editor = await vscode.window.showTextDocument(fileDoc, {
+      viewColumn: vscode.ViewColumn.Beside,
+      preview: true,
+      preserveFocus: true,
+    });
+
+    // Update preview state
+    previewState.previewedFile = directoryPath;
+    previewState.previewedEditor = editor;
+    previewState.isDirectory = true;
+    previewState.previewFilePath = previewFilePath; // Store temp file path for cleanup
+
+    // Start listening for cursor movements if not already listening
+    if (!previewState.cursorListenerDisposable) {
+      previewState.cursorListenerDisposable =
+        vscode.window.onDidChangeTextEditorSelection(
+          updatePreviewBasedOnCursorPosition
+        );
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to preview directory: ${error}`);
+  }
+}
+
+// Helper function to update preview based on cursor position
+async function updatePreviewBasedOnCursorPosition(
+  event: vscode.TextEditorSelectionChangeEvent
+) {
+  // Only respond to selection changes in the oil file
+  if (
+    !event.textEditor ||
+    path.basename(event.textEditor.document.uri.fsPath) !== tempFileName
+  ) {
+    return;
+  }
+
+  const document = event.textEditor.document;
+  const cursorPosition = event.selections[0].active;
+
+  // Check if line is valid
+  if (cursorPosition.line >= document.lineCount) {
+    return;
+  }
+
+  const lineText = document.lineAt(cursorPosition.line).text;
+  const fileName = lineText.trim();
+
+  // Skip if cursor is on empty line
+  if (!fileName) {
+    return;
+  }
+
+  const currentFolderPath = currentPath || path.dirname(document.uri.fsPath);
+
+  let targetPath: string;
+
+  // Handle "../" special case
+  if (fileName === "../") {
+    targetPath = path.dirname(currentFolderPath);
+  } else {
+    targetPath = path.join(currentFolderPath, fileName);
+  }
+
+  // Skip if same file/directory is already being previewed
+  if (previewState.previewedFile === targetPath) {
+    return;
+  }
+
+  // Check if the target exists
+  if (!fs.existsSync(targetPath)) {
+    return;
+  }
+
+  // Determine if it's a directory or file
+  const isDir = fs.lstatSync(targetPath).isDirectory();
+
+  // Update the preview with the new file or directory
+  try {
+    if (isDir) {
+      await previewDirectory(targetPath);
+    } else {
+      await previewFile(targetPath);
+    }
+  } catch (error) {
+    console.error("Failed to update preview:", error);
+  }
+}
+
+// Helper function to close the current preview
+async function closePreview() {
+  // Stop listening for cursor movements
+  if (previewState.cursorListenerDisposable) {
+    previewState.cursorListenerDisposable.dispose();
+    previewState.cursorListenerDisposable = null;
+  }
+
+  // Close the preview if it's open
+  if (previewState.previewedFile) {
+    if (previewState.isDirectory && previewState.previewFilePath) {
+      // For directory previews, close the temp file and delete it
+      const tempPreviewPath = previewState.previewFilePath;
+
+      // Close any editors that match our temp preview file
+      for (const editor of vscode.window.visibleTextEditors) {
+        if (editor.document.uri.fsPath === tempPreviewPath) {
+          await vscode.commands.executeCommand(
+            "workbench.action.closeActiveEditor",
+            editor.document.uri
+          );
+        }
+      }
+
+      // Clean up the temporary file
+      if (fs.existsSync(tempPreviewPath)) {
+        try {
+          fs.unlinkSync(tempPreviewPath);
+        } catch (err) {
+          console.error("Failed to delete temporary preview file:", err);
+        }
+      }
+    } else {
+      // For regular file previews
+      const editorsToClose = vscode.window.visibleTextEditors.filter(
+        (editor) => editor.document.uri.fsPath === previewState.previewedFile
+      );
+
+      // Close each matching editor
+      for (const editor of editorsToClose) {
+        await vscode.commands.executeCommand(
+          "workbench.action.closeActiveEditor",
+          editor.document.uri
+        );
+      }
+    }
+
+    // Reset state
+    previewState.previewedFile = null;
+    previewState.previewedEditor = null;
+    previewState.isDirectory = false;
+    previewState.previewFilePath = null;
   }
 }
 
@@ -985,6 +1216,15 @@ export function activate(context: vscode.ExtensionContext) {
     renamedFiles: new Map(),
   };
 
+  // Reset preview state
+  previewState = {
+    previewedFile: null,
+    previewedEditor: null,
+    cursorListenerDisposable: null,
+    isDirectory: false,
+    previewFilePath: null,
+  };
+
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(onActiveTextEditorChangeHandler),
     vscode.commands.registerCommand("oil-code.open", openParentFolderFiles),
@@ -993,10 +1233,7 @@ export function activate(context: vscode.ExtensionContext) {
       "oil-code.openParentFolderFiles",
       openParentFolderFilesHandler
     ),
-    vscode.commands.registerCommand(
-      "oil-code.previewFile",
-      previewFileUnderCursor
-    ),
+    vscode.commands.registerCommand("oil-code.preview", previewLineUnderCursor),
 
     // Add an event listener for file saves
     vscode.workspace.onDidSaveTextDocument(async (document) => {
@@ -1057,4 +1294,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  // Make sure to clean up by closing any preview
+  closePreview();
+}
