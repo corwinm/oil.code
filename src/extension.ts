@@ -910,6 +910,63 @@ async function removeDirectoryRecursively(dirPath: string): Promise<void> {
   fs.rmdirSync(dirPath);
 }
 
+async function previewFileUnderCursor() {
+  const activeEditor = vscode.window.activeTextEditor;
+
+  if (!activeEditor) {
+    vscode.window.showErrorMessage("No active editor found.");
+    return;
+  }
+
+  // Check if the current file is our oil temp file
+  if (path.basename(activeEditor.document.uri.fsPath) !== tempFileName) {
+    return;
+  }
+
+  const document = activeEditor.document;
+  const cursorPosition = activeEditor.selection.active;
+  const lineText = document.lineAt(cursorPosition.line).text;
+  const fileName = lineText.trim();
+
+  if (!fileName || fileName === "../" || fileName.endsWith("/")) {
+    vscode.window.showInformationMessage(
+      "Preview is only available for files, not directories."
+    );
+    return;
+  }
+
+  const currentFilePath = document.uri.fsPath;
+  const currentFolderPath = currentPath || path.dirname(currentFilePath);
+  const targetPath = path.join(currentFolderPath, fileName);
+
+  if (!fs.existsSync(targetPath)) {
+    vscode.window.showErrorMessage(`File "${fileName}" does not exist.`);
+    return;
+  }
+
+  if (fs.lstatSync(targetPath).isDirectory()) {
+    vscode.window.showInformationMessage(
+      "Preview is only available for files, not directories."
+    );
+    return;
+  }
+
+  // Use split editor view for preview
+  try {
+    const fileUri = vscode.Uri.file(targetPath);
+    const fileDoc = await vscode.workspace.openTextDocument(fileUri);
+
+    // Open to the side (right split) in preview mode
+    await vscode.window.showTextDocument(fileDoc, {
+      viewColumn: vscode.ViewColumn.Beside, // Opens in the editor group to the right
+      preview: true, // Opens in preview mode
+      preserveFocus: true, // Keeps focus on the oil file
+    });
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to preview file: ${error}`);
+  }
+}
+
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
   // Reset file tracking
@@ -935,6 +992,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "oil-code.openParentFolderFiles",
       openParentFolderFilesHandler
+    ),
+    vscode.commands.registerCommand(
+      "oil-code.previewFile",
+      previewFileUnderCursor
     ),
 
     // Add an event listener for file saves
