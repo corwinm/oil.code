@@ -64,7 +64,7 @@ async function checkAndEnableAutoSave() {
   }
 }
 
-async function openParentFolderFiles() {
+async function openOil() {
   const activeEditor = vscode.window.activeTextEditor;
   let folderPath: string | undefined;
 
@@ -179,7 +179,7 @@ async function getDirectoryListing(folderPath: string): Promise<string> {
   return listings.join("\n");
 }
 
-async function selectUnderCursor(overRideLineText?: string) {
+async function select(overRideLineText?: string) {
   const activeEditor = vscode.window.activeTextEditor;
 
   if (!activeEditor) {
@@ -355,16 +355,16 @@ async function selectUnderCursor(overRideLineText?: string) {
   }
 }
 
-async function openParentFolderFilesHandler() {
+async function openParent() {
   // When going up from the oil file view, store the current directory name
   if (currentPath) {
     fileTracking.lastSelectedFile = path.basename(currentPath);
   }
-  await selectUnderCursor("../");
+  await select("../");
 }
 
 let lastActiveEditorWasOil = false;
-async function onActiveTextEditorChangeHandler(
+async function onDidChangeActiveTextEditor(
   editor: vscode.TextEditor | undefined
 ) {
   // Close preview when leaving oil view
@@ -936,7 +936,7 @@ let previewState: PreviewState = {
   previewFilePath: null,
 };
 
-async function previewLineUnderCursor() {
+async function preview() {
   const activeEditor = vscode.window.activeTextEditor;
 
   if (!activeEditor) {
@@ -1277,15 +1277,12 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(onActiveTextEditorChangeHandler),
-    vscode.commands.registerCommand("oil-code.open", openParentFolderFiles),
-    vscode.commands.registerCommand("oil-code.select", selectUnderCursor),
-    vscode.commands.registerCommand(
-      "oil-code.openParentFolderFiles",
-      openParentFolderFilesHandler
-    ),
-    vscode.commands.registerCommand("oil-code.preview", previewLineUnderCursor),
-    vscode.workspace.onDidSaveTextDocument(onDidSaveTextDocument)
+    vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor),
+    vscode.workspace.onDidSaveTextDocument(onDidSaveTextDocument),
+    vscode.commands.registerCommand("oil-code.open", openOil),
+    vscode.commands.registerCommand("oil-code.select", select),
+    vscode.commands.registerCommand("oil-code.openParent", openParent),
+    vscode.commands.registerCommand("oil-code.preview", preview)
   );
 }
 

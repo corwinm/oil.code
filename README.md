@@ -1,71 +1,36 @@
-# oil-code README
+<h1 align="center">oil.code</h1>
 
-This is the README for your extension "oil-code". After writing up a brief description, we recommend including the following sections.
+<p align="center">Edit your file system like a normal file.</p>
 
-## Features
+Provides an [oil.nvim](https://github.com/stevearc/oil.nvim) like experience for VSCode.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+This plugin works best with [VSCodeVim](https://github.com/VSCodeVim/Vim) or [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim) but can still be used without a Vim plugin.
 
-For example if there is an image subfolder under your extension project workspace:
+## Shortcuts
 
-\!\[feature X\]\(images/feature-x.png\)
+To open oil.code:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- Vim users - With a file focused and in normal mode press `-`.
+- All users - Press `alt+o`.
 
-## Requirements
+| Vim Shortcut (normal mode) | Default Shortcut | Command               | Description                                     |
+| -------------------------- | ---------------- | --------------------- | ----------------------------------------------- |
+| `Enter`                    | `alt+Enter`      | `oil-code.select`     | Open file or enter directory                    |
+| `-`                        | `alt+-`          | `oil-code.openParent` | Navigate to parent directory                    |
+| `ctl+p`                    | `alt+p`          | `oil-code.preview`    | Toggle preview window of entry under the cursor |
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+## Why oil.code?
 
-## Extension Settings
+Oil.nvim is a favorite plugin of mine and I find myself going back and forth between Neovim and VSCode for various projects. Being able to quickly rename or move a file is an experience I want everywhere and I want to share with the great community of VSCode and Codium users.
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+Odds are good that if you found this plugin, you are like me and have experienced Oil.nvim and have found yourself back in VSCode and miss oil dearly.
 
-For example:
+## Other great extensions
 
-This extension contributes the following settings:
+- [vsnetrw](https://github.com/danprince/vsnetrw): Another great option for a split file explorer.
+- [VSCodeVim](https://github.com/VSCodeVim/Vim): Vim emulation for VSCode.
+- [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim): Fully embedded neovim instance, no vim emulation.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## Special thanks
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Special thanks goes to [oil.nvim](https://github.com/stevearc/oil.nvim). I still use this every day and it has way more features and is much more extensible than this plugin. If there is something Oil.nvim does that is missing here and you find it useful, let me know in the issues or open a PR.

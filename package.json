@@ -22,8 +22,8 @@
         "title": "Oil: Select - Open entry under the cursor"
       },
       {
-        "command": "oil-code.previewFile",
-        "title": "Oil: Preview - Preview entry under the cursor"
+        "command": "oil-code.preview",
+        "title": "Oil: Preview - Toggle preview window of entry under the cursor"
       }
     ],
     "languages": [
@@ -42,12 +42,12 @@
     "keybindings": [
       {
         "command": "oil-code.open",
-        "key": "alt+o"
+        "key": "-",
+        "when": "editorTextFocus && editorLangId != oil && (vim.mode == 'Normal' || neovim.mode == normal)"
       },
       {
         "command": "oil-code.open",
-        "key": "-",
-        "when": "editorTextFocus && editorLangId != oil && (vim.mode == 'Normal' || neovim.mode == normal)"
+        "key": "alt+o"
       },
       {
         "command": "oil-code.select",
@@ -55,14 +55,24 @@
         "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal' || neovim.mode == normal)"
       },
       {
-        "command": "oil-code.openParentFolderFiles",
+        "command": "oil-code.select",
+        "key": "alt+enter",
+        "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
+        "command": "oil-code.openParent",
         "key": "-",
         "when": "editorLangId == oil && (vim.mode == 'Normal' || neovim.mode == normal)"
       },
       {
-        "command": "oil-code.openParentFolderFiles",
-        "key": "alt+enter",
+        "command": "oil-code.openParent",
+        "key": "alt+-",
         "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
+        "command": "oil-code.preview",
+        "key": "ctl+p",
+        "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal' || neovim.mode == normal)"
       },
       {
         "command": "oil-code.preview",
