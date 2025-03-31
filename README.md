@@ -1,6 +1,6 @@
 <h1 align="center">oil.code</h1>
 
-<p align="center">Edit your file system like a normal file.</p>
+<p align="center">Edit your filesystem like a normal file.</p>
 
 Provides an [oil.nvim](https://github.com/stevearc/oil.nvim) like experience for VSCode.
 
@@ -17,7 +17,7 @@ To open oil.code:
 | -------------------------- | ---------------- | --------------------- | ----------------------------------------------- |
 | `Enter`                    | `alt+Enter`      | `oil-code.select`     | Open file or enter directory                    |
 | `-`                        | `alt+-`          | `oil-code.openParent` | Navigate to parent directory                    |
-| `ctl+p`                    | `alt+p`          | `oil-code.preview`    | Toggle preview window of entry under the cursor |
+| `ctrl+p`                   | `alt+p`          | `oil-code.preview`    | Toggle preview window of entry under the cursor |
 
 ## Why oil.code?
 

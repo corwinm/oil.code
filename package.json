@@ -71,7 +71,7 @@
       },
       {
         "command": "oil-code.preview",
-        "key": "ctl+p",
+        "key": "ctrl+p",
         "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal' || neovim.mode == normal)"
       },
       {
