@@ -40,6 +40,52 @@ let pendingChanges: PendingChanges = {
   renamedFiles: new Map(),
 };
 
+// Function to exclude oil files from recent files by adding to exclude patterns
+async function configureRecentFilesExclusions() {
+  try {
+    // Exclude from files.exclude (affects Explorer view and cmd+p search)
+    const filesConfig = vscode.workspace.getConfiguration("files");
+    const filesExcludes = filesConfig.get<object>("exclude") || {};
+
+    // Add our patterns to excludes
+    const updatedFilesExcludes = {
+      ...filesExcludes,
+      [`**/${tempFileName}`]: true,
+    };
+
+    // Update the configuration - fixed incorrect path
+    await filesConfig.update(
+      "exclude",
+      updatedFilesExcludes,
+      vscode.ConfigurationTarget.Global
+    );
+
+    // Exclude from search.exclude (affects cmd+p search)
+    const searchConfig = vscode.workspace.getConfiguration("search");
+    const searchExcludes = searchConfig.get<object>("exclude") || {};
+
+    // Add our patterns to search excludes
+    const updatedSearchExcludes = {
+      ...searchExcludes,
+      [`**/${tempFileName}`]: true,
+    };
+
+    // Update the search configuration
+    await searchConfig.update(
+      "exclude",
+      updatedSearchExcludes,
+      vscode.ConfigurationTarget.Global
+    );
+  } catch (error) {
+    console.error("Failed to configure exclusions:", error);
+  }
+}
+
+// Helper function to prevent oil files from appearing in the recent files list and cmd+p
+async function preventOilInRecentFiles() {
+  await configureRecentFilesExclusions();
+}
+
 // Initialize temp file path in system temp directory
 tempFilePath = path.join(os.tmpdir(), tempFileName);
 
@@ -1236,7 +1282,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       );
 
       await vscode.workspace.applyEdit(edit);
-      
+
       // Save the document after updating to prevent it from showing as having unsaved changes
       await document.save();
 
@@ -1278,6 +1324,8 @@ export function activate(context: vscode.ExtensionContext) {
     isDirectory: false,
     previewFilePath: null,
   };
+
+  preventOilInRecentFiles();
 
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor),
