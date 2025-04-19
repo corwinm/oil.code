@@ -1236,6 +1236,9 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       );
 
       await vscode.workspace.applyEdit(edit);
+      
+      // Save the document after updating to prevent it from showing as having unsaved changes
+      await document.save();
 
       // Reset the pending changes and modified flag
       pendingChanges = {
