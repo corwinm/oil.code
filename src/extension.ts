@@ -238,7 +238,8 @@ async function select(overRideLineText?: string) {
   }
 
   // If the document has unsaved changes, capture them before navigating
-  if (activeEditor.document.isDirty && !overRideLineText) {
+  const isDirty = activeEditor.document.isDirty;
+  if (isDirty) {
     // Capture current content before navigating
     const currentContent = activeEditor.document.getText();
     const currentLines = currentContent.split("\n");
@@ -471,23 +472,23 @@ async function handleOilFileSave(
     }
   }
 
-  // Check if any added files match recently deleted files (cross-directory moves)
+  // Enhanced cross-directory move detection
+  // Check for previously deleted files that match the added files by name
   for (const addedFile of addedEntries) {
     if (!addedFile.endsWith("/")) {
-      // Only match files, not directories
+      // For files (not directories), check if we have a matching deleted file
       for (const [
-        deletedFile,
+        deletedFileName,
         fullOrigPath,
       ] of fileTracking.deletedFiles.entries()) {
+        // Consider it a match if the base filename is the same
         if (
-          path.basename(addedFile) === path.basename(deletedFile) &&
+          path.basename(addedFile) === path.basename(deletedFileName) &&
           fs.existsSync(fullOrigPath)
         ) {
           // This looks like a move operation!
-          movedRenamedPairs.push([
-            fullOrigPath,
-            path.join(currentPath, addedFile),
-          ]);
+          const targetPath = path.join(currentPath, addedFile);
+          movedRenamedPairs.push([fullOrigPath, targetPath]);
 
           // Mark this file as moved so we can exclude it from other operations
           movedFiles.add(fullOrigPath);
@@ -499,7 +500,7 @@ async function handleOilFileSave(
           }
 
           // Remove from deletion tracking
-          fileTracking.deletedFiles.delete(deletedFile);
+          fileTracking.deletedFiles.delete(deletedFileName);
           break;
         }
       }
