@@ -11,7 +11,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -44,27 +46,12 @@
     "keybindings": [
       {
         "command": "oil-code.open",
-        "key": "-",
-        "when": "editorTextFocus && editorLangId != oil && (vim.mode == 'Normal' || neovim.mode == normal)"
-      },
-      {
-        "command": "oil-code.open",
         "key": "alt+o"
-      },
-      {
-        "command": "oil-code.select",
-        "key": "enter",
-        "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal' || neovim.mode == normal)"
       },
       {
         "command": "oil-code.select",
         "key": "alt+enter",
         "when": "editorTextFocus && editorLangId == oil"
-      },
-      {
-        "command": "oil-code.openParent",
-        "key": "-",
-        "when": "editorLangId == oil && (vim.mode == 'Normal' || neovim.mode == normal)"
       },
       {
         "command": "oil-code.openParent",

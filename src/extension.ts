@@ -1299,6 +1299,44 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
   }
 }
 
+const neovimExtensionId = "asvetliakov.vscode-neovim";
+
+async function isExtensionInstalled(extensionId: string): Promise<boolean> {
+  const extensions = vscode.extensions.all;
+  return extensions.some((ext) => ext.id.toLowerCase() === extensionId);
+}
+
+// Register Neovim keymap for the Oil Code extension
+async function registerNeovimKeymap() {
+  try {
+    if (await isExtensionInstalled(neovimExtensionId)) {
+      // Register custom Neovim command
+      await vscode.commands.executeCommand(
+        "vscode-neovim.lua",
+        `
+vim.keymap.set("n", "-", function() require('vscode').action('oil-code.open') end)
+vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
+    pattern = {"*"},
+    callback = function()
+        vim.keymap.set("n", "-", function() require('vscode').action('oil-code.open') end)
+    end,
+})
+vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
+    pattern = {"${tempFileName}"},
+    callback = function()
+        vim.keymap.set("n", "-", function() require('vscode').action('oil-code.openParent') end)
+        vim.keymap.set("n", "<CR>", function() require('vscode').action('oil-code.select') end)
+    end,
+})
+        `
+      );
+      console.log("Neovim keymap for Oil Code registered: -");
+    }
+  } catch (error) {
+    console.error("Failed to register Neovim keymap:", error);
+  }
+}
+
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
   // Reset file tracking
@@ -1327,6 +1365,9 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   preventOilInRecentFiles();
+
+  // Register Neovim keymap if the extension is installed
+  registerNeovimKeymap();
 
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor),
