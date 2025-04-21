@@ -45,9 +45,9 @@
     ],
     "keybindings": [
       {
+        "command": "oil-code.open",
         "key": "-",
-        "when": "editorTextFocus && editorLangId != oil && (vim.mode == 'Normal')",
-        "command": "oil-code.open"
+        "when": "editorTextFocus && editorLangId != oil && (vim.mode == 'Normal')"
       },
       {
         "command": "oil-code.open",
@@ -55,13 +55,18 @@
       },
       {
         "command": "oil-code.select",
+        "key": "enter",
+        "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal')"
+      },
+      {
+        "command": "oil-code.select",
         "key": "alt+enter",
         "when": "editorTextFocus && editorLangId == oil"
       },
       {
-        "key": "enter",
-        "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal')",
-        "command": "oil-code.select"
+        "command": "oil-code.openParent",
+        "key": "-",
+        "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal')"
       },
       {
         "command": "oil-code.openParent",
