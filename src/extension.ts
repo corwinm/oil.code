@@ -1301,6 +1301,12 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
 
 const neovimExtensionId = "asvetliakov.vscode-neovim";
 
+// Get the configured Neovim keymap or use default "-"
+function getNeovimOpenOilKeymap(): string {
+  const config = vscode.workspace.getConfiguration("oil-code");
+  return config.get<string>("neovimOpenOilKeymap") || "-";
+}
+
 async function isExtensionInstalled(extensionId: string): Promise<boolean> {
   const extensions = vscode.extensions.all;
   return extensions.some((ext) => ext.id.toLowerCase() === extensionId);
@@ -1310,15 +1316,17 @@ async function isExtensionInstalled(extensionId: string): Promise<boolean> {
 async function registerNeovimKeymap() {
   try {
     if (await isExtensionInstalled(neovimExtensionId)) {
+      const keymap = getNeovimOpenOilKeymap();
+
       // Register custom Neovim command
       await vscode.commands.executeCommand(
         "vscode-neovim.lua",
         `
-vim.keymap.set("n", "-", function() require('vscode').action('oil-code.open') end)
+vim.keymap.set("n", "${keymap}", function() require('vscode').action('oil-code.open') end)
 vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
     pattern = {"*"},
     callback = function()
-        vim.keymap.set("n", "-", function() require('vscode').action('oil-code.open') end)
+        vim.keymap.set("n", "${keymap}", function() require('vscode').action('oil-code.open') end)
     end,
 })
 vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
@@ -1330,7 +1338,6 @@ vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
 })
         `
       );
-      console.log("Neovim keymap for Oil Code registered: -");
     }
   } catch (error) {
     console.error("Failed to register Neovim keymap:", error);

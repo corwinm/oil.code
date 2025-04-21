@@ -45,6 +45,11 @@
     ],
     "keybindings": [
       {
+        "key": "-",
+        "when": "editorTextFocus && editorLangId != oil && (vim.mode == 'Normal')",
+        "command": "oil-code.open"
+      },
+      {
         "command": "oil-code.open",
         "key": "alt+o"
       },
@@ -52,6 +57,11 @@
         "command": "oil-code.select",
         "key": "alt+enter",
         "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
+        "key": "enter",
+        "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal')",
+        "command": "oil-code.select"
       },
       {
         "command": "oil-code.openParent",
@@ -75,7 +85,17 @@
         "scopeName": "source.oil",
         "path": "./syntaxes/oil.tmLanguage.json"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "oil.code",
+      "properties": {
+        "oil-code.neovimOpenOilKeymap": {
+          "type": "string",
+          "default": "-",
+          "description": "Key to bind to oil-code.open in Neovim mode. Default is '-'."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
