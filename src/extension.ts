@@ -40,6 +40,11 @@ let pendingChanges: PendingChanges = {
   renamedFiles: new Map(),
 };
 
+// Helper function for cross-platform path handling
+function normalizePath(inputPath: string): string {
+  return inputPath.split(/[\/\\]/).join(path.sep);
+}
+
 // Function to exclude oil files from recent files by adding to exclude patterns
 async function configureRecentFilesExclusions() {
   try {
@@ -669,8 +674,12 @@ async function handleOilFileSave(
         fs.mkdirSync(dirPath, { recursive: true });
       }
 
+      // Make sure both paths use correct separators for the platform
+      const normalizedOldPath = normalizePath(oldPath);
+      const normalizedNewPath = normalizePath(newPath);
+
       // Move the file to the new location
-      fs.renameSync(oldPath, newPath);
+      fs.renameSync(normalizedOldPath, normalizedNewPath);
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to move file: ${path.basename(oldPath)} to ${newPath.replace(
@@ -683,8 +692,8 @@ async function handleOilFileSave(
 
   // Process the confirmed changes for renames in the same directory
   for (const [oldName, newName] of renamedPairs) {
-    const oldPath = path.join(currentPath, oldName);
-    const newPath = path.join(currentPath, newName);
+    const oldPath = normalizePath(path.join(currentPath, oldName));
+    const newPath = normalizePath(path.join(currentPath, newName));
 
     // Check if this is a rename including directories
     if (
