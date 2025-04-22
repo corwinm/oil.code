@@ -1247,7 +1247,10 @@ async function closePreview() {
 
 async function onDidSaveTextDocument(document: vscode.TextDocument) {
   // Check if the saved document is our oil file
-  if (tempFilePath && document.uri.fsPath === vscode.Uri.file(tempFilePath).fsPath) {
+  if (
+    tempFilePath &&
+    document.uri.fsPath === vscode.Uri.file(tempFilePath).fsPath
+  ) {
     try {
       // Process changes - now we need to handle both current changes
       // and any pending changes from navigation
