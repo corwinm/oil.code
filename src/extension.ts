@@ -1309,10 +1309,9 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
 const neovimExtensionId = "asvetliakov.vscode-neovim";
 const vscodevimExtensionId = "vscodevim.vim";
 
-// Get the configured Neovim keymap or use default "-"
-function getNeovimOpenOilKeymap(): string {
+function getDisableVimKeymapsSetting(): boolean {
   const config = vscode.workspace.getConfiguration("oil-code");
-  return config.get<string>("neovimOpenOilKeymap") || "-";
+  return config.get<boolean>("disableVimKeymaps") || false;
 }
 
 async function isExtensionInstalled(extensionId: string): Promise<boolean> {
@@ -1322,21 +1321,23 @@ async function isExtensionInstalled(extensionId: string): Promise<boolean> {
 
 // Register Neovim keymap for the Oil Code extension
 async function registerNeovimKeymap() {
+  const isDisabled = getDisableVimKeymapsSetting();
+  if (isDisabled) {
+    console.log("Vim keymaps are disabled in settings.");
+    return;
+  }
   try {
     if (await isExtensionInstalled(neovimExtensionId)) {
-      const keymap = getNeovimOpenOilKeymap();
-
       // Register custom Neovim command
       await vscode.commands.executeCommand(
         "vscode-neovim.lua",
         `
 local vscode = require('vscode')
 local map = vim.keymap.set
-map("n", "${keymap}", function() vscode.action('oil-code.open') end)
 vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
     pattern = {"*"},
     callback = function()
-        map("n", "${keymap}", function() vscode.action('oil-code.open') end)
+        map("n", "-", function() vscode.action('oil-code.open') end)
     end,
 })
 
@@ -1357,6 +1358,11 @@ vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
 
 // Register VSCodeVim keymap for Oil Code extension
 async function registerVSCodeVimKeymap() {
+  const isDisabled = getDisableVimKeymapsSetting();
+  if (isDisabled) {
+    console.log("Vim keymaps are disabled in settings.");
+    return;
+  }
   try {
     if (await isExtensionInstalled(vscodevimExtensionId)) {
       // Configure VSCodeVim to map "-" in normal mode to open Oil
@@ -1365,13 +1371,15 @@ async function registerVSCodeVimKeymap() {
         vimConfig.get<any[]>("normalModeKeyBindings") || [];
 
       // Check if our binding is already in the keymap
-      const hasOilBinding = normalModeKeymap.some(
-        (binding) =>
-          binding.before &&
-          binding.before[0] === "-" &&
-          binding.commands &&
-          binding.commands[0] &&
-          binding.commands[0].command === "oil-code.open"
+      const hasOilBinding = normalModeKeymap.some((binding) =>
+        binding.commands?.some(
+          (cmd: { command: string }) => cmd.command === "oil-code.open"
+        )
+      );
+      const hasOilSelectBinding = normalModeKeymap.some((binding) =>
+        binding.commands?.some(
+          (cmd: { command: string }) => cmd.command === "oil-code.select"
+        )
       );
 
       if (!hasOilBinding) {
@@ -1380,7 +1388,16 @@ async function registerVSCodeVimKeymap() {
           before: ["-"],
           commands: [{ command: "oil-code.open" }],
         });
+      }
+      if (!hasOilSelectBinding) {
+        // Add our binding
+        normalModeKeymap.push({
+          before: ["<CR>"],
+          commands: [{ command: "oil-code.select" }],
+        });
+      }
 
+      if (!hasOilBinding || !hasOilSelectBinding) {
         // Update the configuration
         await vimConfig.update(
           "normalModeKeyBindings",
@@ -1388,7 +1405,7 @@ async function registerVSCodeVimKeymap() {
           vscode.ConfigurationTarget.Global
         );
 
-        console.log("VSCodeVim keymap configured for Oil Code");
+        console.log("VSCodeVim keymaps configured for Oil Code");
       }
     }
   } catch (error) {

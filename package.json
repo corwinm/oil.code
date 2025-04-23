@@ -50,11 +50,6 @@
       },
       {
         "command": "oil-code.select",
-        "key": "enter",
-        "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal')"
-      },
-      {
-        "command": "oil-code.select",
         "key": "alt+enter",
         "when": "editorTextFocus && editorLangId == oil"
       },
@@ -79,10 +74,10 @@
     "configuration": {
       "title": "oil.code",
       "properties": {
-        "oil-code.neovimOpenOilKeymap": {
-          "type": "string",
-          "default": "-",
-          "description": "Key to bind to oil-code.open in Neovim mode. Default is '-'."
+        "oil-code.disableVimKeymaps": {
+          "type": "boolean",
+          "default": false,
+          "description": "Disable all Vim keymaps for oil.code. Default is false. Set this to true if you want to set your own keymaps. Reload after changing this setting."
         }
       }
     }
