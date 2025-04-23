@@ -46,11 +46,6 @@
     "keybindings": [
       {
         "command": "oil-code.open",
-        "key": "-",
-        "when": "editorTextFocus && (vim.mode == 'Normal')"
-      },
-      {
-        "command": "oil-code.open",
         "key": "alt+-"
       },
       {

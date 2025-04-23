@@ -1307,6 +1307,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
 }
 
 const neovimExtensionId = "asvetliakov.vscode-neovim";
+const vscodevimExtensionId = "vscodevim.vim";
 
 // Get the configured Neovim keymap or use default "-"
 function getNeovimOpenOilKeymap(): string {
@@ -1354,6 +1355,47 @@ vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
   }
 }
 
+// Register VSCodeVim keymap for Oil Code extension
+async function registerVSCodeVimKeymap() {
+  try {
+    if (await isExtensionInstalled(vscodevimExtensionId)) {
+      // Configure VSCodeVim to map "-" in normal mode to open Oil
+      const vimConfig = vscode.workspace.getConfiguration("vim");
+      const normalModeKeymap =
+        vimConfig.get<any[]>("normalModeKeyBindings") || [];
+
+      // Check if our binding is already in the keymap
+      const hasOilBinding = normalModeKeymap.some(
+        (binding) =>
+          binding.before &&
+          binding.before[0] === "-" &&
+          binding.commands &&
+          binding.commands[0] &&
+          binding.commands[0].command === "oil-code.open"
+      );
+
+      if (!hasOilBinding) {
+        // Add our binding
+        normalModeKeymap.push({
+          before: ["-"],
+          commands: [{ command: "oil-code.open" }],
+        });
+
+        // Update the configuration
+        await vimConfig.update(
+          "normalModeKeyBindings",
+          normalModeKeymap,
+          vscode.ConfigurationTarget.Global
+        );
+
+        console.log("VSCodeVim keymap configured for Oil Code");
+      }
+    }
+  } catch (error) {
+    console.error("Failed to register VSCodeVim keymap:", error);
+  }
+}
+
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
   // Reset file tracking
@@ -1385,6 +1427,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Register Neovim keymap if the extension is installed
   registerNeovimKeymap();
+
+  // Register VSCodeVim keymap if the extension is installed
+  registerVSCodeVimKeymap();
 
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor),
