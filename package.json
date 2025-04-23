@@ -4,7 +4,7 @@
   "description": "Provides an Oil.nvim like experience for VSCode.",
   "repository": "https://github.com/corwinm/oil.code",
   "publisher": "haphazarddev",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.98.0"
   },
