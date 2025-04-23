@@ -11,7 +11,7 @@ This plugin works best with [VSCodeVim](https://github.com/VSCodeVim/Vim) or [vs
 To open oil.code:
 
 - Vim users - With a file focused and in normal mode press `-`.
-- All users - Press `alt+o`.
+- All users - Press `alt+-`.
 
 | Vim Shortcut (normal mode) | Default Shortcut | Command               | Description                                     |
 | -------------------------- | ---------------- | --------------------- | ----------------------------------------------- |

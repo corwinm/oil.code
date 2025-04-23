@@ -115,6 +115,10 @@ async function openOil() {
   let folderPath: string | undefined;
 
   if (activeEditor) {
+    if (activeEditor.document.languageId === "oil") {
+      openParent();
+      return;
+    }
     const filePath = activeEditor.document.uri.fsPath;
     folderPath = vscode.Uri.file(filePath).with({
       path: require("path").dirname(filePath),
@@ -1325,18 +1329,21 @@ async function registerNeovimKeymap() {
       await vscode.commands.executeCommand(
         "vscode-neovim.lua",
         `
-vim.keymap.set("n", "${keymap}", function() require('vscode').action('oil-code.open') end)
+local vscode = require('vscode')
+local map = vim.keymap.set
+map("n", "${keymap}", function() vscode.action('oil-code.open') end)
 vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
     pattern = {"*"},
     callback = function()
-        vim.keymap.set("n", "${keymap}", function() require('vscode').action('oil-code.open') end)
+        map("n", "${keymap}", function() vscode.action('oil-code.open') end)
     end,
 })
+
 vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
     pattern = {"${tempFileName}"},
     callback = function()
-        vim.keymap.set("n", "-", function() require('vscode').action('oil-code.openParent') end)
-        vim.keymap.set("n", "<CR>", function() require('vscode').action('oil-code.select') end)
+        map("n", "-", function() vscode.action('oil-code.openParent') end)
+        map("n", "<CR>", function() vscode.action('oil-code.select') end)
     end,
 })
         `

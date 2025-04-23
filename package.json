@@ -47,11 +47,11 @@
       {
         "command": "oil-code.open",
         "key": "-",
-        "when": "editorTextFocus && editorLangId != oil && (vim.mode == 'Normal')"
+        "when": "editorTextFocus && (vim.mode == 'Normal')"
       },
       {
         "command": "oil-code.open",
-        "key": "alt+o"
+        "key": "alt+-"
       },
       {
         "command": "oil-code.select",
@@ -61,16 +61,6 @@
       {
         "command": "oil-code.select",
         "key": "alt+enter",
-        "when": "editorTextFocus && editorLangId == oil"
-      },
-      {
-        "command": "oil-code.openParent",
-        "key": "-",
-        "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal')"
-      },
-      {
-        "command": "oil-code.openParent",
-        "key": "alt+-",
         "when": "editorTextFocus && editorLangId == oil"
       },
       {
