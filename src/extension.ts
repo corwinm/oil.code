@@ -1311,201 +1311,229 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
   }
 }
 
-const neovimExtensionId = "asvetliakov.vscode-neovim";
-const vscodevimExtensionId = "vscodevim.vim";
+const MAX_EXTENSION_DETECTION_RETRIES = 3;
+const EXTENSION_DETECTION_DELAY = 2000; // ms
 
+// Helper function to get setting for disabling vim keymaps
 function getDisableVimKeymapsSetting(): boolean {
   const config = vscode.workspace.getConfiguration("oil-code");
   return config.get<boolean>("disableVimKeymaps") || false;
 }
 
-// Function that retries a given function until it returns a value or times out
-async function retry<T>(
-  fn: () => T | undefined,
-  timeoutMs: number = 5000
-): Promise<T | undefined> {
-  const startTime = Date.now();
-  let result: T | undefined;
-
-  while (Date.now() - startTime < timeoutMs) {
-    result = await fn();
-    if (result !== undefined) {
-      return result;
-    }
-    // Wait for 500ms before retrying
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-
-  // Return undefined if we timed out
-  return undefined;
-}
-
-async function isExtensionInstalled(
-  extensionId: string
-): Promise<vscode.Extension<unknown> | undefined> {
-  // Directly try to get the extension - more reliable than using extensions.all
+// Check if Neovim extension is available
+async function isNeovimAvailable(): Promise<boolean> {
   try {
-    return vscode.extensions.getExtension(extensionId);
+    // Try to execute a simple command provided by the Neovim extension
+    await vscode.commands.executeCommand("vscode-neovim.lua", "return 1");
+    logger.info("Neovim extension is available");
+    return true;
   } catch (error) {
-    logger.error(`Error checking for extension ${extensionId}:`, error);
-    return undefined;
+    // If command execution fails, the extension is likely not available
+    logger.info("Neovim extension not available or command failed");
+    return false;
   }
 }
 
-// Register Neovim keymap for the Oil Code extension
-async function registerNeovimKeymap() {
+// Check if VSCodeVim extension is available
+function isVSCodeVimAvailable(): Promise<boolean> {
+  return new Promise((resolve) => {
+    try {
+      // VSCodeVim extension adds a "vim" configuration section
+      const vimConfig = vscode.workspace.getConfiguration("vim");
+
+      // Check if a known setting exists to confirm the extension is activated
+      if (vimConfig && vimConfig.has("normalModeKeyBindings")) {
+        logger.info("VSCodeVim extension is available");
+        resolve(true);
+      } else {
+        logger.info(
+          "VSCodeVim extension not available or not fully initialized"
+        );
+        resolve(false);
+      }
+    } catch (error) {
+      logger.error("Error checking VSCodeVim availability:", error);
+      resolve(false);
+    }
+  });
+}
+
+// Register keymaps for the Neovim extension
+async function registerNeovimKeymap(): Promise<boolean> {
+  // Check if vim keymaps are disabled in settings
   const isDisabled = getDisableVimKeymapsSetting();
   if (isDisabled) {
     logger.info("Vim keymaps are disabled in settings.");
-    return;
+    return false;
   }
-  try {
-    // Try to get Neovim extension
-    const neovim = await isExtensionInstalled(neovimExtensionId);
 
-    if (neovim) {
-      logger.info("Neovim extension is installed.");
+  // Check if the extension is available before attempting to register keymaps
+  if (await isNeovimAvailable()) {
+    try {
+      logger.info("Registering Neovim keymaps");
 
-      // If extension isn't active yet, wait for it to activate
-      if (!neovim.isActive) {
-        logger.info("Waiting for Neovim extension to activate...");
-        try {
-          await neovim.activate();
-          logger.info("Neovim extension activated");
-        } catch (error) {
-          logger.error("Error activating Neovim extension:", error);
-          // Try again later
-          setTimeout(() => registerNeovimKeymap(), 2000);
-          return;
-        }
-      }
-
-      // Give a moment for the extension to fully initialize
-      setTimeout(async () => {
-        try {
-          logger.trace("Adding Neovim keymaps for Oil Code");
-          // Register custom Neovim command
-          await vscode.commands.executeCommand(
-            "vscode-neovim.lua",
-            `
+      // Use the Neovim extension's command API to register Lua code
+      await vscode.commands.executeCommand(
+        "vscode-neovim.lua",
+        `
 local vscode = require('vscode')
 local map = vim.keymap.set
 vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
     pattern = {"*"},
-    callback = function()
-        map("n", "-", function() vscode.action('oil-code.open') end)
-    end,
+  callback = function()
+    map("n", "-", function() vscode.action('oil-code.open') end)
+  end,
 })
 
 vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
     pattern = {"${tempFileName}"},
-    callback = function()
-        map("n", "-", function() vscode.action('oil-code.openParent') end)
-        map("n", "<CR>", function() vscode.action('oil-code.select') end)
-    end,
+  callback = function()
+    map("n", "-", function() vscode.action('oil-code.openParent') end)
+    map("n", "<CR>", function() vscode.action('oil-code.select') end)
+  end,
 })
-            `
-          );
-          logger.info("Neovim keymaps registered successfully");
-        } catch (error) {
-          logger.error("Failed to register Neovim keymap:", error);
-        }
-      }, 1000);
-    } else {
-      logger.info("Neovim extension not found");
+        `
+      );
+
+      logger.info("Neovim keymaps registered successfully");
+      return true;
+    } catch (error) {
+      logger.error("Failed to register Neovim keymap:", error);
+      return false;
     }
-  } catch (error) {
-    logger.error("Failed to register Neovim keymap:", error);
   }
+
+  logger.info("Neovim extension not available, skipping keymap registration");
+  return false;
 }
 
-// Register VSCodeVim keymap for Oil Code extension
-async function registerVSCodeVimKeymap() {
+// Register keymaps for the VSCodeVim extension
+async function registerVSCodeVimKeymap(): Promise<boolean> {
+  // Check if vim keymaps are disabled in settings
   const isDisabled = getDisableVimKeymapsSetting();
   if (isDisabled) {
     logger.info("Vim keymaps are disabled in settings.");
-    return;
+    return false;
   }
-  try {
-    const vim = await isExtensionInstalled(vscodevimExtensionId);
 
-    if (vim) {
-      logger.info("VSCodeVim extension is installed");
+  // Check if the extension is available before attempting to register keymaps
+  if (await isVSCodeVimAvailable()) {
+    try {
+      logger.info("Registering VSCodeVim keymaps");
 
-      // If extension isn't active yet, wait for it to activate
-      if (!vim.isActive) {
-        logger.info("Waiting for VSCodeVim extension to activate...");
-        try {
-          await vim.activate();
-          logger.info("VSCodeVim extension activated");
-        } catch (error) {
-          logger.error("Error activating VSCodeVim extension:", error);
-          // Try again later
-          setTimeout(() => registerVSCodeVimKeymap(), 2000);
-          return;
-        }
+      // Configure VSCodeVim using workspace configuration
+      const vimConfig = vscode.workspace.getConfiguration("vim");
+      const normalModeKeymap =
+        vimConfig.get<any[]>("normalModeKeyBindings") || [];
+      let updatedKeymap = [...normalModeKeymap]; // Make a copy
+      let keymapChanged = false;
+
+      // Check for and add the Oil open binding if not present
+      const hasOilOpenBinding = normalModeKeymap.some(
+        (binding) =>
+          binding.before &&
+          binding.before.length === 1 &&
+          binding.before[0] === "-" &&
+          binding.commands?.some(
+            (cmd: { command: string }) => cmd.command === "oil-code.open"
+          )
+      );
+
+      if (!hasOilOpenBinding) {
+        updatedKeymap.push({
+          before: ["-"],
+          commands: [{ command: "oil-code.open" }],
+        });
+        keymapChanged = true;
       }
 
-      // Give a moment for the extension to fully initialize
-      setTimeout(async () => {
-        try {
-          // Configure VSCodeVim to map "-" in normal mode to open Oil
-          const vimConfig = vscode.workspace.getConfiguration("vim");
-          const normalModeKeymap =
-            vimConfig.get<any[]>("normalModeKeyBindings") || [];
+      // Check for and add the Oil select binding if not present
+      const hasOilSelectBinding = normalModeKeymap.some(
+        (binding) =>
+          binding.before &&
+          binding.before.length === 1 &&
+          binding.before[0] === "<cr>" &&
+          binding.commands?.some(
+            (cmd: { command: string }) => cmd.command === "oil-code.select"
+          )
+      );
 
-          // Check if our binding is already in the keymap
-          const hasOilBinding = normalModeKeymap.some((binding) =>
-            binding.commands?.some(
-              (cmd: { command: string }) => cmd.command === "oil-code.open"
-            )
-          );
-          const hasOilSelectBinding = normalModeKeymap.some((binding) =>
-            binding.commands?.some(
-              (cmd: { command: string }) => cmd.command === "oil-code.select"
-            )
-          );
+      if (!hasOilSelectBinding) {
+        updatedKeymap.push({
+          before: ["<cr>"],
+          commands: [{ command: "oil-code.select" }],
+          when: "editorTextFocus && editorLangId == oil",
+        });
+        keymapChanged = true;
+      }
 
-          if (!hasOilBinding) {
-            // Add our binding
-            normalModeKeymap.push({
-              before: ["-"],
-              commands: [{ command: "oil-code.open" }],
-            });
-          }
-          if (!hasOilSelectBinding) {
-            // Add our binding
-            normalModeKeymap.push({
-              before: ["<CR>"],
-              commands: [{ command: "oil-code.select" }],
-            });
-          }
+      // Update the configuration if changes were made
+      if (keymapChanged) {
+        await vimConfig.update(
+          "normalModeKeyBindings",
+          updatedKeymap,
+          vscode.ConfigurationTarget.Global
+        );
+        logger.info("VSCodeVim keymaps updated successfully");
+      } else {
+        logger.info("VSCodeVim keymaps already configured");
+      }
 
-          if (!hasOilBinding || !hasOilSelectBinding) {
-            // Update the configuration
-            await vimConfig.update(
-              "normalModeKeyBindings",
-              normalModeKeymap,
-              vscode.ConfigurationTarget.Global
-            );
-
-            logger.trace("VSCodeVim keymaps configured for Oil Code");
-          }
-
-          logger.info("VSCodeVim keymaps registered successfully");
-        } catch (error) {
-          logger.error("Failed to register VSCodeVim keymap:", error);
-        }
-      }, 1000);
-    } else {
-      logger.info("VSCodeVim extension not found");
+      return true;
+    } catch (error) {
+      logger.error("Failed to register VSCodeVim keymap:", error);
+      return false;
     }
-  } catch (error) {
-    logger.error("Failed to register VSCodeVim keymap:", error);
+  }
+
+  logger.info(
+    "VSCodeVim extension not available, skipping keymap registration"
+  );
+  return false;
+}
+
+// Function to attempt registering vim keymaps with retries
+async function attemptRegisteringVimKeymaps(
+  retries: number = MAX_EXTENSION_DETECTION_RETRIES,
+  delay: number = EXTENSION_DETECTION_DELAY
+): Promise<void> {
+  let neovimRegistered = false;
+  let vscodevimRegistered = false;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (attempt > 0) {
+      logger.info(
+        `Retry attempt ${attempt} of ${retries} to register Vim keymaps`
+      );
+      // Wait before retry
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+
+    // Try to register Neovim keymaps if not already registered
+    if (!neovimRegistered) {
+      neovimRegistered = await registerNeovimKeymap();
+    }
+
+    // Try to register VSCodeVim keymaps if not already registered
+    if (!vscodevimRegistered) {
+      vscodevimRegistered = await registerVSCodeVimKeymap();
+    }
+
+    // If both are registered or we've exhausted attempts, we're done
+    if (neovimRegistered && vscodevimRegistered) {
+      logger.info(
+        "Successfully registered keymaps for all available Vim extensions"
+      );
+      break;
+    }
+  }
+
+  if (!neovimRegistered && !vscodevimRegistered) {
+    logger.info("No Vim extensions were detected after all retry attempts");
   }
 }
 
-// This method is called when your extension is activated
+// In your extension's activate function
 export function activate(context: vscode.ExtensionContext) {
   logger.trace("oil.code extension started.");
 
@@ -1536,20 +1564,20 @@ export function activate(context: vscode.ExtensionContext) {
 
   preventOilInRecentFiles();
 
-  // Register the extension activation listeners - this helps with handling extensions that load after ours
-  context.subscriptions.push(
-    vscode.extensions.onDidChange(() => {
-      // When extensions change (activate/deactivate), try to register keymaps again
-      registerNeovimKeymap();
-      registerVSCodeVimKeymap();
-    })
-  );
+  // Set up listener for extension changes (activation/deactivation)
+  const extensionChangeListener = vscode.extensions.onDidChange(() => {
+    logger.info("Extension change detected, checking for Vim extensions");
+    attemptRegisteringVimKeymaps(1, 1000); // One retry after extension changes
+  });
 
-  // Initial registration attempts
-  setTimeout(() => {
-    registerNeovimKeymap();
-    registerVSCodeVimKeymap();
-  }, 2000); // Delay initial registration to give other extensions time to load
+  // Add the listener to the subscriptions for proper disposal
+  context.subscriptions.push(extensionChangeListener);
+
+  // Make initial attempt to register Vim keymaps with retries
+  attemptRegisteringVimKeymaps(
+    MAX_EXTENSION_DETECTION_RETRIES,
+    EXTENSION_DETECTION_DELAY
+  );
 
   context.subscriptions.push(
     logger,
