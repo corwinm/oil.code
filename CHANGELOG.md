@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.5](https://github.com/corwinm/oil.code/compare/v0.0.4...v0.0.5)
+
+- fix: Fix deployment
+
 ## [0.0.4](https://github.com/corwinm/oil.code/compare/v0.0.3...v0.0.4)
 
 - fix: Better keymaps by @corwinm in https://github.com/corwinm/oil.code/pull/7
