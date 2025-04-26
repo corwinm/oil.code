@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.7](https://github.com/corwinm/oil.code/compare/v0.0.6...v0.0.7)
+
+- fix: Try loading neovim keymaps after delay
+
 ## [0.0.6](https://github.com/corwinm/oil.code/compare/v0.0.5...v0.0.6)
 
 - fix: Wait for neovim to be active to run keymaps by @corwinm in https://github.com/corwinm/oil.code/pull/8
