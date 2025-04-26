@@ -5,6 +5,8 @@ import * as os from "os";
 
 const tempFileName = "《 oil.code 》";
 
+const logger = vscode.window.createOutputChannel("oil.code", { log: true });
+
 let tempFilePath: string | undefined;
 
 let currentPath: string | undefined;
@@ -77,7 +79,7 @@ async function configureRecentFilesExclusions() {
       vscode.ConfigurationTarget.Global
     );
   } catch (error) {
-    console.error("Failed to configure exclusions:", error);
+    logger.error("Failed to configure exclusions:", error);
   }
 }
 
@@ -111,6 +113,7 @@ async function checkAndEnableAutoSave() {
 }
 
 async function openOil() {
+  logger.trace("Opening oil file...");
   const activeEditor = vscode.window.activeTextEditor;
   let folderPath: string | undefined;
 
@@ -230,6 +233,7 @@ async function getDirectoryListing(folderPath: string): Promise<string> {
 }
 
 async function select(overRideLineText?: string) {
+  logger.trace("Selecting file...");
   const activeEditor = vscode.window.activeTextEditor;
 
   if (!activeEditor) {
@@ -407,6 +411,7 @@ async function select(overRideLineText?: string) {
 }
 
 async function openParent() {
+  logger.trace("Opening parent directory...");
   // When going up from the oil file view, store the current directory name
   if (currentPath) {
     fileTracking.lastSelectedFile = path.basename(currentPath);
@@ -431,7 +436,7 @@ async function onDidChangeActiveTextEditor(
     lastActiveEditorWasOil = false;
     fs.unlink(tempFilePath, (err) => {
       if (err) {
-        console.error("Failed to delete temporary file:", err);
+        logger.error("Failed to delete temporary file:", err);
       }
     });
     await checkAndEnableAutoSave();
@@ -895,7 +900,7 @@ async function captureChangesForNavigation(
 
       // Return early as we've handled these as renames
       if (potentialMoves.size > 0) {
-        console.log(`Rename operations detected: ${potentialMoves.size}`);
+        logger.info(`Rename operations detected: ${potentialMoves.size}`);
         return;
       }
     }
@@ -929,9 +934,9 @@ async function captureChangesForNavigation(
 
   // Mark that we have changes to process
   if (addedEntries.length > 0 || deletedEntries.length > 0) {
-    console.log(`Pending changes detected: ${hasPendingChanges()}`);
-    console.log(`Added files: ${[...pendingChanges.addedFiles].join(", ")}`);
-    console.log(
+    logger.info(`Pending changes detected: ${hasPendingChanges()}`);
+    logger.info(`Added files: ${[...pendingChanges.addedFiles].join(", ")}`);
+    logger.info(
       `Deleted files: ${[...pendingChanges.deletedFiles].join(", ")}`
     );
   }
@@ -1190,7 +1195,7 @@ async function updatePreviewBasedOnCursorPosition(
       await previewFile(targetPath);
     }
   } catch (error) {
-    console.error("Failed to update preview:", error);
+    logger.error("Failed to update preview:", error);
   }
 }
 
@@ -1223,7 +1228,7 @@ async function closePreview() {
         try {
           fs.unlinkSync(tempPreviewPath);
         } catch (err) {
-          console.error("Failed to delete temporary preview file:", err);
+          logger.error("Failed to delete temporary preview file:", err);
         }
       }
     } else {
@@ -1325,18 +1330,27 @@ async function isExtensionInstalled(
 async function registerNeovimKeymap() {
   const isDisabled = getDisableVimKeymapsSetting();
   if (isDisabled) {
-    console.log("Vim keymaps are disabled in settings.");
+    logger.info("Vim keymaps are disabled in settings.");
     return;
   }
   try {
     const neovim = await isExtensionInstalled(neovimExtensionId);
     if (neovim) {
+      logger.info("Neovim extension is installed.");
       if (!neovim.isActive) {
+        logger.info(
+          "Neovim extension is not active. Waiting for activation..."
+        );
         setTimeout(() => {
           registerNeovimKeymap();
         }, 500);
         return;
       }
+
+      // Wait for a moment to ensure the extension is fully loaded
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      logger.trace("Neovim extension is active, adding keymaps.");
       // Register custom Neovim command
       await vscode.commands.executeCommand(
         "vscode-neovim.lua",
@@ -1361,7 +1375,7 @@ vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
       );
     }
   } catch (error) {
-    console.error("Failed to register Neovim keymap:", error);
+    logger.error("Failed to register Neovim keymap:", error);
   }
 }
 
@@ -1369,7 +1383,7 @@ vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
 async function registerVSCodeVimKeymap() {
   const isDisabled = getDisableVimKeymapsSetting();
   if (isDisabled) {
-    console.log("Vim keymaps are disabled in settings.");
+    logger.info("Vim keymaps are disabled in settings.");
     return;
   }
   try {
@@ -1414,16 +1428,18 @@ async function registerVSCodeVimKeymap() {
           vscode.ConfigurationTarget.Global
         );
 
-        console.log("VSCodeVim keymaps configured for Oil Code");
+        logger.trace("VSCodeVim keymaps configured for Oil Code");
       }
     }
   } catch (error) {
-    console.error("Failed to register VSCodeVim keymap:", error);
+    logger.error("Failed to register VSCodeVim keymap:", error);
   }
 }
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
+  logger.trace("oil.code extension started.");
+
   // Reset file tracking
   fileTracking = {
     previousPath: "",
@@ -1458,6 +1474,7 @@ export function activate(context: vscode.ExtensionContext) {
   registerVSCodeVimKeymap();
 
   context.subscriptions.push(
+    logger,
     vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor),
     vscode.workspace.onDidSaveTextDocument(onDidSaveTextDocument),
     vscode.commands.registerCommand("oil-code.open", openOil),
