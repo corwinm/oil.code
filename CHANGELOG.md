@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.4](https://github.com/corwinm/oil.code/compare/v0.0.3...v0.0.4)
+
+- fix: Better keymaps by @corwinm in https://github.com/corwinm/oil.code/pull/7
+
 ## [0.0.3](https://github.com/corwinm/oil.code/compare/v0.0.1...v0.0.2)
 
 - fix: File management not working on Windows by @corwinm in https://github.com/corwinm/oil.code/pull/6
