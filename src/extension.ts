@@ -1314,9 +1314,11 @@ function getDisableVimKeymapsSetting(): boolean {
   return config.get<boolean>("disableVimKeymaps") || false;
 }
 
-async function isExtensionInstalled(extensionId: string): Promise<boolean> {
+async function isExtensionInstalled(
+  extensionId: string
+): Promise<vscode.Extension<unknown> | undefined> {
   const extensions = vscode.extensions.all;
-  return extensions.some((ext) => ext.id.toLowerCase() === extensionId);
+  return extensions.find((ext) => ext.id.toLowerCase() === extensionId);
 }
 
 // Register Neovim keymap for the Oil Code extension
@@ -1327,7 +1329,14 @@ async function registerNeovimKeymap() {
     return;
   }
   try {
-    if (await isExtensionInstalled(neovimExtensionId)) {
+    const neovim = await isExtensionInstalled(neovimExtensionId);
+    if (neovim) {
+      if (!neovim.isActive) {
+        setTimeout(() => {
+          registerNeovimKeymap();
+        }, 500);
+        return;
+      }
       // Register custom Neovim command
       await vscode.commands.executeCommand(
         "vscode-neovim.lua",
