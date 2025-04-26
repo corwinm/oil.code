@@ -115,6 +115,10 @@ async function openOil() {
   let folderPath: string | undefined;
 
   if (activeEditor) {
+    if (activeEditor.document.languageId === "oil") {
+      openParent();
+      return;
+    }
     const filePath = activeEditor.document.uri.fsPath;
     folderPath = vscode.Uri.file(filePath).with({
       path: require("path").dirname(filePath),
@@ -1302,6 +1306,113 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
   }
 }
 
+const neovimExtensionId = "asvetliakov.vscode-neovim";
+const vscodevimExtensionId = "vscodevim.vim";
+
+function getDisableVimKeymapsSetting(): boolean {
+  const config = vscode.workspace.getConfiguration("oil-code");
+  return config.get<boolean>("disableVimKeymaps") || false;
+}
+
+async function isExtensionInstalled(extensionId: string): Promise<boolean> {
+  const extensions = vscode.extensions.all;
+  return extensions.some((ext) => ext.id.toLowerCase() === extensionId);
+}
+
+// Register Neovim keymap for the Oil Code extension
+async function registerNeovimKeymap() {
+  const isDisabled = getDisableVimKeymapsSetting();
+  if (isDisabled) {
+    console.log("Vim keymaps are disabled in settings.");
+    return;
+  }
+  try {
+    if (await isExtensionInstalled(neovimExtensionId)) {
+      // Register custom Neovim command
+      await vscode.commands.executeCommand(
+        "vscode-neovim.lua",
+        `
+local vscode = require('vscode')
+local map = vim.keymap.set
+vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
+    pattern = {"*"},
+    callback = function()
+        map("n", "-", function() vscode.action('oil-code.open') end)
+    end,
+})
+
+vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
+    pattern = {"${tempFileName}"},
+    callback = function()
+        map("n", "-", function() vscode.action('oil-code.openParent') end)
+        map("n", "<CR>", function() vscode.action('oil-code.select') end)
+    end,
+})
+        `
+      );
+    }
+  } catch (error) {
+    console.error("Failed to register Neovim keymap:", error);
+  }
+}
+
+// Register VSCodeVim keymap for Oil Code extension
+async function registerVSCodeVimKeymap() {
+  const isDisabled = getDisableVimKeymapsSetting();
+  if (isDisabled) {
+    console.log("Vim keymaps are disabled in settings.");
+    return;
+  }
+  try {
+    if (await isExtensionInstalled(vscodevimExtensionId)) {
+      // Configure VSCodeVim to map "-" in normal mode to open Oil
+      const vimConfig = vscode.workspace.getConfiguration("vim");
+      const normalModeKeymap =
+        vimConfig.get<any[]>("normalModeKeyBindings") || [];
+
+      // Check if our binding is already in the keymap
+      const hasOilBinding = normalModeKeymap.some((binding) =>
+        binding.commands?.some(
+          (cmd: { command: string }) => cmd.command === "oil-code.open"
+        )
+      );
+      const hasOilSelectBinding = normalModeKeymap.some((binding) =>
+        binding.commands?.some(
+          (cmd: { command: string }) => cmd.command === "oil-code.select"
+        )
+      );
+
+      if (!hasOilBinding) {
+        // Add our binding
+        normalModeKeymap.push({
+          before: ["-"],
+          commands: [{ command: "oil-code.open" }],
+        });
+      }
+      if (!hasOilSelectBinding) {
+        // Add our binding
+        normalModeKeymap.push({
+          before: ["<CR>"],
+          commands: [{ command: "oil-code.select" }],
+        });
+      }
+
+      if (!hasOilBinding || !hasOilSelectBinding) {
+        // Update the configuration
+        await vimConfig.update(
+          "normalModeKeyBindings",
+          normalModeKeymap,
+          vscode.ConfigurationTarget.Global
+        );
+
+        console.log("VSCodeVim keymaps configured for Oil Code");
+      }
+    }
+  } catch (error) {
+    console.error("Failed to register VSCodeVim keymap:", error);
+  }
+}
+
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
   // Reset file tracking
@@ -1330,6 +1441,12 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   preventOilInRecentFiles();
+
+  // Register Neovim keymap if the extension is installed
+  registerNeovimKeymap();
+
+  // Register VSCodeVim keymap if the extension is installed
+  registerVSCodeVimKeymap();
 
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor),
