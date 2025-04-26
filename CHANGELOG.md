@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.8](https://github.com/corwinm/oil.code/compare/v0.0.8...v0.0.9)
+
+- fix: Trying to detect extensions a different way
+
 ## [0.0.8](https://github.com/corwinm/oil.code/compare/v0.0.7...v0.0.8)
 
 - fix: Add retries to vim extension detection
