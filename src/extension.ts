@@ -1319,11 +1319,34 @@ function getDisableVimKeymapsSetting(): boolean {
   return config.get<boolean>("disableVimKeymaps") || false;
 }
 
+// Function that retries a given function until it returns a value or times out
+async function retry<T>(
+  fn: () => T | undefined,
+  timeoutMs: number = 5000
+): Promise<T | undefined> {
+  const startTime = Date.now();
+  let result: T | undefined;
+
+  while (Date.now() - startTime < timeoutMs) {
+    result = await fn();
+    if (result !== undefined) {
+      return result;
+    }
+    // Wait for 500ms before retrying
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  // Return undefined if we timed out
+  return undefined;
+}
+
 async function isExtensionInstalled(
   extensionId: string
 ): Promise<vscode.Extension<unknown> | undefined> {
-  const extensions = vscode.extensions.all;
-  return extensions.find((ext) => ext.id.toLowerCase() === extensionId);
+  return await retry(() => {
+    const extensions = vscode.extensions.all;
+    return extensions.find((ext) => ext.id.toLowerCase() === extensionId);
+  });
 }
 
 // Register Neovim keymap for the Oil Code extension
