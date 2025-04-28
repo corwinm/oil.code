@@ -2,6 +2,7 @@ import path from "path";
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as os from "os";
+import { activateDecorations } from "./decorations";
 
 const tempFileName = "《 oil.code 》";
 
@@ -18,6 +19,7 @@ interface FileTracking {
   deletedFiles: Map<string, string>; // Map of filename to full path
   visitedPaths: Set<string>;
   lastSelectedFile: string; // Track the last selected file or directory
+  fileIdentifiers: Map<string, string>; // Map of identifier to full path
 }
 
 // Initialize tracking state
@@ -27,6 +29,7 @@ let fileTracking: FileTracking = {
   deletedFiles: new Map(),
   visitedPaths: new Set(),
   lastSelectedFile: "",
+  fileIdentifiers: new Map(),
 };
 
 // Track changes across directory navigation
@@ -164,38 +167,6 @@ async function openOil() {
   }
 }
 
-// Function to position cursor on a specific file or on the first line
-function positionCursorOnFile(editor: vscode.TextEditor, fileName: string) {
-  if (!editor) {
-    return;
-  }
-
-  const document = editor.document;
-  const text = document.getText();
-  const lines = text.split("\n");
-
-  // If no filename is provided or it's going up a directory, place cursor on first line
-  if (!fileName || fileName === "../") {
-    editor.selection = new vscode.Selection(0, 0, 0, 0);
-    editor.revealRange(new vscode.Range(0, 0, 0, 0));
-    return;
-  }
-
-  // Find the line number of the file
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].trim() === fileName) {
-      // Position cursor at the beginning of the line
-      editor.selection = new vscode.Selection(i, 0, i, 0);
-      editor.revealRange(new vscode.Range(i, 0, i, 0));
-      return;
-    }
-  }
-
-  // If file not found, position on first line
-  editor.selection = new vscode.Selection(0, 0, 0, 0);
-  editor.revealRange(new vscode.Range(0, 0, 0, 0));
-}
-
 async function getDirectoryListing(folderPath: string): Promise<string> {
   let pathUri = vscode.Uri.file(folderPath);
   let results = await vscode.workspace.fs.readDirectory(pathUri);
@@ -229,7 +200,19 @@ async function getDirectoryListing(folderPath: string): Promise<string> {
     fileTracking.visitedPaths.add(folderPath);
   }
 
-  return listings.join("\n");
+  // Reset the file identifiers map for the new directory
+  fileTracking.fileIdentifiers = new Map();
+
+  // Generate listings with hidden identifiers
+  let listingsWithIds = listings.map((name, index) => {
+    const identifier = `/${index.toString().padStart(3, "0")}`;
+    const fullPath =
+      name === "../" ? path.dirname(folderPath) : path.join(folderPath, name);
+    fileTracking.fileIdentifiers.set(identifier, fullPath);
+    return `${identifier} ${name}`;
+  });
+
+  return listingsWithIds.join("\n");
 }
 
 async function select(overRideLineText?: string) {
@@ -268,8 +251,11 @@ async function select(overRideLineText?: string) {
 
   const document = activeEditor.document;
   const cursorPosition = activeEditor.selection.active;
-  const lineText =
+  const rawLineText =
     overRideLineText ?? document.lineAt(cursorPosition.line).text;
+
+  // Extract actual filename by removing the hidden identifier
+  const lineText = rawLineText.replace(/^\/\d{3} /, "");
   const fileName = lineText.trim();
 
   if (!fileName) {
@@ -840,70 +826,139 @@ async function handleOilFileSave(
   };
 }
 
+// Function to position cursor on a specific file or on the first line
+function positionCursorOnFile(editor: vscode.TextEditor, fileName: string) {
+  if (!editor) {
+    return;
+  }
+
+  const document = editor.document;
+  const text = document.getText();
+  const lines = text.split("\n");
+
+  // If no filename is provided or it's going up a directory, place cursor on first line
+  if (!fileName || fileName === "../") {
+    editor.selection = new vscode.Selection(0, 0, 0, 0);
+    editor.revealRange(new vscode.Range(0, 0, 0, 0));
+    return;
+  }
+
+  // Find the line number of the file
+  for (let i = 0; i < lines.length; i++) {
+    // Extract name without hidden identifier
+    const lineName = lines[i].replace(/\u200B\d{5}\u200B$/, "").trim();
+    if (lineName === fileName) {
+      // Position cursor at the beginning of the line
+      editor.selection = new vscode.Selection(i, 0, i, 0);
+      editor.revealRange(new vscode.Range(i, 0, i, 0));
+      return;
+    }
+  }
+
+  // If file not found, position on first line
+  editor.selection = new vscode.Selection(0, 0, 0, 0);
+  editor.revealRange(new vscode.Range(0, 0, 0, 0));
+}
+
 // Helper function to capture changes before navigating
 async function captureChangesForNavigation(
   currentDirPath: string,
   expectedLines: string[],
   currentLines: string[]
 ): Promise<void> {
-  // Create sets for quick lookup
-  const originalEntries = new Set(expectedLines);
-  const newEntries = new Set(currentLines);
+  // Extract identifiers and names from lines
+  const extractFileInfo = (line: string) => {
+    const idMatch = line.match(/\u200B(\d{5})\u200B$/);
+    const identifier = idMatch ? `\u200B${idMatch[1]}\u200B` : "";
+    const name = line.replace(/\u200B\d{5}\u200B$/, "").trim();
+    return { name, identifier };
+  };
+
+  // Process original entries
+  const originalEntries = new Map<
+    string,
+    { name: string; identifier: string }
+  >();
+  for (const line of expectedLines) {
+    const { name, identifier } = extractFileInfo(line);
+    if (name !== "" && name !== "../") {
+      originalEntries.set(name, { name, identifier });
+    }
+  }
+
+  // Process current entries
+  const newEntries = new Map<string, { name: string; identifier: string }>();
+  for (const line of currentLines) {
+    const { name, identifier } = extractFileInfo(line);
+    if (name !== "" && name !== "../") {
+      newEntries.set(name, { name, identifier });
+    }
+  }
 
   // Identify added and deleted entries
-  const addedEntries = currentLines.filter(
-    (line) => !originalEntries.has(line) && line.trim() !== ""
-  );
+  const addedEntries: string[] = [];
+  for (const [name, info] of newEntries.entries()) {
+    if (!originalEntries.has(name)) {
+      addedEntries.push(name);
+    }
+  }
 
-  const deletedEntries = expectedLines.filter(
-    (line) => !newEntries.has(line) && line !== "../" && line.trim() !== ""
-  );
+  const deletedEntries: string[] = [];
+  for (const [name, info] of originalEntries.entries()) {
+    if (!newEntries.has(name)) {
+      deletedEntries.push(name);
+    }
+  }
 
-  // First check for potential renames/moves before tracking deletions
+  // Identify renames based on identifier matches
+  const identifierMap = new Map<string, string>(); // id -> name
+  for (const [name, info] of originalEntries.entries()) {
+    if (info.identifier) {
+      identifierMap.set(info.identifier, name);
+    }
+  }
+
   const potentialMoves = new Map<string, string>();
 
-  // Simple heuristic - if same number of added and deleted files, they might be renames
-  if (
-    addedEntries.length === deletedEntries.length &&
-    addedEntries.length > 0
-  ) {
-    // Check for matching filenames (ignoring paths)
-    const addedBasenames = addedEntries.map((name) =>
-      path.basename(name.replace(/\/$/, ""))
-    );
-    const deletedBasenames = deletedEntries.map((name) =>
-      path.basename(name.replace(/\/$/, ""))
-    );
+  // Look for entries where the identifier exists in original but with a different name
+  for (const line of currentLines) {
+    const { name, identifier } = extractFileInfo(line);
+    if (identifier && identifierMap.has(identifier)) {
+      const originalName = identifierMap.get(identifier)!;
+      if (originalName !== name && name !== "../") {
+        // This is a rename!
+        const oldPath = path.join(currentDirPath, originalName);
+        const newPath = path.join(currentDirPath, name);
+        potentialMoves.set(oldPath, newPath);
 
-    // If all basenames match (in any order), treat as renames not deletions
-    const isRenameOperation = addedBasenames.every((name) =>
-      deletedBasenames.includes(name)
-    );
+        // Add to pending renames
+        pendingChanges.renamedFiles.set(oldPath, newPath);
 
-    if (isRenameOperation) {
-      // Match by basename
-      for (const deletedFile of deletedEntries) {
-        const deletedBase = path.basename(deletedFile.replace(/\/$/, ""));
-        const matchingAdded = addedEntries.find(
-          (added) => path.basename(added.replace(/\/$/, "")) === deletedBase
-        );
+        // Remove from added/deleted lists
+        const addedIndex = addedEntries.indexOf(name);
+        if (addedIndex !== -1) {
+          addedEntries.splice(addedIndex, 1);
+        }
 
-        if (matchingAdded) {
-          const oldPath = path.join(currentDirPath, deletedFile);
-          const newPath = path.join(currentDirPath, matchingAdded);
-          potentialMoves.set(oldPath, newPath);
-
-          // Add to pending renames instead of deletions
-          pendingChanges.renamedFiles.set(oldPath, newPath);
+        const deletedIndex = deletedEntries.indexOf(originalName);
+        if (deletedIndex !== -1) {
+          deletedEntries.splice(deletedIndex, 1);
         }
       }
-
-      // Return early as we've handled these as renames
-      if (potentialMoves.size > 0) {
-        logger.info(`Rename operations detected: ${potentialMoves.size}`);
-        return;
-      }
     }
+  }
+
+  // If we've processed renames, return early
+  if (potentialMoves.size > 0) {
+    logger.info(`Rename operations detected: ${potentialMoves.size}`);
+    logger.info(
+      `Renamed files: ${[...potentialMoves.entries()]
+        .map(
+          (entry) => `${path.basename(entry[0])} -> ${path.basename(entry[1])}`
+        )
+        .join(", ")}`
+    );
+    return;
   }
 
   // Track deleted files
@@ -1537,6 +1592,9 @@ async function attemptRegisteringVimKeymaps(
 export function activate(context: vscode.ExtensionContext) {
   logger.trace("oil.code extension started.");
 
+  // Activate decorations to hide prefixes
+  activateDecorations(context);
+
   // Reset file tracking
   fileTracking = {
     previousPath: "",
@@ -1544,6 +1602,7 @@ export function activate(context: vscode.ExtensionContext) {
     deletedFiles: new Map(),
     visitedPaths: new Set(),
     lastSelectedFile: "",
+    fileIdentifiers: new Map(),
   };
 
   // Reset pending changes

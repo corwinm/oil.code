@@ -10,6 +10,10 @@
     "expression": {
       "patterns": [
         {
+          "match": "^/\\d{3} ",
+          "name": "comment.hidden.prefix.oil"
+        },
+        {
           "match": "\\b(if|else|for|while|switch|case|default|break|continue|return|function)\\b",
           "name": "keyword.control.oil"
         },
