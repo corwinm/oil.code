@@ -85,6 +85,10 @@ Odds are good that if you found this plugin, you are like me and have experience
 
 ## oil.nvim feature comparison
 
+The goal of this project isn't to be an exact implementation of oil.nvim for VSCode but rather to provide the most used and useful parts of it. If you use something that hasn't been implemented, please open an issue and let me know what is missing and how you typically use it.
+
+Below is a list of features and keymaps that oil.nvim has and their status in oil.code. The implementation between the two projects is very different so some features may not be possible to match exactly.
+
 Key:
 
 - ✅ Implemented
@@ -98,7 +102,8 @@ Key:
 | Move file                                                        | ✅       |
 | Rename file                                                      | ❌       |
 | Move and Rename file                                             | ❌       |
-| ["g?"] = { "actions.show\*help", mode = "n" }                    | ❌       |
+| Open oil in multiple splits at once                              | ❌       |
+| ["g?"] = { "actions.show_help", mode = "n" }                     | ❌       |
 | ["\<CR\>"] = "actions.select"                                    | ✅       |
 | ["\<C-s\>"] = { "actions.select", opts = { vertical = true } }   | ❌       |
 | ["\<C-h\>"] = { "actions.select", opts = { horizontal = true } } | ❌       |
@@ -113,7 +118,7 @@ Key:
 | ["gs"] = { "actions.change_sort", mode = "n" }                   | ❌       |
 | ["gx"] = "actions.open_external"                                 | ❌       |
 | ["g."] = { "actions.toggle_hidden", mode = "n" }                 | ❌       |
-| ["g\\"] = { "actions.toggle_trash", mode = "n" }                 | ❌       |
+| ["g\\"] = { "actions.toggle_trash", mode = "n" }                 | ❓       |
 
 [^1]: "\<C-p\>" keymap might have conflicts with Vim plugins and may require additional config
 
