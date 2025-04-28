@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "path";
 
 // Create decoration type for hidden prefix
 const hiddenPrefixDecoration = vscode.window.createTextEditorDecorationType({
@@ -10,6 +11,70 @@ const hiddenPrefixDecoration = vscode.window.createTextEditorDecorationType({
   rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
 });
 
+// Get file icon based on file extension or type
+function getFileIcon(fileName: string, isDirectory: boolean): string {
+  if (isDirectory) {
+    return "📁 "; // Folder icon
+  }
+
+  const ext = path.extname(fileName).toLowerCase();
+
+  // Map common extensions to icons
+  switch (ext) {
+    case ".js":
+    case ".jsx":
+    case ".ts":
+    case ".tsx":
+      return "📄 "; // JavaScript/TypeScript
+    case ".html":
+    case ".htm":
+      return "📄 "; // HTML
+    case ".css":
+    case ".scss":
+    case ".sass":
+    case ".less":
+      return "📄 "; // CSS
+    case ".json":
+      return "📄 "; // JSON
+    case ".md":
+      return "📄 "; // Markdown
+    case ".png":
+    case ".jpg":
+    case ".jpeg":
+    case ".gif":
+    case ".svg":
+    case ".bmp":
+      return "🖼️ "; // Images
+    case ".mp3":
+    case ".wav":
+    case ".flac":
+      return "🎵 "; // Audio
+    case ".mp4":
+    case ".mov":
+    case ".avi":
+      return "🎬 "; // Video
+    case ".pdf":
+      return "📄 "; // PDF
+    case ".zip":
+    case ".tar":
+    case ".gz":
+    case ".rar":
+      return "📦 "; // Archives
+    case ".exe":
+    case ".dll":
+    case ".app":
+      return "⚙️ "; // Executables
+    case ".gitignore":
+    case ".gitattributes":
+      return "📄 "; // Git files
+    default:
+      return "📄 "; // Default file icon
+  }
+}
+
+// Decoration types for different file types (created on demand)
+const fileIconDecorations = new Map<string, vscode.TextEditorDecorationType>();
+
 // Apply decorations to hide prefixes
 export function updateDecorations(editor: vscode.TextEditor | undefined) {
   if (!editor || editor.document.languageId !== "oil") {
@@ -17,7 +82,15 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
   }
 
   const document = editor.document;
-  const ranges: vscode.Range[] = [];
+  const hiddenRanges: vscode.Range[] = [];
+
+  // Clear previous icon decorations
+  fileIconDecorations.forEach((decoration) => {
+    editor.setDecorations(decoration, []);
+  });
+
+  // Track icon decorations for this update
+  const iconDecorations = new Map<string, vscode.Range[]>();
 
   // Find all matches of "/ddd " pattern at the start of lines
   for (let i = 0; i < document.lineCount; i++) {
@@ -25,12 +98,49 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
     const text = line.text;
 
     // Match /ddd pattern at start of line
-    const match = text.match(/^(\/\d{3} )/);
+    const match = text.match(/^(\/\d{3}) (.*)/);
     if (match) {
       const prefixLength = match[1].length;
+      const fileName = match[2].trim();
+      const isDirectory = fileName.endsWith("/");
+
+      // Hide the prefix
       const startPos = new vscode.Position(i, 0);
       const endPos = new vscode.Position(i, prefixLength);
-      ranges.push(new vscode.Range(startPos, endPos));
+      hiddenRanges.push(new vscode.Range(startPos, endPos));
+
+      // Add icon after the prefix and space
+      const icon = getFileIcon(fileName, isDirectory);
+      const iconKey = isDirectory
+        ? "directory"
+        : path.extname(fileName) || "file";
+
+      // Create decoration type if it doesn't exist
+      if (!fileIconDecorations.has(iconKey)) {
+        fileIconDecorations.set(
+          iconKey,
+          vscode.window.createTextEditorDecorationType({
+            before: {
+              contentText: icon,
+            },
+          })
+        );
+      }
+
+      // Get or create the ranges array for this icon type
+      if (!iconDecorations.has(iconKey)) {
+        iconDecorations.set(iconKey, []);
+      }
+
+      // Add decoration range at the beginning of visible part
+      iconDecorations
+        .get(iconKey)!
+        .push(
+          new vscode.Range(
+            new vscode.Position(i, prefixLength + 1),
+            new vscode.Position(i, prefixLength + 1)
+          )
+        );
 
       // If cursor is within the prefix area, move it to the first visible character
       for (let selection of editor.selections) {
@@ -52,8 +162,16 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
     }
   }
 
-  // Apply the decoration
-  editor.setDecorations(hiddenPrefixDecoration, ranges);
+  // Apply the hidden prefix decoration
+  editor.setDecorations(hiddenPrefixDecoration, hiddenRanges);
+
+  // Apply file type icon decorations
+  for (const [iconKey, ranges] of iconDecorations.entries()) {
+    const decoration = fileIconDecorations.get(iconKey);
+    if (decoration) {
+      editor.setDecorations(decoration, ranges);
+    }
+  }
 }
 
 // Disposable for cleanup
@@ -150,10 +268,13 @@ export function activateDecorations(context: vscode.ExtensionContext) {
     })
   );
 
-  // Make sure we can clean up
+  // Make sure we clean up all decorations
   context.subscriptions.push(decorationUpdateListener, {
     dispose: () => {
       hiddenPrefixDecoration.dispose();
+      fileIconDecorations.forEach((decoration) => decoration.dispose());
+      fileIconDecorations.clear();
+
       if (decorationUpdateListener) {
         decorationUpdateListener.dispose();
         decorationUpdateListener = null;
