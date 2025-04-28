@@ -21,23 +21,57 @@ function getFileIcon(fileName: string, isDirectory: boolean): string {
 
   // Map common extensions to icons
   switch (ext) {
-    case ".js":
-    case ".jsx":
-    case ".ts":
-    case ".tsx":
-      return "📄 "; // JavaScript/TypeScript
     case ".html":
     case ".htm":
-      return "📄 "; // HTML
+      return "🌐 "; // HTML
+    case ".js":
+    case ".ts":
+    case ".sh":
+    case ".bash":
+    case ".zsh":
+    case ".ksh":
+    case ".fish":
+    case ".bat":
+    case ".cmd":
+    case ".ps1":
+      return "📜 "; // Scripts
+    case ".jsx":
+    case ".tsx":
+      return "⚛︎ "; // React components
     case ".css":
     case ".scss":
     case ".sass":
     case ".less":
-      return "📄 "; // CSS
-    case ".json":
-      return "📄 "; // JSON
+      return "# "; // CSS
     case ".md":
-      return "📄 "; // Markdown
+      return "⬇︎ "; // Markdown
+    case ".java":
+    case ".class":
+    case ".jar":
+      return "☕ "; // Java
+    case ".py":
+    case ".pyc":
+    case ".pyo":
+      return "🐍 "; // Python
+    case ".rb":
+    case ".gem":
+      return "💎 "; // Ruby
+    case ".php":
+    case ".phtml":
+      return "🐘 "; // PHP
+    case ".go":
+      return "🐹 "; // Go
+    case ".rs":
+      return "🦀 "; // Rust
+    case ".c":
+    case ".cpp":
+    case ".cxx":
+    case ".h":
+    case ".hpp":
+    case ".hxx":
+      return "C "; // C/C++
+    case ".swift":
+      return "🦄 "; // Swift
     case ".png":
     case ".jpg":
     case ".jpeg":
@@ -48,13 +82,15 @@ function getFileIcon(fileName: string, isDirectory: boolean): string {
     case ".mp3":
     case ".wav":
     case ".flac":
+    case ".ogg":
+    case ".m4a":
+    case ".aac":
+    case ".wma":
       return "🎵 "; // Audio
     case ".mp4":
     case ".mov":
     case ".avi":
       return "🎬 "; // Video
-    case ".pdf":
-      return "📄 "; // PDF
     case ".zip":
     case ".tar":
     case ".gz":
@@ -63,10 +99,13 @@ function getFileIcon(fileName: string, isDirectory: boolean): string {
     case ".exe":
     case ".dll":
     case ".app":
+    case ".apk":
+    case ".iso":
+    case ".bin":
       return "⚙️ "; // Executables
     case ".gitignore":
     case ".gitattributes":
-      return "📄 "; // Git files
+      return "🔧 "; // Git files
     default:
       return "📄 "; // Default file icon
   }
