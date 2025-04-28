@@ -37,8 +37,8 @@
           "Oil",
           "oil"
         ],
-        "extensions": [
-          ".oil"
+        "filenames": [
+          "《 oil.code 》"
         ],
         "configuration": "./language-configuration.json"
       }
