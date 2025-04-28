@@ -12,6 +12,9 @@ let tempFilePath: string | undefined;
 
 let currentPath: string | undefined;
 
+// Add a global counter for generating unique identifiers
+let globalFileIdentifierCounter = 0;
+
 // Track files across directory navigation
 interface FileTracking {
   previousPath: string;
@@ -133,6 +136,9 @@ async function openOil() {
     // Store the file we're coming from
     fileTracking.lastSelectedFile = path.basename(filePath);
   } else {
+    // Reset the global identifier counter
+    globalFileIdentifierCounter = 0;
+
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders && workspaceFolders.length > 0) {
       folderPath = workspaceFolders[0].uri.fsPath;
@@ -203,9 +209,14 @@ async function getDirectoryListing(folderPath: string): Promise<string> {
   // Reset the file identifiers map for the new directory
   fileTracking.fileIdentifiers = new Map();
 
-  // Generate listings with hidden identifiers
-  let listingsWithIds = listings.map((name, index) => {
-    const identifier = `/${index.toString().padStart(3, "0")}`;
+  // Generate listings with hidden identifiers using global counter
+  let listingsWithIds = listings.map((name) => {
+    // Use and increment the global counter for each file/directory
+    const identifier = `/${globalFileIdentifierCounter
+      .toString()
+      .padStart(3, "0")}`;
+    globalFileIdentifierCounter++;
+
     const fullPath =
       name === "../" ? path.dirname(folderPath) : path.join(folderPath, name);
     fileTracking.fileIdentifiers.set(identifier, fullPath);
@@ -273,7 +284,7 @@ async function select(overRideLineText?: string) {
   let isGoingUp = fileName === "../";
   if (isGoingUp) {
     // Store current directory name (without full path)
-    fileTracking.lastSelectedFile = `${path.basename(currentFolderPath)}/`;
+    fileTracking.lastSelectedFile = path.basename(currentFolderPath);
   } else {
     // Store the file/directory name we're navigating to
     fileTracking.lastSelectedFile = fileName;
@@ -334,11 +345,13 @@ async function select(overRideLineText?: string) {
             const lines = docText.split("\n");
 
             let foundIndex = -1;
-            // Look for exact match first
+            // Look for the folder we came from with or without trailing slash
             for (let i = 0; i < lines.length; i++) {
+              // Extract actual name from each line by removing the hidden identifier
+              const lineName = lines[i].replace(/^\/\d{3} /, "").trim();
               if (
-                lines[i] === lastSelected ||
-                lines[i] === `${lastSelected}/`
+                lineName === lastSelected ||
+                lineName === `${lastSelected}/`
               ) {
                 foundIndex = i;
                 break;
@@ -379,9 +392,7 @@ async function select(overRideLineText?: string) {
       );
       return;
     }
-  }
-
-  if (!fs.existsSync(targetPath)) {
+  } else if (!fs.existsSync(targetPath)) {
     vscode.window.showErrorMessage(`File "${fileName}" does not exist.`);
     return;
   }
@@ -400,6 +411,7 @@ async function openParent() {
   logger.trace("Opening parent directory...");
   // When going up from the oil file view, store the current directory name
   if (currentPath) {
+    // Store just the basename without adding a trailing slash
     fileTracking.lastSelectedFile = path.basename(currentPath);
   }
   await select("../");
@@ -846,8 +858,8 @@ function positionCursorOnFile(editor: vscode.TextEditor, fileName: string) {
   // Find the line number of the file
   for (let i = 0; i < lines.length; i++) {
     // Extract name without hidden identifier
-    const lineName = lines[i].replace(/\u200B\d{5}\u200B$/, "").trim();
-    if (lineName === fileName) {
+    const lineName = lines[i].replace(/^\/\d{3} /, "").trim();
+    if (lineName === fileName || lineName === `${fileName}/`) {
       // Position cursor at the beginning of the line
       editor.selection = new vscode.Selection(i, 0, i, 0);
       editor.revealRange(new vscode.Range(i, 0, i, 0));
