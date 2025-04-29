@@ -432,15 +432,17 @@ async function onDidChangeActiveTextEditor(
   editor: vscode.TextEditor | undefined
 ) {
   const oilState = getOilState();
-  if (!oilState) {
-    return;
-  }
+
   // Close preview when leaving oil view
   if (
-    editor?.document.uri.fsPath !== oilState.tempFilePath &&
+    !editor?.document.uri.fsPath &&
+    !oilState?.tempFilePath &&
     previewState.previewedFile
   ) {
     await closePreview();
+  }
+  if (!oilState) {
+    return;
   }
 
   // Original cleanup functionality
@@ -681,9 +683,6 @@ async function previewDirectory(directoryPath: string) {
       preview: true,
       preserveFocus: true,
     });
-
-    // Set the language mode to "oil" for consistent highlighting
-    await vscode.languages.setTextDocumentLanguage(fileDoc, "oil");
 
     // Update preview state
     previewState.previewedFile = directoryPath;
