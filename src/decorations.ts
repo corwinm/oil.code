@@ -287,21 +287,40 @@ export function activateDecorations(context: vscode.ExtensionContext) {
     })
   );
 
+  function decorateDocument(document: vscode.TextDocument, retries = 0) {
+    const editor = vscode.window.visibleTextEditors.find(
+      (editor) => editor.document === document
+    );
+    updateDecorations(editor);
+    if (!editor || retries > 5) {
+      setTimeout(() => {
+        decorateDocument(document, retries + 1);
+      }, 100);
+      return;
+    }
+    const firstLine = document.lineAt(0).text;
+    const match = firstLine.match(/^(\/\d{3} )/);
+    if (match) {
+      const newPosition = new vscode.Position(0, match[1].length);
+      editor.selection = new vscode.Selection(newPosition, newPosition);
+    }
+  }
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (event.document.languageId === "oil") {
+        decorateDocument(event.document);
+      }
+    })
+  );
+
   // Handle initial file open to position cursor correctly
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument((document) => {
       if (document.languageId === "oil") {
         // Position cursor on first visible character on document open
         setTimeout(() => {
-          const editor = vscode.window.activeTextEditor;
-          if (editor && editor.document === document) {
-            const firstLine = document.lineAt(0).text;
-            const match = firstLine.match(/^(\/\d{3} )/);
-            if (match) {
-              const newPosition = new vscode.Position(0, match[1].length);
-              editor.selection = new vscode.Selection(newPosition, newPosition);
-            }
-          }
+          decorateDocument(document);
         }, 50); // Small delay to ensure document is fully loaded
       }
     })
