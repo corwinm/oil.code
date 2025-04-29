@@ -1422,6 +1422,11 @@ function determineChanges(oilState: OilState) {
   }
 }
 
+// Format the path to be relative to the current working directory
+function formatPath(path: string): string {
+  return vscode.workspace.asRelativePath(path);
+}
+
 async function onDidSaveTextDocument(document: vscode.TextDocument) {
   const oilState = getOilState();
   // Check if the saved document is our oil file
@@ -1465,26 +1470,22 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       let message = "The following changes will be applied:\n\n";
       if (movedLines.size > 0) {
         movedLines.forEach((newPath, oldPath) => {
-          message += `MOVE ${path.basename(oldPath)} → ${path.basename(
-            newPath
-          )}\n`;
+          message += `MOVE ${formatPath(oldPath)} → ${formatPath(newPath)}\n`;
         });
       }
       if (copiedLines.size > 0) {
         copiedLines.forEach((newPath, oldPath) => {
-          message += `COPY ${path.basename(oldPath)} → ${path.basename(
-            newPath
-          )}\n`;
+          message += `COPY ${formatPath(oldPath)} → ${formatPath(newPath)}\n`;
         });
       }
       if (addedLines.size > 0) {
         addedLines.forEach((item) => {
-          message += `CREATE ${path.basename(item)}\n`;
+          message += `CREATE ${formatPath(item)}\n`;
         });
       }
       if (deletedLines.size > 0) {
         deletedLines.forEach((item) => {
-          message += `DELETE ${path.basename(item)}\n`;
+          message += `DELETE ${formatPath(item)}\n`;
         });
       }
       // Show confirmation dialog
@@ -1511,9 +1512,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
           fs.renameSync(oldPath, newPath);
         } catch (error) {
           vscode.window.showErrorMessage(
-            `Failed to move file: ${path.basename(
-              oldPath
-            )} to ${newPath.replace(
+            `Failed to move file: ${formatPath(oldPath)} to ${newPath.replace(
               oilState.currentPath + path.sep,
               ""
             )} - ${error}`
@@ -1532,9 +1531,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
           fs.copyFileSync(oldPath, newPath);
         } catch (error) {
           vscode.window.showErrorMessage(
-            `Failed to copy file: ${path.basename(
-              oldPath
-            )} to ${newPath.replace(
+            `Failed to copy file: ${formatPath(oldPath)} to ${newPath.replace(
               oilState.currentPath + path.sep,
               ""
             )} - ${error}`
