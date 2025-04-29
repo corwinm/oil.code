@@ -8,11 +8,19 @@ const tempFileName = "《 oil.code 》";
 
 const logger = vscode.window.createOutputChannel("oil.code", { log: true });
 
+interface OilEntry {
+  identifier: string;
+  value: string;
+  path: string;
+  isDir: boolean;
+}
+
 interface OilState {
   tempFilePath: string;
   currentPath: string | undefined;
   identifierCounter: number;
   visitedPaths: Map<string, string[]>;
+  editedPaths: Map<string, string[]>;
 }
 
 const oils = new Map<string, OilState>();
@@ -24,8 +32,9 @@ function initOilState() {
   const newState = {
     tempFilePath: path.join(os.tmpdir(), tempFileName),
     currentPath: currentOrWorkspacePath,
-    identifierCounter: 0,
+    identifierCounter: 1,
     visitedPaths: new Map(),
+    editedPaths: new Map(),
   };
   oils.set(newState.tempFilePath, newState);
   return newState;
@@ -85,9 +94,6 @@ async function configureRecentFilesExclusions() {
 async function preventOilInRecentFiles() {
   await configureRecentFilesExclusions();
 }
-
-// Initialize temp file path in system temp directory
-// tempFilePath = path.join(os.tmpdir(), tempFileName);
 
 let restoreAutoSave = false;
 async function checkAndDisableAutoSave() {
@@ -157,6 +163,10 @@ async function getDirectoryListing(
 ): Promise<string> {
   let pathUri = vscode.Uri.file(folderPath);
 
+  if (oilState.editedPaths.has(folderPath)) {
+    return oilState.editedPaths.get(folderPath)!.join("\n");
+  }
+
   if (oilState.visitedPaths.has(folderPath)) {
     // If we have visited this path before, return the cached listing
     return oilState.visitedPaths.get(folderPath)!.join("\n");
@@ -197,9 +207,6 @@ async function getDirectoryListing(
 
     oilState.identifierCounter++;
 
-    // const fullPath =
-    //   name === "../" ? path.dirname(folderPath) : path.join(folderPath, name);
-    // fileTracking.fileIdentifiers.set(identifier, fullPath);
     return `${identifier} ${name}`;
   });
 
@@ -221,9 +228,6 @@ async function select(overRideLineText?: string) {
     return;
   }
 
-  // If the document has unsaved changes, capture them before navigating
-  // const isDirty = activeEditor.document.isDirty;
-  // if (isDirty) {
   // Capture current content before navigating
   const currentContent = activeEditor.document.getText();
   const currentLines = currentContent.split("\n");
@@ -238,21 +242,11 @@ async function select(overRideLineText?: string) {
   }
   const currentFile = path.basename(oilState.currentPath);
 
-  oilState.visitedPaths.set(oilState.currentPath, currentLines);
-
-  // // Get the current directory listing (what should be shown)
-  // if (currentPath) {
-  //   const expectedContent = await getDirectoryListing(currentPath);
-  //   const expectedLines = expectedContent.split("\n");
-
-  //   // Track changes without prompting
-  //   await captureChangesForNavigation(
-  //     currentPath,
-  //     expectedLines,
-  //     currentLines
-  //   );
-  // }
-  // }
+  // If the document has unsaved changes, capture them before navigating
+  const isDirty = activeEditor.document.isDirty;
+  if (isDirty) {
+    oilState.editedPaths.set(oilState.currentPath, currentLines);
+  }
 
   const document = activeEditor.document;
   const cursorPosition = activeEditor.selection.active;
@@ -283,31 +277,16 @@ async function select(overRideLineText?: string) {
   if (isGoingUp) {
     // Store current directory name (without full path)
     oilState.currentPath = path.dirname(currentFolderPath);
-  } else {
-    // Store the file/directory name we're navigating to
-    // TODO
-    // fileTracking.lastSelectedFile = fileName;
-    oilState.currentPath = targetPath;
   }
+  // else {
+  // Store the file/directory name we're navigating to
+  // TODO
+  // fileTracking.lastSelectedFile = fileName;
+  // oilState.currentPath = targetPath;
+  // }
 
   if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
     try {
-      // Save current directory content before navigation
-      // const currentContent = await vscode.workspace.fs.readDirectory(
-      //   vscode.Uri.file(currentFolderPath)
-      // );
-      // const currentFileList = currentContent.map(([name, type]) =>
-      //   type & vscode.FileType.Directory ? `${name}/` : name
-      // );
-
-      // Add current path to visited paths before navigating
-      // fileTracking.visitedPaths.add(currentFolderPath);
-
-      // Update tracking state
-      // if (currentPath !== targetPath) {
-      //   fileTracking.previousPath = currentPath || "";
-      //   fileTracking.previousFiles = currentFileList;
-      // }
       oilState.currentPath = targetPath;
 
       const directoryContent = await getDirectoryListing(targetPath, oilState);
@@ -327,9 +306,6 @@ async function select(overRideLineText?: string) {
 
       // Apply the edit
       await vscode.workspace.applyEdit(edit);
-
-      // Update the current path
-      // currentPath = targetPath;
 
       // Position cursor appropriately
       if (isGoingUp) {
@@ -380,10 +356,9 @@ async function select(overRideLineText?: string) {
       }
 
       // Mark the file as modified if there are pending changes
-      // TODO: Check if there are pending changes and save if none
-      // if (!hasPendingChanges()) {
-      //   activeEditor.document.save();
-      // }
+      if (!hasPendingChanges()) {
+        activeEditor.document.save();
+      }
 
       return;
     } catch (error) {
@@ -448,398 +423,398 @@ async function onDidChangeActiveTextEditor(
 }
 
 // Function to handle oil file changes
-async function handleOilFileSave(
-  currentPath: string,
-  originalLines: string[],
-  newLines: string[]
-): Promise<void> {
-  // TODO: Reimplement
+// async function handleOilFileSave(
+//   currentPath: string,
+//   originalLines: string[],
+//   newLines: string[]
+// ): Promise<void> {
+//   // TODO: Reimplement
 
-  // Compare the original lines with new lines to detect changes
+//   // Compare the original lines with new lines to detect changes
 
-  // Create sets for quick lookup
-  const originalEntries = new Set(originalLines);
-  const newEntries = new Set(newLines);
+//   // Create sets for quick lookup
+//   const originalEntries = new Set(originalLines);
+//   const newEntries = new Set(newLines);
 
-  // Identify added and deleted entries
-  const addedEntries = newLines.filter(
-    (line) => !originalEntries.has(line) && line.trim() !== ""
-  );
+//   // Identify added and deleted entries
+//   const addedEntries = newLines.filter(
+//     (line) => !originalEntries.has(line) && line.trim() !== ""
+//   );
 
-  const deletedEntries = originalLines.filter(
-    (line) => !newEntries.has(line) && line !== "../" && line.trim() !== ""
-  );
+//   const deletedEntries = originalLines.filter(
+//     (line) => !newEntries.has(line) && line !== "../" && line.trim() !== ""
+//   );
 
-  // Check for cross-directory moves
-  const movedRenamedPairs: Array<[string, string]> = [];
-  // Keep track of files that have been identified as moved
-  const movedFiles = new Set<string>();
+//   // Check for cross-directory moves
+//   const movedRenamedPairs: Array<[string, string]> = [];
+//   // Keep track of files that have been identified as moved
+//   const movedFiles = new Set<string>();
 
-  // Track newly deleted files
-  for (const deletedFile of deletedEntries) {
-    if (!deletedFile.endsWith("/")) {
-      // Only track files, not directories
-      const fullPath = path.join(currentPath, deletedFile);
-      // fileTracking.deletedFiles.set(deletedFile, fullPath);
-    }
-  }
+//   // Track newly deleted files
+//   for (const deletedFile of deletedEntries) {
+//     if (!deletedFile.endsWith("/")) {
+//       // Only track files, not directories
+//       const fullPath = path.join(currentPath, deletedFile);
+//       // fileTracking.deletedFiles.set(deletedFile, fullPath);
+//     }
+//   }
 
-  // Enhanced cross-directory move detection
-  // Check for previously deleted files that match the added files by name
-  // for (const addedFile of addedEntries) {
-  //   if (!addedFile.endsWith("/")) {
-  //     // For files (not directories), check if we have a matching deleted file
-  //     for (const [
-  //       deletedFileName,
-  //       fullOrigPath,
-  //     ] of fileTracking.deletedFiles.entries()) {
-  //       // Consider it a match if the base filename is the same
-  //       if (
-  //         path.basename(addedFile) === path.basename(deletedFileName) &&
-  //         fs.existsSync(fullOrigPath)
-  //       ) {
-  //         // This looks like a move operation!
-  //         const targetPath = path.join(currentPath, addedFile);
-  //         movedRenamedPairs.push([fullOrigPath, targetPath]);
+//   // Enhanced cross-directory move detection
+//   // Check for previously deleted files that match the added files by name
+//   // for (const addedFile of addedEntries) {
+//   //   if (!addedFile.endsWith("/")) {
+//   //     // For files (not directories), check if we have a matching deleted file
+//   //     for (const [
+//   //       deletedFileName,
+//   //       fullOrigPath,
+//   //     ] of fileTracking.deletedFiles.entries()) {
+//   //       // Consider it a match if the base filename is the same
+//   //       if (
+//   //         path.basename(addedFile) === path.basename(deletedFileName) &&
+//   //         fs.existsSync(fullOrigPath)
+//   //       ) {
+//   //         // This looks like a move operation!
+//   //         const targetPath = path.join(currentPath, addedFile);
+//   //         movedRenamedPairs.push([fullOrigPath, targetPath]);
 
-  //         // Mark this file as moved so we can exclude it from other operations
-  //         movedFiles.add(fullOrigPath);
+//   //         // Mark this file as moved so we can exclude it from other operations
+//   //         movedFiles.add(fullOrigPath);
 
-  //         // Remove from regular processing
-  //         const addedIndex = addedEntries.indexOf(addedFile);
-  //         if (addedIndex !== -1) {
-  //           addedEntries.splice(addedIndex, 1);
-  //         }
+//   //         // Remove from regular processing
+//   //         const addedIndex = addedEntries.indexOf(addedFile);
+//   //         if (addedIndex !== -1) {
+//   //           addedEntries.splice(addedIndex, 1);
+//   //         }
 
-  //         // Remove from deletion tracking
-  //         fileTracking.deletedFiles.delete(deletedFileName);
-  //         break;
-  //       }
-  //     }
-  //   }
-  // }
+//   //         // Remove from deletion tracking
+//   //         fileTracking.deletedFiles.delete(deletedFileName);
+//   //         break;
+//   //       }
+//   //     }
+//   //   }
+//   // }
 
-  // Regular rename detection - for files in the same directory
-  const renamedPairs: Array<[string, string]> = [];
-  const finalAddedEntries = [...addedEntries];
-  const finalDeletedEntries = [...deletedEntries];
+//   // Regular rename detection - for files in the same directory
+//   const renamedPairs: Array<[string, string]> = [];
+//   const finalAddedEntries = [...addedEntries];
+//   const finalDeletedEntries = [...deletedEntries];
 
-  // Group entries by type (file or directory)
-  const addedFiles = addedEntries.filter((e) => !e.endsWith("/"));
-  const addedDirs = addedEntries.filter((e) => e.endsWith("/"));
-  const deletedFiles = deletedEntries.filter((e) => !e.endsWith("/"));
-  const deletedDirs = deletedEntries.filter((e) => e.endsWith("/"));
+//   // Group entries by type (file or directory)
+//   const addedFiles = addedEntries.filter((e) => !e.endsWith("/"));
+//   const addedDirs = addedEntries.filter((e) => e.endsWith("/"));
+//   const deletedFiles = deletedEntries.filter((e) => !e.endsWith("/"));
+//   const deletedDirs = deletedEntries.filter((e) => e.endsWith("/"));
 
-  // Try to match renames - simple heuristic based on count
-  if (addedFiles.length > 0 && deletedFiles.length > 0) {
-    // If same number of added and deleted files, assume they're renames
-    if (addedFiles.length === deletedFiles.length) {
-      for (let i = 0; i < deletedFiles.length; i++) {
-        renamedPairs.push([deletedFiles[i], addedFiles[i]]);
-        // Remove these from the added/deleted lists
-        const addedIndex = finalAddedEntries.indexOf(addedFiles[i]);
-        if (addedIndex !== -1) {
-          finalAddedEntries.splice(addedIndex, 1);
-        }
-        const deletedIndex = finalDeletedEntries.indexOf(deletedFiles[i]);
-        if (deletedIndex !== -1) {
-          finalDeletedEntries.splice(deletedIndex, 1);
-        }
-      }
-    }
-  }
+//   // Try to match renames - simple heuristic based on count
+//   if (addedFiles.length > 0 && deletedFiles.length > 0) {
+//     // If same number of added and deleted files, assume they're renames
+//     if (addedFiles.length === deletedFiles.length) {
+//       for (let i = 0; i < deletedFiles.length; i++) {
+//         renamedPairs.push([deletedFiles[i], addedFiles[i]]);
+//         // Remove these from the added/deleted lists
+//         const addedIndex = finalAddedEntries.indexOf(addedFiles[i]);
+//         if (addedIndex !== -1) {
+//           finalAddedEntries.splice(addedIndex, 1);
+//         }
+//         const deletedIndex = finalDeletedEntries.indexOf(deletedFiles[i]);
+//         if (deletedIndex !== -1) {
+//           finalDeletedEntries.splice(deletedIndex, 1);
+//         }
+//       }
+//     }
+//   }
 
-  // Do the same for directories
-  if (addedDirs.length > 0 && deletedDirs.length > 0) {
-    if (addedDirs.length === deletedDirs.length) {
-      for (let i = 0; i < deletedDirs.length; i++) {
-        renamedPairs.push([deletedDirs[i], addedDirs[i]]);
-        // Remove these from the added/deleted lists
-        const addedIndex = finalAddedEntries.indexOf(addedDirs[i]);
-        if (addedIndex !== -1) {
-          finalAddedEntries.splice(addedIndex, 1);
-        }
-        const deletedIndex = finalDeletedEntries.indexOf(deletedDirs[i]);
-        if (deletedIndex !== -1) {
-          finalDeletedEntries.splice(deletedIndex, 1);
-        }
-      }
-    }
-  }
+//   // Do the same for directories
+//   if (addedDirs.length > 0 && deletedDirs.length > 0) {
+//     if (addedDirs.length === deletedDirs.length) {
+//       for (let i = 0; i < deletedDirs.length; i++) {
+//         renamedPairs.push([deletedDirs[i], addedDirs[i]]);
+//         // Remove these from the added/deleted lists
+//         const addedIndex = finalAddedEntries.indexOf(addedDirs[i]);
+//         if (addedIndex !== -1) {
+//           finalAddedEntries.splice(addedIndex, 1);
+//         }
+//         const deletedIndex = finalDeletedEntries.indexOf(deletedDirs[i]);
+//         if (deletedIndex !== -1) {
+//           finalDeletedEntries.splice(deletedIndex, 1);
+//         }
+//       }
+//     }
+//   }
 
-  // Check if we need to handle pending changes even when no current changes are detected
-  // const hasPending = hasPendingChanges();
-  // if (
-  //   finalAddedEntries.length === 0 &&
-  //   finalDeletedEntries.length === 0 &&
-  //   renamedPairs.length === 0 &&
-  //   movedRenamedPairs.length === 0 &&
-  //   !hasPending
-  // ) {
-  //   return;
-  // }
+//   // Check if we need to handle pending changes even when no current changes are detected
+//   // const hasPending = hasPendingChanges();
+//   // if (
+//   //   finalAddedEntries.length === 0 &&
+//   //   finalDeletedEntries.length === 0 &&
+//   //   renamedPairs.length === 0 &&
+//   //   movedRenamedPairs.length === 0 &&
+//   //   !hasPending
+//   // ) {
+//   //   return;
+//   // }
 
-  // Filter out pending deleted files that are actually being moved
-  const pendingDeletedFiles = new Set<string>();
+//   // Filter out pending deleted files that are actually being moved
+//   const pendingDeletedFiles = new Set<string>();
 
-  // Only include files that aren't part of a move operation
-  // for (const item of pendingChanges.deletedFiles) {
-  //   if (!movedFiles.has(item)) {
-  //     pendingDeletedFiles.add(item);
-  //   }
-  // }
+//   // Only include files that aren't part of a move operation
+//   // for (const item of pendingChanges.deletedFiles) {
+//   //   if (!movedFiles.has(item)) {
+//   //     pendingDeletedFiles.add(item);
+//   //   }
+//   // }
 
-  // Build the confirmation message
-  let message = "The following changes will be applied:\n\n";
+//   // Build the confirmation message
+//   let message = "The following changes will be applied:\n\n";
 
-  if (movedRenamedPairs.length > 0) {
-    message += "Files to move across directories:\n";
-    movedRenamedPairs.forEach(([oldPath, newPath]) => {
-      message += `  - ${path.basename(oldPath)} → ${newPath.replace(
-        currentPath + path.sep,
-        ""
-      )}\n`;
-    });
-    message += "\n";
-  }
+//   if (movedRenamedPairs.length > 0) {
+//     message += "Files to move across directories:\n";
+//     movedRenamedPairs.forEach(([oldPath, newPath]) => {
+//       message += `  - ${path.basename(oldPath)} → ${newPath.replace(
+//         currentPath + path.sep,
+//         ""
+//       )}\n`;
+//     });
+//     message += "\n";
+//   }
 
-  if (renamedPairs.length > 0) {
-    message += "Items to rename:\n";
-    renamedPairs.forEach(([oldName, newName]) => {
-      message += `  - ${oldName} → ${newName}\n`;
-    });
-    message += "\n";
-  }
+//   if (renamedPairs.length > 0) {
+//     message += "Items to rename:\n";
+//     renamedPairs.forEach(([oldName, newName]) => {
+//       message += `  - ${oldName} → ${newName}\n`;
+//     });
+//     message += "\n";
+//   }
 
-  if (finalAddedEntries.length > 0) {
-    message += "New items to create:\n";
-    finalAddedEntries.forEach((item) => {
-      message += `  - ${item}\n`;
-    });
-    message += "\n";
-  }
+//   if (finalAddedEntries.length > 0) {
+//     message += "New items to create:\n";
+//     finalAddedEntries.forEach((item) => {
+//       message += `  - ${item}\n`;
+//     });
+//     message += "\n";
+//   }
 
-  if (finalDeletedEntries.length > 0) {
-    message += "Items to delete:\n";
-    finalDeletedEntries.forEach((item) => {
-      message += `  - ${item}\n`;
-    });
-    message += "\n";
-  }
+//   if (finalDeletedEntries.length > 0) {
+//     message += "Items to delete:\n";
+//     finalDeletedEntries.forEach((item) => {
+//       message += `  - ${item}\n`;
+//     });
+//     message += "\n";
+//   }
 
-  // Add pending changes to the confirmation message
-  // if (hasPending) {
-  // if (pendingChanges.addedFiles.size > 0) {
-  //   message += "Pending files/directories to create:\n";
-  //   pendingChanges.addedFiles.forEach((item) => {
-  //     message += `  - ${path.relative(currentPath, item)}\n`;
-  //   });
-  //   message += "\n";
-  // }
-  // if (pendingDeletedFiles.size > 0) {
-  //   message += "Pending items to delete:\n";
-  //   pendingDeletedFiles.forEach((item) => {
-  //     message += `  - ${path.relative(currentPath, item)}\n`;
-  //   });
-  //   message += "\n";
-  // }
-  // if (pendingChanges.renamedFiles.size > 0) {
-  //   message += "Pending items to rename:\n";
-  //   pendingChanges.renamedFiles.forEach((newPath, oldPath) => {
-  //     message += `  - ${path.relative(
-  //       currentPath,
-  //       oldPath
-  //     )} → ${path.relative(currentPath, newPath)}\n`;
-  //   });
-  //   message += "\n";
-  // }
-  // }
+//   // Add pending changes to the confirmation message
+//   // if (hasPending) {
+//   // if (pendingChanges.addedFiles.size > 0) {
+//   //   message += "Pending files/directories to create:\n";
+//   //   pendingChanges.addedFiles.forEach((item) => {
+//   //     message += `  - ${path.relative(currentPath, item)}\n`;
+//   //   });
+//   //   message += "\n";
+//   // }
+//   // if (pendingDeletedFiles.size > 0) {
+//   //   message += "Pending items to delete:\n";
+//   //   pendingDeletedFiles.forEach((item) => {
+//   //     message += `  - ${path.relative(currentPath, item)}\n`;
+//   //   });
+//   //   message += "\n";
+//   // }
+//   // if (pendingChanges.renamedFiles.size > 0) {
+//   //   message += "Pending items to rename:\n";
+//   //   pendingChanges.renamedFiles.forEach((newPath, oldPath) => {
+//   //     message += `  - ${path.relative(
+//   //       currentPath,
+//   //       oldPath
+//   //     )} → ${path.relative(currentPath, newPath)}\n`;
+//   //   });
+//   //   message += "\n";
+//   // }
+//   // }
 
-  message += "\nDo you want to apply these changes?";
+//   message += "\nDo you want to apply these changes?";
 
-  // Show confirmation dialog
-  const response = await vscode.window.showWarningMessage(
-    message,
-    { modal: true },
-    "Yes",
-    "No"
-  );
+//   // Show confirmation dialog
+//   const response = await vscode.window.showWarningMessage(
+//     message,
+//     { modal: true },
+//     "Yes",
+//     "No"
+//   );
 
-  if (response !== "Yes") {
-    vscode.window.showInformationMessage("Changes cancelled");
-    return;
-  }
+//   if (response !== "Yes") {
+//     vscode.window.showInformationMessage("Changes cancelled");
+//     return;
+//   }
 
-  // Process cross-directory moves first
-  // for (const [oldPath, newPath] of movedRenamedPairs) {
-  //   try {
-  //     // Create directory structure if needed
-  //     const dirPath = path.dirname(newPath);
-  //     if (!fs.existsSync(dirPath)) {
-  //       fs.mkdirSync(dirPath, { recursive: true });
-  //     }
+//   // Process cross-directory moves first
+//   // for (const [oldPath, newPath] of movedRenamedPairs) {
+//   //   try {
+//   //     // Create directory structure if needed
+//   //     const dirPath = path.dirname(newPath);
+//   //     if (!fs.existsSync(dirPath)) {
+//   //       fs.mkdirSync(dirPath, { recursive: true });
+//   //     }
 
-  //     // Move the file to the new location
-  //     fs.renameSync(oldPath, newPath);
-  //   } catch (error) {
-  //     vscode.window.showErrorMessage(
-  //       `Failed to move file: ${path.basename(oldPath)} to ${newPath.replace(
-  //         currentPath + path.sep,
-  //         ""
-  //       )} - ${error}`
-  //     );
-  //   }
-  // }
+//   //     // Move the file to the new location
+//   //     fs.renameSync(oldPath, newPath);
+//   //   } catch (error) {
+//   //     vscode.window.showErrorMessage(
+//   //       `Failed to move file: ${path.basename(oldPath)} to ${newPath.replace(
+//   //         currentPath + path.sep,
+//   //         ""
+//   //       )} - ${error}`
+//   //     );
+//   //   }
+//   // }
 
-  // Process the confirmed changes for renames in the same directory
-  // for (const [oldName, newName] of renamedPairs) {
-  //   const oldPath = path.join(currentPath, oldName);
-  //   const newPath = path.join(currentPath, newName);
+//   // Process the confirmed changes for renames in the same directory
+//   // for (const [oldName, newName] of renamedPairs) {
+//   //   const oldPath = path.join(currentPath, oldName);
+//   //   const newPath = path.join(currentPath, newName);
 
-  //   // Check if this is a rename including directories
-  //   if (
-  //     newName.includes("/") &&
-  //     !newName.endsWith("/") &&
-  //     !oldName.includes("/")
-  //   ) {
-  //     try {
-  //       // Create directory structure if needed
-  //       const dirPath = path.dirname(newPath);
-  //       if (!fs.existsSync(dirPath)) {
-  //         fs.mkdirSync(dirPath, { recursive: true });
-  //       }
+//   //   // Check if this is a rename including directories
+//   //   if (
+//   //     newName.includes("/") &&
+//   //     !newName.endsWith("/") &&
+//   //     !oldName.includes("/")
+//   //   ) {
+//   //     try {
+//   //       // Create directory structure if needed
+//   //       const dirPath = path.dirname(newPath);
+//   //       if (!fs.existsSync(dirPath)) {
+//   //         fs.mkdirSync(dirPath, { recursive: true });
+//   //       }
 
-  //       // Move the file to the new location
-  //       fs.renameSync(oldPath, newPath);
-  //     } catch (error) {
-  //       vscode.window.showErrorMessage(
-  //         `Failed to rename and move: ${oldName} to ${newName} - ${error}`
-  //       );
-  //     }
-  //   } else {
-  //     // Regular rename
-  //     try {
-  //       fs.renameSync(oldPath, newPath);
-  //     } catch (error) {
-  //       vscode.window.showErrorMessage(
-  //         `Failed to rename: ${oldName} to ${newName} - ${error}`
-  //       );
-  //     }
-  //   }
-  // }
+//   //       // Move the file to the new location
+//   //       fs.renameSync(oldPath, newPath);
+//   //     } catch (error) {
+//   //       vscode.window.showErrorMessage(
+//   //         `Failed to rename and move: ${oldName} to ${newName} - ${error}`
+//   //       );
+//   //     }
+//   //   } else {
+//   //     // Regular rename
+//   //     try {
+//   //       fs.renameSync(oldPath, newPath);
+//   //     } catch (error) {
+//   //       vscode.window.showErrorMessage(
+//   //         `Failed to rename: ${oldName} to ${newName} - ${error}`
+//   //       );
+//   //     }
+//   //   }
+//   // }
 
-  // Handle added files/directories
-  // for (const line of finalAddedEntries) {
-  //   const newFilePath = path.join(currentPath, line);
+//   // Handle added files/directories
+//   // for (const line of finalAddedEntries) {
+//   //   const newFilePath = path.join(currentPath, line);
 
-  //   if (line.endsWith("/")) {
-  //     // Create directory
-  //     try {
-  //       fs.mkdirSync(newFilePath);
-  //     } catch (error) {
-  //       vscode.window.showErrorMessage(`Failed to create directory: ${line}`);
-  //     }
-  //   } else {
-  //     // Create empty file
-  //     try {
-  //       // If it's a file in subfolders, ensure the folders exist
-  //       if (line.includes("/")) {
-  //         const dirPath = path.dirname(newFilePath);
-  //         if (!fs.existsSync(dirPath)) {
-  //           fs.mkdirSync(dirPath, { recursive: true });
-  //         }
-  //       }
-  //       fs.writeFileSync(newFilePath, "");
-  //     } catch (error) {
-  //       vscode.window.showErrorMessage(`Failed to create file: ${line}`);
-  //     }
-  //   }
-  // }
+//   //   if (line.endsWith("/")) {
+//   //     // Create directory
+//   //     try {
+//   //       fs.mkdirSync(newFilePath);
+//   //     } catch (error) {
+//   //       vscode.window.showErrorMessage(`Failed to create directory: ${line}`);
+//   //     }
+//   //   } else {
+//   //     // Create empty file
+//   //     try {
+//   //       // If it's a file in subfolders, ensure the folders exist
+//   //       if (line.includes("/")) {
+//   //         const dirPath = path.dirname(newFilePath);
+//   //         if (!fs.existsSync(dirPath)) {
+//   //           fs.mkdirSync(dirPath, { recursive: true });
+//   //         }
+//   //       }
+//   //       fs.writeFileSync(newFilePath, "");
+//   //     } catch (error) {
+//   //       vscode.window.showErrorMessage(`Failed to create file: ${line}`);
+//   //     }
+//   //   }
+//   // }
 
-  // Handle deleted files/directories
-  // for (const line of finalDeletedEntries) {
-  //   const filePath = path.join(currentPath, line);
+//   // Handle deleted files/directories
+//   // for (const line of finalDeletedEntries) {
+//   //   const filePath = path.join(currentPath, line);
 
-  //   try {
-  //     if (line.endsWith("/")) {
-  //       // This is a directory - remove recursively
-  //       await removeDirectoryRecursively(filePath);
-  //     } else {
-  //       // This is a file
-  //       fs.unlinkSync(filePath);
-  //     }
-  //   } catch (error) {
-  //     vscode.window.showErrorMessage(`Failed to delete: ${line} - ${error}`);
-  //   }
-  // }
+//   //   try {
+//   //     if (line.endsWith("/")) {
+//   //       // This is a directory - remove recursively
+//   //       await removeDirectoryRecursively(filePath);
+//   //     } else {
+//   //       // This is a file
+//   //       fs.unlinkSync(filePath);
+//   //     }
+//   //   } catch (error) {
+//   //     vscode.window.showErrorMessage(`Failed to delete: ${line} - ${error}`);
+//   //   }
+//   // }
 
-  // Process pending added files/directories
-  // for (const item of pendingChanges.addedFiles) {
-  //   try {
-  //     if (item.endsWith("/") || item.endsWith(path.sep)) {
-  //       // Create directory
-  //       fs.mkdirSync(item, { recursive: true });
-  //     } else {
-  //       // Create empty file
-  //       // Ensure parent directories exist
-  //       const dirPath = path.dirname(item);
-  //       if (!fs.existsSync(dirPath)) {
-  //         fs.mkdirSync(dirPath, { recursive: true });
-  //       }
-  //       fs.writeFileSync(item, "");
-  //     }
-  //   } catch (error) {
-  //     vscode.window.showErrorMessage(`Failed to create: ${item}`);
-  //   }
-  // }
+//   // Process pending added files/directories
+//   // for (const item of pendingChanges.addedFiles) {
+//   //   try {
+//   //     if (item.endsWith("/") || item.endsWith(path.sep)) {
+//   //       // Create directory
+//   //       fs.mkdirSync(item, { recursive: true });
+//   //     } else {
+//   //       // Create empty file
+//   //       // Ensure parent directories exist
+//   //       const dirPath = path.dirname(item);
+//   //       if (!fs.existsSync(dirPath)) {
+//   //         fs.mkdirSync(dirPath, { recursive: true });
+//   //       }
+//   //       fs.writeFileSync(item, "");
+//   //     }
+//   //   } catch (error) {
+//   //     vscode.window.showErrorMessage(`Failed to create: ${item}`);
+//   //   }
+//   // }
 
-  // Process pending deleted files/directories, but only those that aren't part of a move
-  // for (const item of pendingDeletedFiles) {
-  //   try {
-  //     if (fs.existsSync(item)) {
-  //       if (fs.lstatSync(item).isDirectory()) {
-  //         // This is a directory - remove recursively
-  //         await removeDirectoryRecursively(item);
-  //       } else {
-  //         // This is a file
-  //         fs.unlinkSync(item);
-  //       }
-  //     }
-  //   } catch (error) {
-  //     vscode.window.showErrorMessage(`Failed to delete: ${item}`);
-  //   }
-  // }
+//   // Process pending deleted files/directories, but only those that aren't part of a move
+//   // for (const item of pendingDeletedFiles) {
+//   //   try {
+//   //     if (fs.existsSync(item)) {
+//   //       if (fs.lstatSync(item).isDirectory()) {
+//   //         // This is a directory - remove recursively
+//   //         await removeDirectoryRecursively(item);
+//   //       } else {
+//   //         // This is a file
+//   //         fs.unlinkSync(item);
+//   //       }
+//   //     }
+//   //   } catch (error) {
+//   //     vscode.window.showErrorMessage(`Failed to delete: ${item}`);
+//   //   }
+//   // }
 
-  // Process pending renamed files
-  // for (const [oldPath, newPath] of pendingChanges.renamedFiles.entries()) {
-  //   try {
-  //     if (fs.existsSync(oldPath)) {
-  //       // Create directory structure if needed
-  //       const dirPath = path.dirname(newPath);
-  //       if (!fs.existsSync(dirPath)) {
-  //         fs.mkdirSync(dirPath, { recursive: true });
-  //       }
-  //       fs.renameSync(oldPath, newPath);
-  //     }
-  //   } catch (error) {
-  //     vscode.window.showErrorMessage(
-  //       `Failed to rename: ${oldPath} to ${newPath} - ${error}`
-  //     );
-  //   }
-  // }
+//   // Process pending renamed files
+//   // for (const [oldPath, newPath] of pendingChanges.renamedFiles.entries()) {
+//   //   try {
+//   //     if (fs.existsSync(oldPath)) {
+//   //       // Create directory structure if needed
+//   //       const dirPath = path.dirname(newPath);
+//   //       if (!fs.existsSync(dirPath)) {
+//   //         fs.mkdirSync(dirPath, { recursive: true });
+//   //       }
+//   //       fs.renameSync(oldPath, newPath);
+//   //     }
+//   //   } catch (error) {
+//   //     vscode.window.showErrorMessage(
+//   //       `Failed to rename: ${oldPath} to ${newPath} - ${error}`
+//   //     );
+//   //   }
+//   // }
 
-  // Clear the deleted files tracking after successful save
-  // for (const [key, _] of fileTracking.deletedFiles) {
-  //   fileTracking.deletedFiles.delete(key);
-  // }
+//   // Clear the deleted files tracking after successful save
+//   // for (const [key, _] of fileTracking.deletedFiles) {
+//   //   fileTracking.deletedFiles.delete(key);
+//   // }
 
-  // Clear pending changes
-  // pendingChanges = {
-  //   addedFiles: new Set(),
-  //   deletedFiles: new Set(),
-  //   renamedFiles: new Map(),
-  // };
-}
+//   // Clear pending changes
+//   // pendingChanges = {
+//   //   addedFiles: new Set(),
+//   //   deletedFiles: new Set(),
+//   //   renamedFiles: new Map(),
+//   // };
+// }
 
 // Function to position cursor on a specific file or on the first line
 function positionCursorOnFile(editor: vscode.TextEditor, fileName: string) {
@@ -1013,13 +988,13 @@ function positionCursorOnFile(editor: vscode.TextEditor, fileName: string) {
 // }
 
 // Helper function to check if there are pending changes
-// function hasPendingChanges(): boolean {
-//   return (
-//     pendingChanges.addedFiles.size > 0 ||
-//     pendingChanges.deletedFiles.size > 0 ||
-//     pendingChanges.renamedFiles.size > 0
-//   );
-// }
+function hasPendingChanges(): boolean {
+  const oilState = getOilState();
+  if (!oilState) {
+    return false;
+  }
+  return oilState.editedPaths.size > 0;
+}
 
 // Helper function to recursively remove a directory and its contents
 async function removeDirectoryRecursively(dirPath: string): Promise<void> {
@@ -1329,6 +1304,124 @@ async function closePreview() {
   }
 }
 
+function oilLineToOilEntry(line: string, path: string): OilEntry {
+  const parts = line.split(" ");
+  const identifier = parts[0];
+  if (identifier.length !== 4 || identifier[0] !== "/") {
+    return {
+      identifier: "",
+      value: line,
+      path,
+      isDir: line.endsWith("/"),
+    };
+  }
+  const value = parts.slice(1).join(" ").trim();
+  const isDir = line.endsWith("/");
+  return {
+    identifier,
+    value,
+    path,
+    isDir,
+  };
+}
+
+function oilLinesToOilMap(
+  lines: string[],
+  path: string
+): Map<string, OilEntry> {
+  const map = new Map<string, OilEntry>();
+  for (const line of lines) {
+    const entry = oilLineToOilEntry(line, path);
+    if (entry.identifier === "/000") {
+      continue;
+    }
+    map.set(entry.identifier, entry);
+  }
+  return map;
+}
+
+function determineChanges(oilState: OilState) {
+  // Check if there are any pending changes
+  if (oilState.editedPaths.size > 0) {
+    // Process the changes
+    const editedFiles = Array.from(oilState.editedPaths.keys());
+    const originalFilesMap = new Map<string, OilEntry>();
+    editedFiles.forEach((dir) => {
+      const lines = oilState.visitedPaths.get(dir);
+      if (lines) {
+        const entriesMap = oilLinesToOilMap(lines, dir);
+        entriesMap.forEach((entry, key) => {
+          originalFilesMap.set(key, entry);
+        });
+      }
+    });
+
+    const movedLines = new Map<string, string>();
+    const copiedLines = new Map<string, string>();
+    const addedLines = new Set<string>();
+    const deletedLines = new Set<string>();
+
+    for (const [dirPath, lines] of oilState.editedPaths.entries()) {
+      const editedEntries = oilLinesToOilMap(lines, dirPath);
+      for (const [key, entry] of editedEntries.entries()) {
+        const originalEntry = originalFilesMap.get(key);
+        if (originalEntry) {
+          // Check if the entry has been renamed or moved
+          if (
+            entry.value !== originalEntry.value ||
+            entry.path !== originalEntry.path
+          ) {
+            movedLines.set(
+              path.join(originalEntry.path, originalEntry.value),
+              path.join(dirPath, entry.value)
+            );
+          }
+        } else {
+          // New entry added
+          addedLines.add(path.join(dirPath, entry.value));
+        }
+      }
+    }
+
+    for (const [dirPath, lines] of oilState.editedPaths.entries()) {
+      const editedEntries = oilLinesToOilMap(lines, dirPath);
+      // Check for deleted entries
+      const fileOriginalEntries = oilLinesToOilMap(
+        oilState.visitedPaths.get(dirPath) || [],
+        dirPath
+      );
+      for (const [key, entry] of fileOriginalEntries.entries()) {
+        if (
+          !editedEntries.has(key) &&
+          !movedLines.has(path.join(dirPath, entry.value))
+        ) {
+          deletedLines.add(path.join(dirPath, entry.value));
+        }
+      }
+    }
+
+    for (const [dirPath, lines] of oilState.editedPaths.entries()) {
+      const editedEntries = oilLinesToOilMap(lines, dirPath);
+      // Check for moved entries
+      // TODO: Check this logic
+      for (const [key, entry] of editedEntries.entries()) {
+        if (key && !originalFilesMap.has(key)) {
+          copiedLines.set(
+            path.join(dirPath, entry.value),
+            path.join(key, entry.value)
+          );
+        }
+      }
+    }
+    return {
+      movedLines,
+      copiedLines,
+      addedLines,
+      deletedLines,
+    };
+  }
+}
+
 async function onDidSaveTextDocument(document: vscode.TextDocument) {
   const oilState = getOilState();
   // Check if the saved document is our oil file
@@ -1340,8 +1433,21 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       // Process changes - now we need to handle both current changes
       // and any pending changes from navigation
       // Read the current content of the file
-      const content = document.getText();
-      const lines = content.split("\n");
+      const currentContent = document.getText();
+      const currentLines = currentContent.split("\n");
+      const oilState = getOilState();
+      if (!oilState) {
+        vscode.window.showErrorMessage("Failed to get oil state.");
+        return;
+      }
+      if (!oilState.currentPath) {
+        vscode.window.showErrorMessage("No current path found.");
+        return;
+      }
+      const currentValue = oilState.visitedPaths.get(oilState.currentPath);
+      if (currentValue?.join("") !== currentLines.join("")) {
+        oilState.editedPaths.set(oilState.currentPath, currentLines);
+      }
 
       // Get the current directory
       if (!oilState.currentPath) {
@@ -1349,15 +1455,143 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         return;
       }
 
-      // Get the existing directory listing
-      const currentDirectoryContent = await getDirectoryListing(
-        oilState.currentPath,
-        oilState
-      );
-      const currentLines = currentDirectoryContent.split("\n");
+      const changes = determineChanges(oilState);
+      if (!changes) {
+        return;
+      }
+      const { movedLines, copiedLines, addedLines, deletedLines } = changes;
 
+      // Show confirmation dialog
+      let message = "The following changes will be applied:\n\n";
+      if (movedLines.size > 0) {
+        movedLines.forEach((newPath, oldPath) => {
+          message += `MOVE ${path.basename(oldPath)} → ${path.basename(
+            newPath
+          )}\n`;
+        });
+      }
+      if (copiedLines.size > 0) {
+        copiedLines.forEach((newPath, oldPath) => {
+          message += `COPY ${path.basename(oldPath)} → ${path.basename(
+            newPath
+          )}\n`;
+        });
+      }
+      if (addedLines.size > 0) {
+        addedLines.forEach((item) => {
+          message += `CREATE ${path.basename(item)}\n`;
+        });
+      }
+      if (deletedLines.size > 0) {
+        deletedLines.forEach((item) => {
+          message += `DELETE ${path.basename(item)}\n`;
+        });
+      }
+      // Show confirmation dialog
+      const response = await vscode.window.showWarningMessage(
+        message,
+        { modal: true },
+        "Yes",
+        "No"
+      );
+      if (response !== "Yes") {
+        vscode.window.showInformationMessage("Changes cancelled");
+        return;
+      }
       // Process the changes
-      await handleOilFileSave(oilState.currentPath, currentLines, lines);
+      // Move files
+      for (const [oldPath, newPath] of movedLines.entries()) {
+        try {
+          // Create directory structure if needed
+          const dirPath = path.dirname(newPath);
+          if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+          }
+          // Move the file to the new location
+          fs.renameSync(oldPath, newPath);
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to move file: ${path.basename(
+              oldPath
+            )} to ${newPath.replace(
+              oilState.currentPath + path.sep,
+              ""
+            )} - ${error}`
+          );
+        }
+      }
+      // Copy files
+      for (const [oldPath, newPath] of copiedLines.entries()) {
+        try {
+          // Create directory structure if needed
+          const dirPath = newPath;
+          if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+          }
+          // Copy the file to the new location
+          fs.copyFileSync(oldPath, newPath);
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to copy file: ${path.basename(
+              oldPath
+            )} to ${newPath.replace(
+              oilState.currentPath + path.sep,
+              ""
+            )} - ${error}`
+          );
+        }
+      }
+      // Create new files/directories
+      for (const line of addedLines) {
+        const newFilePath = line;
+        if (line.endsWith("/")) {
+          // Create directory
+          try {
+            fs.mkdirSync(newFilePath, { recursive: true });
+          } catch (error) {
+            vscode.window.showErrorMessage(
+              `Failed to create directory: ${line} - ${error}`
+            );
+          }
+        } else {
+          // Create empty file
+          try {
+            // If it's a file in subfolders, ensure the folders exist
+            if (line.includes("/")) {
+              const dirPath = path.dirname(newFilePath);
+              if (!fs.existsSync(dirPath)) {
+                fs.mkdirSync(dirPath, { recursive: true });
+              }
+            }
+            fs.writeFileSync(newFilePath, "");
+          } catch (error) {
+            vscode.window.showErrorMessage(
+              `Failed to create file: ${line} - ${error}`
+            );
+          }
+        }
+      }
+      // Delete files/directories
+      for (const line of deletedLines) {
+        const filePath = line;
+        try {
+          if (line.endsWith("/")) {
+            // This is a directory - remove recursively
+            await removeDirectoryRecursively(filePath);
+          } else {
+            // This is a file
+            fs.unlinkSync(filePath);
+          }
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to delete: ${line} - ${error}`
+          );
+        }
+      }
+
+      oilState.visitedPaths.clear();
+      oilState.editedPaths.clear();
+      oilState.identifierCounter = 1;
 
       // Refresh the directory listing after changes
       const updatedContent = await getDirectoryListing(
@@ -1380,13 +1614,6 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
 
       // Save the document after updating to prevent it from showing as having unsaved changes
       await document.save();
-
-      // Reset the pending changes and modified flag
-      // pendingChanges = {
-      //   addedFiles: new Set(),
-      //   deletedFiles: new Set(),
-      //   renamedFiles: new Map(),
-      // };
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to process changes: ${error}`);
     }
@@ -1621,23 +1848,6 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Activate decorations to hide prefixes
   activateDecorations(context);
-
-  // Reset file tracking
-  // fileTracking = {
-  //   previousPath: "",
-  //   previousFiles: [],
-  //   deletedFiles: new Map(),
-  //   visitedPaths: new Set(),
-  //   lastSelectedFile: "",
-  //   fileIdentifiers: new Map(),
-  // };
-
-  // Reset pending changes
-  // pendingChanges = {
-  //   addedFiles: new Set(),
-  //   deletedFiles: new Set(),
-  //   renamedFiles: new Map(),
-  // };
 
   // Reset preview state
   previewState = {
