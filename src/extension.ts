@@ -24,6 +24,7 @@ interface OilState {
   identifierCounter: number;
   visitedPaths: Map<string, string[]>;
   editedPaths: Map<string, string[]>;
+  openAfterSave?: string;
 }
 
 const oils = new Map<string, OilState>();
@@ -314,12 +315,6 @@ async function select(overRideLineText?: string) {
     // Store current directory name (without full path)
     oilState.currentPath = path.dirname(currentFolderPath);
   }
-  // else {
-  // Store the file/directory name we're navigating to
-  // TODO
-  // fileTracking.lastSelectedFile = fileName;
-  // oilState.currentPath = targetPath;
-  // }
 
   if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
     try {
@@ -407,7 +402,23 @@ async function select(overRideLineText?: string) {
       return;
     }
   } else if (!fs.existsSync(targetPath)) {
-    // TODO: Prompt for saving changes if the file doesn't exist
+    // If the file doesn't exist, ask if the user wants to save changes
+    const saveChanges = await vscode.window.showWarningMessage(
+      `Save Changes?`,
+      { modal: true },
+      "Yes",
+      "No"
+    );
+
+    if (saveChanges === "Yes") {
+      oilState.openAfterSave = fileName;
+      if (document.isDirty) {
+        await document.save();
+      } else {
+        await onDidSaveTextDocument(document);
+      }
+      return;
+    }
     vscode.window.showErrorMessage(`File "${fileName}" does not exist.`);
     return;
   }
@@ -959,33 +970,6 @@ function determineChanges(oilState: OilState) {
     copiedLines.length = 0;
     copiedLines.push(...filteredCopiedLines);
 
-    // for (const [dirPath, lines] of oilState.editedPaths.entries()) {
-    //   const editedEntries = oilLinesToOilMap(lines, dirPath);
-    //   const originalVisitedMap = oilLinesToOilMap(
-    //     oilState.visitedPaths.get(dirPath) || [],
-    //     dirPath
-    //   );
-    //   // Check for moved entries
-    //   // TODO: Check this logic
-    //   for (const [key, entry] of editedEntries.entries()) {
-    //     if (key && !originalVisitedMap.has(key)) {
-    //       const fromFile = originalFilesMap.get(key);
-    //       if (fromFile) {
-    //         movedLines.set(
-    //           path.join(fromFile.path, fromFile.value),
-    //           path.join(dirPath, entry.value)
-    //         );
-    //       }
-    //       copiedLines.set(
-    //         path.join(dirPath, entry.value),
-    //         path.join(entry.path, entry.value)
-    //       );
-    //       if (addedLines.has(path.join(key, entry.value))) {
-    //         addedLines.delete(path.join(key, entry.value));
-    //       }
-    //     }
-    //   }
-    // }
     return {
       movedLines,
       copiedLines,
@@ -1075,6 +1059,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         "No"
       );
       if (response !== "Yes") {
+        oilState.openAfterSave = undefined;
         vscode.window.showInformationMessage("Changes cancelled");
         return;
       }
@@ -1193,6 +1178,11 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
 
       // Save the document after updating to prevent it from showing as having unsaved changes
       await document.save();
+
+      if (oilState.openAfterSave) {
+        await select(oilState.openAfterSave);
+        oilState.openAfterSave = undefined;
+      }
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to process changes: ${error}`);
     }
