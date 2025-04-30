@@ -300,7 +300,14 @@ export function activateDecorations(context: vscode.ExtensionContext) {
     }
     const firstLine = document.lineAt(0).text;
     const match = firstLine.match(/^(\/\d{3} )/);
-    if (match && editor.selection.start.character < match[1].length) {
+    const isEditingLine = document
+      .lineAt(editor.selection.start.line)
+      .text.startsWith("/");
+    if (
+      match &&
+      isEditingLine &&
+      editor.selection.start.character < match[1].length
+    ) {
       const newPosition = new vscode.Position(0, match[1].length);
       editor.selection = new vscode.Selection(newPosition, newPosition);
     }
