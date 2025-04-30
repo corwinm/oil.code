@@ -100,8 +100,13 @@ Key:
 | Create new file                                                  | ✅       |
 | Delete file                                                      | ✅       |
 | Move file                                                        | ✅       |
-| Rename file                                                      | ❌       |
-| Move and Rename file                                             | ❌       |
+| Rename file                                                      | ✅       |
+| Move and Rename file                                             | ✅       |
+| Create new directory                                             | ✅       |
+| Delete directory                                                 | ✅       |
+| Move directory                                                   | ✅       |
+| Rename directory                                                 | ✅       |
+| Move and Rename directory                                        | ✅       |
 | Open oil in multiple splits at once                              | ❌       |
 | ["g?"] = { "actions.show_help", mode = "n" }                     | ❌       |
 | ["\<CR\>"] = "actions.select"                                    | ✅       |
@@ -116,7 +121,7 @@ Key:
 | ["`"] = { "actions.cd", mode = "n" }                             | ❓       |
 | ["~"] = { "actions.cd", opts = { scope = "tab" }, mode = "n" }   | ❓       |
 | ["gs"] = { "actions.change_sort", mode = "n" }                   | ❌       |
-| ["gx"] = "actions.open_external"                                 | ❌       |
+| ["gx"] = "actions.open_external"                                 | ❓       |
 | ["g."] = { "actions.toggle_hidden", mode = "n" }                 | ❌       |
 | ["g\\"] = { "actions.toggle_trash", mode = "n" }                 | ❓       |
 
