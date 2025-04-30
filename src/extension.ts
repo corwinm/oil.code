@@ -851,6 +851,21 @@ function oilLineToOilEntry(line: string, path: string): OilEntry {
   };
 }
 
+function oilLinesToOilEntries(
+  lines: string[],
+  path: string
+): Array<[string, OilEntry]> {
+  const map = new Array<[string, OilEntry]>();
+  for (const line of lines) {
+    const entry = oilLineToOilEntry(line, path);
+    if (entry.identifier === "/000") {
+      continue;
+    }
+    map.push([entry.identifier, entry]);
+  }
+  return map;
+}
+
 function oilLinesToOilMap(
   lines: string[],
   path: string
@@ -870,9 +885,9 @@ function determineChanges(oilState: OilState) {
   // Check if there are any pending changes
   if (oilState.editedPaths.size > 0) {
     // Process the changes
-    const editedFiles = Array.from(oilState.editedPaths.keys());
+    const visitedFiles = Array.from(oilState.visitedPaths.keys());
     const originalFilesMap = new Map<string, OilEntry>();
-    editedFiles.forEach((dir) => {
+    visitedFiles.forEach((dir) => {
       const lines = oilState.visitedPaths.get(dir);
       if (lines) {
         const entriesMap = oilLinesToOilMap(lines, dir);
@@ -882,14 +897,28 @@ function determineChanges(oilState: OilState) {
       }
     });
 
-    const movedLines = new Map<string, string>();
-    const copiedLines = new Map<string, string>();
+    const movedLines = new Array<[string, string]>();
+    const copiedLines = new Array<[string, string]>();
     const addedLines = new Set<string>();
     const deletedLines = new Set<string>();
 
     for (const [dirPath, lines] of oilState.editedPaths.entries()) {
       const editedEntries = oilLinesToOilMap(lines, dirPath);
-      for (const [key, entry] of editedEntries.entries()) {
+      // Check for deleted entries
+      const fileOriginalEntries = oilLinesToOilEntries(
+        oilState.visitedPaths.get(dirPath) || [],
+        dirPath
+      );
+      for (const [key, entry] of fileOriginalEntries) {
+        if (!editedEntries.has(key)) {
+          deletedLines.add(path.join(dirPath, entry.value));
+        }
+      }
+    }
+
+    for (const [dirPath, lines] of oilState.editedPaths.entries()) {
+      const editedEntries = oilLinesToOilEntries(lines, dirPath);
+      for (const [key, entry] of editedEntries) {
         const originalEntry = originalFilesMap.get(key);
         if (originalEntry) {
           // Check if the entry has been renamed or moved
@@ -897,10 +926,10 @@ function determineChanges(oilState: OilState) {
             entry.value !== originalEntry.value ||
             entry.path !== originalEntry.path
           ) {
-            movedLines.set(
+            copiedLines.push([
               path.join(originalEntry.path, originalEntry.value),
-              path.join(dirPath, entry.value)
-            );
+              path.join(dirPath, entry.value),
+            ]);
           }
         } else {
           // New entry added
@@ -909,36 +938,33 @@ function determineChanges(oilState: OilState) {
       }
     }
 
-    for (const [dirPath, lines] of oilState.editedPaths.entries()) {
-      const editedEntries = oilLinesToOilMap(lines, dirPath);
-      // Check for deleted entries
-      const fileOriginalEntries = oilLinesToOilMap(
-        oilState.visitedPaths.get(dirPath) || [],
-        dirPath
-      );
-      for (const [key, entry] of fileOriginalEntries.entries()) {
-        if (
-          !editedEntries.has(key) &&
-          !movedLines.has(path.join(dirPath, entry.value))
-        ) {
-          deletedLines.add(path.join(dirPath, entry.value));
-        }
-      }
-    }
-
-    for (const [dirPath, lines] of oilState.editedPaths.entries()) {
-      const editedEntries = oilLinesToOilMap(lines, dirPath);
-      // Check for moved entries
-      // TODO: Check this logic
-      for (const [key, entry] of editedEntries.entries()) {
-        if (key && !originalFilesMap.has(key)) {
-          copiedLines.set(
-            path.join(dirPath, entry.value),
-            path.join(key, entry.value)
-          );
-        }
-      }
-    }
+    // for (const [dirPath, lines] of oilState.editedPaths.entries()) {
+    //   const editedEntries = oilLinesToOilMap(lines, dirPath);
+    //   const originalVisitedMap = oilLinesToOilMap(
+    //     oilState.visitedPaths.get(dirPath) || [],
+    //     dirPath
+    //   );
+    //   // Check for moved entries
+    //   // TODO: Check this logic
+    //   for (const [key, entry] of editedEntries.entries()) {
+    //     if (key && !originalVisitedMap.has(key)) {
+    //       const fromFile = originalFilesMap.get(key);
+    //       if (fromFile) {
+    //         movedLines.set(
+    //           path.join(fromFile.path, fromFile.value),
+    //           path.join(dirPath, entry.value)
+    //         );
+    //       }
+    //       copiedLines.set(
+    //         path.join(dirPath, entry.value),
+    //         path.join(entry.path, entry.value)
+    //       );
+    //       if (addedLines.has(path.join(key, entry.value))) {
+    //         addedLines.delete(path.join(key, entry.value));
+    //       }
+    //     }
+    //   }
+    // }
     return {
       movedLines,
       copiedLines,
@@ -994,14 +1020,20 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
 
       // Show confirmation dialog
       let message = "The following changes will be applied:\n\n";
-      if (movedLines.size > 0) {
-        movedLines.forEach((newPath, oldPath) => {
-          message += `MOVE ${formatPath(oldPath)} → ${formatPath(newPath)}\n`;
+      if (movedLines.length > 0) {
+        movedLines.forEach((item) => {
+          const [originalPath, newPath] = item;
+          message += `MOVE ${formatPath(originalPath)} → ${formatPath(
+            newPath
+          )}\n`;
         });
       }
-      if (copiedLines.size > 0) {
-        copiedLines.forEach((newPath, oldPath) => {
-          message += `COPY ${formatPath(oldPath)} → ${formatPath(newPath)}\n`;
+      if (copiedLines.length > 0) {
+        copiedLines.forEach((item) => {
+          const [originalPath, newPath] = item;
+          message += `COPY ${formatPath(originalPath)} → ${formatPath(
+            newPath
+          )}\n`;
         });
       }
       if (addedLines.size > 0) {
@@ -1027,7 +1059,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       }
       // Process the changes
       // Move files
-      for (const [oldPath, newPath] of movedLines.entries()) {
+      for (const [oldPath, newPath] of movedLines) {
         try {
           // Create directory structure if needed
           const dirPath = path.dirname(newPath);
@@ -1046,15 +1078,18 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         }
       }
       // Copy files
-      for (const [oldPath, newPath] of copiedLines.entries()) {
+      for (const [oldPath, newPath] of copiedLines) {
         try {
           // Create directory structure if needed
-          const dirPath = newPath;
+          const isDir = newPath.endsWith("/");
+          const dirPath = isDir ? newPath : path.dirname(newPath);
           if (!fs.existsSync(dirPath)) {
             fs.mkdirSync(dirPath, { recursive: true });
           }
-          // Copy the file to the new location
-          fs.copyFileSync(oldPath, newPath);
+          if (!isDir) {
+            // Copy the file to the new location
+            fs.copyFileSync(oldPath, newPath);
+          }
         } catch (error) {
           vscode.window.showErrorMessage(
             `Failed to copy file: ${formatPath(oldPath)} to ${newPath.replace(
