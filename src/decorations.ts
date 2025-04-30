@@ -287,15 +287,12 @@ export function activateDecorations(context: vscode.ExtensionContext) {
     })
   );
 
-  function decorateDocument(document: vscode.TextDocument, retries = 0) {
+  function decorateDocument(document: vscode.TextDocument) {
     const editor = vscode.window.visibleTextEditors.find(
       (editor) => editor.document === document
     );
     updateDecorations(editor);
-    if (!editor || retries > 5) {
-      setTimeout(() => {
-        decorateDocument(document, retries + 1);
-      }, 100);
+    if (!editor) {
       return;
     }
     const firstLine = document.lineAt(0).text;
