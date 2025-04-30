@@ -937,6 +937,27 @@ function determineChanges(oilState: OilState) {
         }
       }
     }
+    // Check for moved entries
+    // Check for entries that are both copied and deleted (these are moves)
+    for (const [oldPath, newPath] of copiedLines) {
+      if (deletedLines.has(oldPath)) {
+        // This is actually a move operation (copy + delete)
+        movedLines.push([oldPath, newPath]);
+        deletedLines.delete(oldPath); // Remove from deletedLines since it's a move, not a delete
+      }
+    }
+    // Filter out copied lines that are actually moves
+    const filteredCopiedLines = copiedLines.filter(([oldPath, newPath]) => {
+      // Check if this copy operation is already handled as a move
+      return !movedLines.some(
+        ([moveOldPath, moveNewPath]) =>
+          oldPath === moveOldPath && newPath === moveNewPath
+      );
+    });
+
+    // Replace the original copiedLines with the filtered version
+    copiedLines.length = 0;
+    copiedLines.push(...filteredCopiedLines);
 
     // for (const [dirPath, lines] of oilState.editedPaths.entries()) {
     //   const editedEntries = oilLinesToOilMap(lines, dirPath);
