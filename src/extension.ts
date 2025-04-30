@@ -9,7 +9,6 @@ const tempFileName = "《 oil.code 》";
 const logger = vscode.window.createOutputChannel("oil.code", { log: true });
 
 // Add status bar item to show current directory
-let statusBarItem: vscode.StatusBarItem;
 
 interface OilEntry {
   identifier: string;
@@ -24,6 +23,7 @@ interface OilState {
   identifierCounter: number;
   visitedPaths: Map<string, string[]>;
   editedPaths: Map<string, string[]>;
+  statusBarItem: vscode.StatusBarItem;
   openAfterSave?: string;
 }
 
@@ -31,7 +31,7 @@ const oils = new Map<string, OilState>();
 
 // Function to initialize the status bar item
 function initializeStatusBar() {
-  statusBarItem = vscode.window.createStatusBarItem(
+  const statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     100
   );
@@ -41,7 +41,11 @@ function initializeStatusBar() {
 }
 
 // Function to update status bar with current folder path
-function updateStatusBar(folderPath: string | undefined) {
+function updateStatusBar(
+  folderPath: string | undefined,
+  oilState: OilState | undefined
+) {
+  const statusBarItem = oilState?.statusBarItem;
   if (!statusBarItem) {
     return;
   }
@@ -66,9 +70,9 @@ function initOilState() {
     identifierCounter: 1,
     visitedPaths: new Map(),
     editedPaths: new Map(),
+    statusBarItem: initializeStatusBar(),
   };
   oils.set(newState.tempFilePath, newState);
-  initializeStatusBar();
 
   return newState;
 }
@@ -164,7 +168,7 @@ async function openOil() {
 
   const folderPath = oilState.currentPath;
   // Update status bar with current folder path
-  updateStatusBar(folderPath);
+  updateStatusBar(folderPath, oilState);
 
   if (folderPath && oilState.tempFilePath) {
     try {
@@ -321,7 +325,7 @@ async function select(overRideLineText?: string) {
       oilState.currentPath = targetPath;
 
       // Update status bar when navigating to a new directory
-      updateStatusBar(targetPath);
+      updateStatusBar(targetPath, oilState);
 
       const directoryContent = await getDirectoryListing(targetPath, oilState);
 
@@ -428,6 +432,7 @@ async function select(overRideLineText?: string) {
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
     await vscode.window.showTextDocument(fileDoc);
+    oilState.statusBarItem.dispose();
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
   }
@@ -452,21 +457,27 @@ async function onDidChangeActiveTextEditor(
   ) {
     await closePreview();
   }
-  if (!oilState) {
+  if (!oilState && editor) {
+    oils.forEach((state) => {
+      state.statusBarItem.dispose();
+    });
+    lastActiveEditorWasOil = false;
+    await checkAndEnableAutoSave();
     return;
   }
 
   // Original cleanup functionality
-  if (oilState.tempFilePath && lastActiveEditorWasOil) {
-    lastActiveEditorWasOil = false;
-    fs.unlink(oilState.tempFilePath, (err) => {
-      if (err) {
-        logger.error("Failed to delete temporary file:", err);
-      }
-    });
-    await checkAndEnableAutoSave();
-  }
+  // if (oilState.tempFilePath && lastActiveEditorWasOil) {
+  //   lastActiveEditorWasOil = false;
+  //   fs.unlink(oilState.tempFilePath, (err) => {
+  //     if (err) {
+  //       logger.error("Failed to delete temporary file:", err);
+  //     }
+  //   });
+  //   await checkAndEnableAutoSave();
+  // }
   if (
+    oilState &&
     editor?.document.uri.fsPath === oilState.tempFilePath &&
     oilState.tempFilePath
   ) {
@@ -969,6 +980,21 @@ function determineChanges(oilState: OilState) {
     // Replace the original copiedLines with the filtered version
     copiedLines.length = 0;
     copiedLines.push(...filteredCopiedLines);
+
+    // Find items that are in both addedLines and deletedLines and remove them from both
+    // This is a workaround for when file identifiers get out of sync
+    const duplicates = new Set<string>();
+    addedLines.forEach((addedItem) => {
+      if (deletedLines.has(addedItem)) {
+        duplicates.add(addedItem);
+      }
+    });
+
+    // Remove duplicates from both sets
+    duplicates.forEach((item) => {
+      addedLines.delete(item);
+      deletedLines.delete(item);
+    });
 
     return {
       movedLines,
