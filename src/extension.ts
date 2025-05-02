@@ -65,7 +65,7 @@ function initOilState() {
     ? path.dirname(vscode.window.activeTextEditor.document.uri.fsPath)
     : vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath;
   const newState = {
-    tempFilePath: path.join(os.tmpdir(), tempFileName),
+    tempFilePath: vscode.Uri.file(path.join(os.tmpdir(), tempFileName)).fsPath,
     currentPath: currentOrWorkspacePath,
     identifierCounter: 1,
     visitedPaths: new Map(),
