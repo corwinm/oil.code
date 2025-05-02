@@ -182,8 +182,6 @@ async function openOil() {
       let uri = vscode.Uri.file(oilState.tempFilePath);
       let doc = await vscode.workspace.openTextDocument(uri);
       let editor = await vscode.window.showTextDocument(doc, { preview: true });
-      // Set the language mode to "oil"
-      await vscode.languages.setTextDocumentLanguage(doc, "oil");
       doc.save();
 
       // Position cursor on the previously selected file if it exists in this directory
@@ -1151,7 +1149,6 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       );
       if (response !== "Yes") {
         oilState.openAfterSave = undefined;
-        vscode.window.showInformationMessage("Changes cancelled");
         return;
       }
       // Process the changes
