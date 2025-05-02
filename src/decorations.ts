@@ -231,18 +231,6 @@ export function activateDecorations(context: vscode.ExtensionContext) {
     }
   );
 
-  // Update when text changes in any document
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeTextDocument((event) => {
-      if (
-        vscode.window.activeTextEditor &&
-        event.document === vscode.window.activeTextEditor.document
-      ) {
-        updateDecorations(vscode.window.activeTextEditor);
-      }
-    })
-  );
-
   // Add listener for cursor position changes to prevent entering hidden prefix area
   context.subscriptions.push(
     vscode.window.onDidChangeTextEditorSelection((event) => {
@@ -312,7 +300,10 @@ export function activateDecorations(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((event) => {
-      if (event.document.languageId === "oil") {
+      if (
+        event.document.languageId === "oil" &&
+        event.contentChanges.length > 1
+      ) {
         decorateDocument(event.document);
       }
     })
