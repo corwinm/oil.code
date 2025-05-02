@@ -3,11 +3,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import { activateDecorations } from "./decorations";
 
-const tempFileName = "《 oil.code 》";
-
 const logger = vscode.window.createOutputChannel("oil.code", { log: true });
-
-// Add status bar item to show current directory
 
 interface OilEntry {
   identifier: string;
@@ -461,17 +457,18 @@ async function select(overRideLineText?: string) {
       const newDoc = await vscode.workspace.openTextDocument(newUri);
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
+      // Close the old document
+      await vscode.window.showTextDocument(oldUri);
+      await vscode.commands.executeCommand(
+        "workbench.action.revertAndCloseActiveEditor"
+      );
+
       // Show the new document in the same editor
       const editor = await vscode.window.showTextDocument(newDoc, {
         viewColumn: activeEditor.viewColumn,
         preview: true,
       });
 
-      // Close the old document
-      await vscode.commands.executeCommand(
-        "workbench.action.closeActiveEditor",
-        oldUri
-      );
       // Remove the old URI from the oils map
       oils.delete(oldUri.toString());
 
@@ -560,11 +557,14 @@ async function select(overRideLineText?: string) {
   try {
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
-    await vscode.window.showTextDocument(fileDoc);
+    await vscode.window.showTextDocument(activeEditor.document.uri);
     await vscode.commands.executeCommand(
-      "workbench.action.closeActiveEditor",
-      activeEditor.document.uri
+      "workbench.action.revertAndCloseActiveEditor"
     );
+    await vscode.window.showTextDocument(fileDoc, {
+      viewColumn: activeEditor.viewColumn,
+      preview: true,
+    });
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
   }
@@ -578,16 +578,16 @@ async function openParent() {
 async function onDidChangeActiveTextEditor(
   editor: vscode.TextEditor | undefined
 ) {
+  if (!editor) {
+    return;
+  }
   const oilState = getOilState();
 
   // Close preview when leaving oil view
-  if (
-    !editor ||
-    (editor.document.uri.scheme !== OIL_SCHEME && previewState.previewedFile)
-  ) {
+  if (editor.document.uri.scheme !== OIL_SCHEME && previewState.previewedFile) {
     await closePreview();
   }
-  if (!oilState && editor) {
+  if (!oilState) {
     await checkAndEnableAutoSave();
     return;
   }
@@ -685,10 +685,19 @@ async function previewFile(targetPath: string) {
 
     // Close previous previewed editor if it exists
     if (previewState.previewedEditor) {
-      await vscode.commands.executeCommand(
-        "workbench.action.closeActiveEditor",
-        previewState.previewedEditor.document.uri
+      // Check if the preview editor's document is still open
+      const isPreviewOpen = vscode.window.visibleTextEditors.some(
+        (editor) =>
+          editor.document.uri.toString() ===
+          previewState.previewedEditor!.document.uri.toString()
       );
+
+      if (isPreviewOpen) {
+        await vscode.commands.executeCommand(
+          "workbench.action.closeActiveEditor",
+          previewState.previewedEditor.document.uri
+        );
+      }
     }
 
     // Open to the side (right split) in preview mode
@@ -732,6 +741,16 @@ async function previewDirectory(directoryPath: string) {
       `${OIL_PREVIEW_SCHEME}:/${previewName}`
     );
 
+    // Check if the preview URI already exists
+    if (
+      previewState.previewUri &&
+      previewState.previewUri.toString() === previewUri.toString()
+    ) {
+      // If the URI already exists, just update the content
+      oilPreviewProvider.writeFile(previewUri, Buffer.from(directoryContent));
+      return;
+    }
+
     // Write content to the virtual file
     oilPreviewProvider.writeFile(previewUri, Buffer.from(directoryContent));
 
@@ -741,10 +760,21 @@ async function previewDirectory(directoryPath: string) {
 
     // Close previous previewed editor if it exists
     if (previewState.previewedEditor) {
-      await vscode.commands.executeCommand(
-        "workbench.action.closeActiveEditor",
-        previewState.previewedEditor.document.uri
-      );
+      const previewedEditorUri = previewState.previewedEditor.document.uri;
+      setTimeout(async () => {
+        // Check if the preview editor's document is still open in any visible editors
+        const isPreviewOpen = vscode.window.visibleTextEditors.some(
+          (editor) =>
+            editor.document.uri.toString() === previewedEditorUri.toString()
+        );
+
+        if (isPreviewOpen) {
+          await vscode.commands.executeCommand(
+            "workbench.action.closeActiveEditor",
+            previewedEditorUri
+          );
+        }
+      }, 0);
     }
 
     // Show the document to the side

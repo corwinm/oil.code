@@ -29,9 +29,8 @@ If you're using vscode-neovim and want to customize the keymaps for oil.code:
 ```lua
 -- Default oil.code keymaps
 if vim.g.vscode then
-    local vscode = require('vscode-neovim')
+    local vscode = require('vscode')
     local map = vim.keymap.set
-
     vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
         pattern = {"*"},
         callback = function()
@@ -39,8 +38,8 @@ if vim.g.vscode then
         end,
     })
 
-    vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
-        pattern = {"*oil.code*"},
+    vim.api.nvim_create_autocmd({'FileType'}, {
+        pattern = {"oil"},
         callback = function()
             map("n", "-", function() vscode.action('oil-code.openParent') end)
             map("n", "<CR>", function() vscode.action('oil-code.select') end)
