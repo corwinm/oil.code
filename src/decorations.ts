@@ -300,10 +300,10 @@ export function activateDecorations(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((event) => {
-      if (
-        event.document.languageId === "oil" &&
-        event.contentChanges.length > 1
-      ) {
+      const changeIsMoreThanOneCharacter = event.contentChanges.some(
+        (change) => change.text.length !== 1
+      );
+      if (event.document.languageId === "oil" && changeIsMoreThanOneCharacter) {
         decorateDocument(event.document);
       }
     })
