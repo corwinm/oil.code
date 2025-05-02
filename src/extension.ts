@@ -466,16 +466,6 @@ async function onDidChangeActiveTextEditor(
     return;
   }
 
-  // Original cleanup functionality
-  // if (oilState.tempFilePath && lastActiveEditorWasOil) {
-  //   lastActiveEditorWasOil = false;
-  //   fs.unlink(oilState.tempFilePath, (err) => {
-  //     if (err) {
-  //       logger.error("Failed to delete temporary file:", err);
-  //     }
-  //   });
-  //   await checkAndEnableAutoSave();
-  // }
   if (
     oilState &&
     editor?.document.uri.fsPath === oilState.tempFilePath &&
@@ -933,6 +923,14 @@ function determineChanges(oilState: OilState) {
       );
       for (const [key, entry] of fileOriginalEntries) {
         if (!editedEntries.has(key)) {
+          deletedLines.add(path.join(dirPath, entry.value));
+        }
+        if (
+          editedEntries.has(key) &&
+          entry.path === editedEntries.get(key)?.path &&
+          entry.value !== editedEntries.get(key)?.value
+        ) {
+          // Check if the entry has been moved
           deletedLines.add(path.join(dirPath, entry.value));
         }
       }
