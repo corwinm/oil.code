@@ -1034,6 +1034,12 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       if (currentValue?.join("") !== currentLines.join("")) {
         oilState.editedPaths.set(oilState.currentPath, currentLines);
       }
+      if (
+        oilState.editedPaths.get(oilState.currentPath)?.join("") !==
+        currentLines.join("")
+      ) {
+        oilState.editedPaths.set(oilState.currentPath, currentLines);
+      }
 
       // Get the current directory
       if (!oilState.currentPath) {
@@ -1093,6 +1099,17 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         });
         message += "\nPlease resolve these conflicts before saving.";
         vscode.window.showErrorMessage(message, { modal: true });
+        oilState.openAfterSave = undefined;
+        return;
+      }
+
+      // Check if there are any changes to be made
+      if (
+        movedLines.length === 0 &&
+        copiedLines.length === 0 &&
+        addedLines.size === 0 &&
+        deletedLines.size === 0
+      ) {
         oilState.openAfterSave = undefined;
         return;
       }
