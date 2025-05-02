@@ -1047,6 +1047,56 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       }
       const { movedLines, copiedLines, addedLines, deletedLines } = changes;
 
+      // Check for duplicate destinations and existing files that would be overwritten
+      const allDestinations = new Set<string>();
+      const duplicateDestinations = new Set<string>();
+      const existingFileConflicts = new Set<string>();
+
+      // Check all move operations
+      movedLines.forEach(([oldPath, newPath]) => {
+        if (allDestinations.has(newPath)) {
+          duplicateDestinations.add(newPath);
+        } else if (fs.existsSync(newPath) && oldPath !== newPath) {
+          existingFileConflicts.add(newPath);
+        }
+        allDestinations.add(newPath);
+      });
+
+      // Check all copy operations
+      copiedLines.forEach(([_, newPath]) => {
+        if (allDestinations.has(newPath)) {
+          duplicateDestinations.add(newPath);
+        } else if (fs.existsSync(newPath)) {
+          existingFileConflicts.add(newPath);
+        }
+        allDestinations.add(newPath);
+      });
+
+      // Check all added files/folders
+      addedLines.forEach((path) => {
+        if (allDestinations.has(path)) {
+          duplicateDestinations.add(path);
+        } else if (fs.existsSync(path)) {
+          existingFileConflicts.add(path);
+        }
+        allDestinations.add(path);
+      });
+
+      // Check for duplicate destinations or existing file conflicts
+      if (duplicateDestinations.size > 0 || existingFileConflicts.size > 0) {
+        let message = "The following files would be overwritten:\n\n";
+        duplicateDestinations.forEach((path) => {
+          message += `${formatPath(path)}\n`;
+        });
+        existingFileConflicts.forEach((path) => {
+          message += `${formatPath(path)}\n`;
+        });
+        message += "\nPlease resolve these conflicts before saving.";
+        vscode.window.showErrorMessage(message, { modal: true });
+        oilState.openAfterSave = undefined;
+        return;
+      }
+
       // Show confirmation dialog
       let message = "The following changes will be applied:\n\n";
       if (movedLines.length > 0) {
