@@ -296,17 +296,18 @@ async function openOil() {
         Buffer.from(directoryContent)
       );
 
-      if (activeEditor) {
-        await vscode.commands.executeCommand(
-          "workbench.action.closeActiveEditor"
-        );
-      }
-
       // Open the in-memory document
       let doc = await vscode.workspace.openTextDocument(oilState.tempFileUri);
       await vscode.languages.setTextDocumentLanguage(doc, "oil");
 
       let editor = await vscode.window.showTextDocument(doc, { preview: true });
+
+      if (activeEditor) {
+        await vscode.commands.executeCommand(
+          "workbench.action.closeActiveEditor",
+          activeEditor.document.uri
+        );
+      }
 
       // Position cursor on the previously selected file if it exists in this directory
       positionCursorOnFile(editor, activeFile);
@@ -460,6 +461,12 @@ async function select(overRideLineText?: string) {
       const newDoc = await vscode.workspace.openTextDocument(newUri);
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
+      // Show the new document in the same editor
+      const editor = await vscode.window.showTextDocument(newDoc, {
+        viewColumn: activeEditor.viewColumn,
+        preview: true,
+      });
+
       // Close the old document
       await vscode.commands.executeCommand(
         "workbench.action.closeActiveEditor",
@@ -467,12 +474,6 @@ async function select(overRideLineText?: string) {
       );
       // Remove the old URI from the oils map
       oils.delete(oldUri.toString());
-
-      // Show the new document in the same editor
-      const editor = await vscode.window.showTextDocument(newDoc, {
-        viewColumn: activeEditor.viewColumn,
-        preview: true,
-      });
 
       // Position cursor appropriately
       if (isGoingUp) {
@@ -557,10 +558,13 @@ async function select(overRideLineText?: string) {
   }
 
   try {
-    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
     await vscode.window.showTextDocument(fileDoc);
+    await vscode.commands.executeCommand(
+      "workbench.action.closeActiveEditor",
+      activeEditor.document.uri
+    );
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
   }
@@ -679,6 +683,14 @@ async function previewFile(targetPath: string) {
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
 
+    // Close previous previewed editor if it exists
+    if (previewState.previewedEditor) {
+      await vscode.commands.executeCommand(
+        "workbench.action.closeActiveEditor",
+        previewState.previewedEditor.document.uri
+      );
+    }
+
     // Open to the side (right split) in preview mode
     const editor = await vscode.window.showTextDocument(fileDoc, {
       viewColumn: vscode.ViewColumn.Beside, // Opens in the editor group to the right
@@ -715,13 +727,7 @@ async function previewDirectory(directoryPath: string) {
     // Get directory listing in oil format
     const directoryContent = await getDirectoryListing(directoryPath, oilState);
 
-    // Generate a unique URI for this directory
-    const pathHash = Buffer.from(directoryPath)
-      .toString("base64")
-      .replace(/[/+=]/g, "_")
-      .substring(0, 10);
-
-    const previewName = `${path.basename(directoryPath)}-${pathHash}`;
+    const previewName = path.basename(directoryPath);
     const previewUri = vscode.Uri.parse(
       `${OIL_PREVIEW_SCHEME}:/${previewName}`
     );
@@ -732,6 +738,14 @@ async function previewDirectory(directoryPath: string) {
     // Open the virtual document
     const fileDoc = await vscode.workspace.openTextDocument(previewUri);
     await vscode.languages.setTextDocumentLanguage(fileDoc, "oil");
+
+    // Close previous previewed editor if it exists
+    if (previewState.previewedEditor) {
+      await vscode.commands.executeCommand(
+        "workbench.action.closeActiveEditor",
+        previewState.previewedEditor.document.uri
+      );
+    }
 
     // Show the document to the side
     const editor = await vscode.window.showTextDocument(fileDoc, {
