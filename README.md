@@ -29,9 +29,8 @@ If you're using vscode-neovim and want to customize the keymaps for oil.code:
 ```lua
 -- Default oil.code keymaps
 if vim.g.vscode then
-    local vscode = require('vscode-neovim')
+    local vscode = require('vscode')
     local map = vim.keymap.set
-
     vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
         pattern = {"*"},
         callback = function()
@@ -39,8 +38,8 @@ if vim.g.vscode then
         end,
     })
 
-    vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
-        pattern = {"*oil.code*"},
+    vim.api.nvim_create_autocmd({'FileType'}, {
+        pattern = {"oil"},
         callback = function()
             map("n", "-", function() vscode.action('oil-code.openParent') end)
             map("n", "<CR>", function() vscode.action('oil-code.select') end)
@@ -82,6 +81,50 @@ If you're using VSCodeVim and want to customize the keymaps for oil.code:
 Oil.nvim is a favorite plugin of mine and I find myself going back and forth between Neovim and VSCode for various projects. Being able to quickly rename or move a file is an experience I want everywhere and I want to share with the great community of VSCode and Codium users.
 
 Odds are good that if you found this plugin, you are like me and have experienced Oil.nvim and have found yourself back in VSCode and miss oil dearly.
+
+## oil.nvim feature comparison
+
+The goal of this project isn't to be an exact implementation of oil.nvim for VSCode but rather to provide the most used and useful parts of it. If you use something that hasn't been implemented, please open an issue and let me know what is missing and how you typically use it.
+
+Below is a list of features and keymaps that oil.nvim has and their status in oil.code. The implementation between the two projects is very different so some features may not be possible to match exactly.
+
+Key:
+
+- ✅ Implemented
+- ❌ Not Implemented
+- ❓ Not Planned
+
+| feature                                                          | oil.code |
+| ---------------------------------------------------------------- | -------- |
+| Create new file                                                  | ✅       |
+| Delete file                                                      | ✅       |
+| Move file                                                        | ✅       |
+| Rename file                                                      | ✅       |
+| Move and Rename file                                             | ✅       |
+| Create new directory                                             | ✅       |
+| Delete directory                                                 | ✅       |
+| Move directory                                                   | ✅       |
+| Rename directory                                                 | ✅       |
+| Move and Rename directory                                        | ✅       |
+| Open oil in multiple splits at once                              | ❌       |
+| ["g?"] = { "actions.show_help", mode = "n" }                     | ❌       |
+| ["\<CR\>"] = "actions.select"                                    | ✅       |
+| ["\<C-s\>"] = { "actions.select", opts = { vertical = true } }   | ❌       |
+| ["\<C-h\>"] = { "actions.select", opts = { horizontal = true } } | ❌       |
+| ["\<C-t\>"] = { "actions.select", opts = { tab = true } }        | ❌       |
+| ["\<C-p\>"] = "actions.preview"                                  | ✅[^1]   |
+| ["\<C-c\>"] = { "actions.close", mode = "n" }                    | ❌       |
+| ["\<C-l\>"] = "actions.refresh"                                  | ❌       |
+| ["-"] = { "actions.parent", mode = "n" }                         | ✅       |
+| ["_"] = { "actions.open_cwd", mode = "n" }                       | ❌       |
+| ["`"] = { "actions.cd", mode = "n" }                             | ❓       |
+| ["~"] = { "actions.cd", opts = { scope = "tab" }, mode = "n" }   | ❓       |
+| ["gs"] = { "actions.change_sort", mode = "n" }                   | ❌       |
+| ["gx"] = "actions.open_external"                                 | ❓       |
+| ["g."] = { "actions.toggle_hidden", mode = "n" }                 | ❌       |
+| ["g\\"] = { "actions.toggle_trash", mode = "n" }                 | ❓       |
+
+[^1]: "\<C-p\>" keymap might have conflicts with Vim plugins and may require additional config
 
 ## Other great extensions
 

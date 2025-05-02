@@ -26,5 +26,16 @@
       "start": "^\\s*// region\\b",
       "end": "^\\s*// endregion\\b"
     }
-  }
+  },
+  "wordPattern": "([^/]|[^/][^0-9])+",
+  "indentationRules": {
+    "decreaseIndentPattern": "^\\s*\\}",
+    "increaseIndentPattern": "^\\s*\\{"
+  },
+  "onEnterRules": [
+    {
+      "beforeText": "^/\\d{3} .*$",
+      "action": { "indent": "none" }
+    }
+  ]
 }
