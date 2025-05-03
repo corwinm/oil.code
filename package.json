@@ -22,6 +22,10 @@
         "title": "Oil: Open - Open Oil in active files directory"
       },
       {
+        "command": "oil-code.close",
+        "title": "Oil: Close - Close Oil if active"
+      },
+      {
         "command": "oil-code.select",
         "title": "Oil: Select - Open entry under the cursor"
       },
@@ -47,6 +51,11 @@
       {
         "command": "oil-code.open",
         "key": "alt+-"
+      },
+      {
+        "command": "oil-code.close",
+        "key": "alt+c",
+        "when": "editorTextFocus && editorLangId == oil"
       },
       {
         "command": "oil-code.select",
@@ -78,6 +87,11 @@
           "type": "boolean",
           "default": false,
           "description": "Disable all Vim keymaps for oil.code. Default is false. Set this to true if you want to set your own keymaps. Reload after changing this setting."
+        },
+        "oil-code.disableOpenCwdNothingOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Disable opening the current working directory when nothing is open. Default is false. Set this to true if you want to disable this feature."
         }
       }
     }
