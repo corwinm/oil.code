@@ -16,6 +16,7 @@ To open oil.code:
 | Vim Shortcut (normal mode) | Default Shortcut | Command               | Description                                     |
 | -------------------------- | ---------------- | --------------------- | ----------------------------------------------- |
 | `Enter`                    | `alt+Enter`      | `oil-code.select`     | Open file or enter directory                    |
+| -- No Default --           | `alt+c`          | `oil-code.close`      | Close active oil file and open previous file    |
 | `-`                        | `alt+-`          | `oil-code.openParent` | Navigate to parent directory                    |
 | `ctrl+p`                   | `alt+p`          | `oil-code.preview`    | Toggle preview window of entry under the cursor |
 
@@ -96,6 +97,7 @@ Key:
 
 | feature                                                          | oil.code |
 | ---------------------------------------------------------------- | -------- |
+| Use as default file explorer                                     | ✅[^1]   |
 | Create new file                                                  | ✅       |
 | Delete file                                                      | ✅       |
 | Move file                                                        | ✅       |
@@ -112,8 +114,8 @@ Key:
 | ["\<C-s\>"] = { "actions.select", opts = { vertical = true } }   | ❌       |
 | ["\<C-h\>"] = { "actions.select", opts = { horizontal = true } } | ❌       |
 | ["\<C-t\>"] = { "actions.select", opts = { tab = true } }        | ❌       |
-| ["\<C-p\>"] = "actions.preview"                                  | ✅[^1]   |
-| ["\<C-c\>"] = { "actions.close", mode = "n" }                    | ❌       |
+| ["\<C-p\>"] = "actions.preview"                                  | ✅[^2]   |
+| ["\<C-c\>"] = { "actions.close", mode = "n" }                    | ✅[^3]   |
 | ["\<C-l\>"] = "actions.refresh"                                  | ❌       |
 | ["-"] = { "actions.parent", mode = "n" }                         | ✅       |
 | ["_"] = { "actions.open_cwd", mode = "n" }                       | ❌       |
@@ -124,7 +126,9 @@ Key:
 | ["g."] = { "actions.toggle_hidden", mode = "n" }                 | ❌       |
 | ["g\\"] = { "actions.toggle_trash", mode = "n" }                 | ❓       |
 
-[^1]: "\<C-p\>" keymap might have conflicts with Vim plugins and may require additional config
+[^1]: If VSCode is opened and no files are opened, the oil window will open. This can be disabled in settings.
+[^2]: "\<C-p\>" keymap might have conflicts with Vim plugins and may require additional config
+[^3]: `oil-code.close` is implemented but I was not able to set the default keymap of "\<C-c\>"
 
 ## Other great extensions
 

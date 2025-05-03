@@ -18,6 +18,7 @@ interface OilState {
   identifierCounter: number;
   visitedPaths: Map<string, string[]>;
   editedPaths: Map<string, string[]>;
+  openedFrom?: string;
   openAfterSave?: string;
 }
 
@@ -41,6 +42,23 @@ function initOilState() {
   const newState = {
     tempFileUri: tempFileUri,
     currentPath: currentOrWorkspacePath,
+    identifierCounter: 1,
+    visitedPaths: new Map(),
+    editedPaths: new Map(),
+    openedFrom: vscode.window.activeTextEditor?.document.uri.fsPath,
+  };
+
+  oils.set(tempFileUri.toString(), newState);
+
+  return newState;
+}
+
+function initOilStateWithPath(path: string) {
+  const tempFileUri = vscode.Uri.parse(`${OIL_SCHEME}:/${path}`);
+
+  const newState = {
+    tempFileUri: tempFileUri,
+    currentPath: path,
     identifierCounter: 1,
     visitedPaths: new Map(),
     editedPaths: new Map(),
@@ -148,7 +166,9 @@ class OilPreviewFileSystemProvider implements vscode.FileSystemProvider {
   // Read an in-memory document
   readFile(uri: vscode.Uri): Uint8Array {
     const content = this.documents.get(uri.toString());
-    if (content) return content;
+    if (content) {
+      return content;
+    }
     throw vscode.FileSystemError.FileNotFound(uri);
   }
 
@@ -218,24 +238,6 @@ async function configureRecentFilesExclusions() {
       updatedSearchExcludes,
       vscode.ConfigurationTarget.Global
     );
-
-    // Also exclude from file watcher to avoid unnecessary refresh events
-    const watcherConfig = vscode.workspace.getConfiguration(
-      "files.watcherExclude"
-    );
-    const watcherExcludes = watcherConfig.get<object>("") || {};
-
-    const updatedWatcherExcludes = {
-      ...watcherExcludes,
-      [`${OIL_SCHEME}:/**`]: true,
-      [`${OIL_PREVIEW_SCHEME}:/**`]: true,
-    };
-
-    await watcherConfig.update(
-      "",
-      updatedWatcherExcludes,
-      vscode.ConfigurationTarget.Global
-    );
   } catch (error) {
     logger.error("Failed to configure exclusions:", error);
   }
@@ -267,7 +269,7 @@ async function checkAndEnableAutoSave() {
   }
 }
 
-async function openOil() {
+async function openOil(atPath?: string | undefined) {
   logger.trace("Opening oil file...");
   const activeEditor = vscode.window.activeTextEditor;
 
@@ -276,7 +278,7 @@ async function openOil() {
     return;
   }
 
-  const oilState = initOilState();
+  const oilState = atPath ? initOilStateWithPath(atPath) : initOilState();
   const activeFile = path.basename(activeEditor?.document.uri.fsPath || "");
 
   const folderPath = oilState.currentPath;
@@ -316,6 +318,28 @@ async function openOil() {
     }
   } else {
     vscode.window.showErrorMessage("Unable to determine the folder to open.");
+  }
+}
+
+function closeOil() {
+  if (vscode.window.activeTextEditor?.document.languageId === "oil") {
+    const oilState = getOilState();
+    if (oilState && oilState.openedFrom) {
+      const openedFrom = oilState.openedFrom;
+      const openedFromUri = vscode.Uri.file(openedFrom);
+      // Open the original file
+      vscode.workspace.openTextDocument(openedFromUri).then((doc) => {
+        vscode.window.showTextDocument(doc, {
+          viewColumn: vscode.ViewColumn.Active,
+          preview: true,
+        });
+      });
+    }
+
+    vscode.commands.executeCommand(
+      "workbench.action.closeActiveEditor",
+      vscode.window.activeTextEditor?.document.uri
+    );
   }
 }
 
@@ -457,17 +481,30 @@ async function select(overRideLineText?: string) {
       const newDoc = await vscode.workspace.openTextDocument(newUri);
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
-      // Close the old document
-      await vscode.window.showTextDocument(oldUri);
-      await vscode.commands.executeCommand(
-        "workbench.action.revertAndCloseActiveEditor"
-      );
-
-      // Show the new document in the same editor
-      const editor = await vscode.window.showTextDocument(newDoc, {
-        viewColumn: activeEditor.viewColumn,
-        preview: true,
-      });
+      let editor: vscode.TextEditor;
+      if (activeEditor.document.isDirty) {
+        // Close the old document
+        await vscode.window.showTextDocument(oldUri);
+        await vscode.commands.executeCommand(
+          "workbench.action.revertAndCloseActiveEditor"
+        );
+        // Show the new document in the same editor
+        editor = await vscode.window.showTextDocument(newDoc, {
+          viewColumn: activeEditor.viewColumn,
+          preview: true,
+        });
+      } else {
+        // If the document is not dirty, just show the new document
+        editor = await vscode.window.showTextDocument(newDoc, {
+          viewColumn: activeEditor.viewColumn,
+          preview: true,
+        });
+        // Close the old document
+        await vscode.commands.executeCommand(
+          "workbench.action.closeActiveEditor",
+          oldUri
+        );
+      }
 
       // Remove the old URI from the oils map
       oils.delete(oldUri.toString());
@@ -557,14 +594,25 @@ async function select(overRideLineText?: string) {
   try {
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
-    await vscode.window.showTextDocument(activeEditor.document.uri);
-    await vscode.commands.executeCommand(
-      "workbench.action.revertAndCloseActiveEditor"
-    );
-    await vscode.window.showTextDocument(fileDoc, {
-      viewColumn: activeEditor.viewColumn,
-      preview: true,
-    });
+    if (activeEditor.document.isDirty) {
+      await vscode.window.showTextDocument(activeEditor.document.uri);
+      await vscode.commands.executeCommand(
+        "workbench.action.revertAndCloseActiveEditor"
+      );
+      await vscode.window.showTextDocument(fileDoc, {
+        viewColumn: activeEditor.viewColumn,
+        preview: true,
+      });
+    } else {
+      await vscode.window.showTextDocument(fileDoc, {
+        viewColumn: activeEditor.viewColumn,
+        preview: true,
+      });
+      await vscode.commands.executeCommand(
+        "workbench.action.closeActiveEditor",
+        activeEditor.document.uri
+      );
+    }
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
   }
@@ -1371,6 +1419,11 @@ function getDisableVimKeymapsSetting(): boolean {
   return config.get<boolean>("disableVimKeymaps") || false;
 }
 
+function getDisableOpenCwdNothingOpenSetting(): boolean {
+  const config = vscode.workspace.getConfiguration("oil-code");
+  return config.get<boolean>("disableOpenCwdNothingOpen") || false;
+}
+
 // Check if Neovim extension is available
 async function isNeovimAvailable(): Promise<boolean> {
   try {
@@ -1693,21 +1746,39 @@ export function activate(context: vscode.ExtensionContext) {
   // Add the listener to the subscriptions for proper disposal
   context.subscriptions.push(extensionChangeListener);
 
-  // Make initial attempt to register Vim keymaps with retries
-  attemptRegisteringVimKeymaps(
-    MAX_EXTENSION_DETECTION_RETRIES,
-    EXTENSION_DETECTION_DELAY
-  );
-
   context.subscriptions.push(
     logger,
     vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor),
     vscode.workspace.onDidSaveTextDocument(onDidSaveTextDocument),
     vscode.commands.registerCommand("oil-code.open", openOil),
+    vscode.commands.registerCommand("oil-code.close", closeOil),
     vscode.commands.registerCommand("oil-code.select", select),
     vscode.commands.registerCommand("oil-code.openParent", openParent),
     vscode.commands.registerCommand("oil-code.preview", preview)
   );
+
+  // Make initial attempt to register Vim keymaps with retries
+  attemptRegisteringVimKeymaps(
+    MAX_EXTENSION_DETECTION_RETRIES,
+    EXTENSION_DETECTION_DELAY
+  ).then(() => {
+    logger.info("Vim keymaps registration completed");
+    const disableOpenCwdNothingOpen = getDisableOpenCwdNothingOpenSetting();
+    if (disableOpenCwdNothingOpen) {
+      logger.info(
+        "Open CWD when nothing is open setting is disabled. Skipping initial open."
+      );
+      return;
+    }
+    const rootUri = vscode.workspace.workspaceFolders?.[0].uri;
+    const openFiles = vscode.workspace.textDocuments.some(
+      (doc) => doc.uri.scheme === "file"
+    );
+    if (rootUri && !openFiles) {
+      // Open the oil file in the editor
+      openOil(rootUri.fsPath);
+    }
+  });
 }
 
 // This method is called when your extension is deactivated
