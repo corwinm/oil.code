@@ -485,7 +485,6 @@ async function select(overRideLineText?: string) {
       if (activeEditor.document.isDirty) {
         // Close the old document
         await vscode.window.showTextDocument(oldUri);
-        // TODO: Only do this if the file is dirty
         await vscode.commands.executeCommand(
           "workbench.action.revertAndCloseActiveEditor"
         );
