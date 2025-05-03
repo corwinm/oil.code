@@ -295,10 +295,12 @@ async function openOil(atPath?: string | undefined) {
       );
 
       // Open the in-memory document
-      let doc = await vscode.workspace.openTextDocument(oilState.tempFileUri);
+      const doc = await vscode.workspace.openTextDocument(oilState.tempFileUri);
       await vscode.languages.setTextDocumentLanguage(doc, "oil");
 
-      let editor = await vscode.window.showTextDocument(doc, { preview: true });
+      const editor = await vscode.window.showTextDocument(doc, {
+        preview: false,
+      });
 
       if (activeEditor) {
         await vscode.commands.executeCommand(
@@ -331,7 +333,6 @@ function closeOil() {
       vscode.workspace.openTextDocument(openedFromUri).then((doc) => {
         vscode.window.showTextDocument(doc, {
           viewColumn: vscode.ViewColumn.Active,
-          preview: true,
         });
       });
     }
@@ -491,13 +492,13 @@ async function select(overRideLineText?: string) {
         // Show the new document in the same editor
         editor = await vscode.window.showTextDocument(newDoc, {
           viewColumn: activeEditor.viewColumn,
-          preview: true,
+          preview: false,
         });
       } else {
         // If the document is not dirty, just show the new document
         editor = await vscode.window.showTextDocument(newDoc, {
           viewColumn: activeEditor.viewColumn,
-          preview: true,
+          preview: false,
         });
         // Close the old document
         await vscode.commands.executeCommand(
@@ -601,12 +602,12 @@ async function select(overRideLineText?: string) {
       );
       await vscode.window.showTextDocument(fileDoc, {
         viewColumn: activeEditor.viewColumn,
-        preview: true,
+        preview: false,
       });
     } else {
       await vscode.window.showTextDocument(fileDoc, {
         viewColumn: activeEditor.viewColumn,
-        preview: true,
+        preview: false,
       });
       await vscode.commands.executeCommand(
         "workbench.action.closeActiveEditor",
