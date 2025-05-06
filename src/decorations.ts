@@ -156,19 +156,20 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
 
       let icon;
       let fontColor = "inherit";
+      let iconKey = "";
       if (hasNerdFont) {
-        const { icon: nerdIcon, color } = getNerdFontFileIcon(
-          fileName,
-          isDirectory
-        );
+        const {
+          icon: nerdIcon,
+          color,
+          extension,
+        } = getNerdFontFileIcon(fileName, isDirectory);
         icon = nerdIcon;
         fontColor = color;
+        iconKey = extension;
       } else {
         icon = getFileIcon(fileName, isDirectory);
+        iconKey = isDirectory ? "directory" : path.extname(fileName) || "file";
       }
-      const iconKey = isDirectory
-        ? "directory"
-        : path.extname(fileName) || "file";
 
       // Create decoration type if it doesn't exist
       if (!fileIconDecorations.has(iconKey)) {
