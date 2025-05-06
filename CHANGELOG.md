@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.15](https://github.com/corwinm/oil.code/compare/v0.0.14...v0.0.15)
+
+- fix: Error where extension for nerd font was incorrectly mapped
+
 ## [0.0.14](https://github.com/corwinm/oil.code/compare/v0.0.13...v0.0.14)
 
 - feat: Nerd fonts and other icon enhancements by @corwinm in https://github.com/corwinm/oil.code/pull/12
