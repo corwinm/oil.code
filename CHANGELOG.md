@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.14](https://github.com/corwinm/oil.code/compare/v0.0.13...v0.0.14)
+
+- feat: Nerd fonts and other icon enhancements by @corwinm in https://github.com/corwinm/oil.code/pull/12
+
 ## [0.0.13](https://github.com/corwinm/oil.code/compare/v0.0.12...v0.0.13)
 
 - fix: Fix oil open error when "workbench.editor.enablePreview" is false by @corwinm in https://github.com/corwinm/oil.code/pull/11
