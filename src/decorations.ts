@@ -23,7 +23,7 @@ function getFileIcon(fileName: string, isDirectory: boolean): string {
   switch (ext) {
     case ".html":
     case ".htm":
-      return "🌐 "; // HTML
+      return "🌐"; // HTML
     case ".js":
     case ".ts":
     case ".sh":
@@ -34,51 +34,51 @@ function getFileIcon(fileName: string, isDirectory: boolean): string {
     case ".bat":
     case ".cmd":
     case ".ps1":
-      return "📜 "; // Scripts
+      return "📜"; // Scripts
     case ".jsx":
     case ".tsx":
-      return "⚛︎ "; // React components
+      return "⚛️"; // React components
     case ".css":
     case ".scss":
     case ".sass":
     case ".less":
-      return "# "; // CSS
+      return "#"; // CSS
     case ".md":
-      return "⬇︎ "; // Markdown
+      return "⬇︎"; // Markdown
     case ".java":
     case ".class":
     case ".jar":
-      return "☕ "; // Java
+      return "☕"; // Java
     case ".py":
     case ".pyc":
     case ".pyo":
-      return "🐍 "; // Python
+      return "🐍"; // Python
     case ".rb":
     case ".gem":
-      return "💎 "; // Ruby
+      return "💎"; // Ruby
     case ".php":
     case ".phtml":
-      return "🐘 "; // PHP
+      return "🐘"; // PHP
     case ".go":
-      return "🐹 "; // Go
+      return "🐹"; // Go
     case ".rs":
-      return "🦀 "; // Rust
+      return "🦀"; // Rust
     case ".c":
     case ".cpp":
     case ".cxx":
     case ".h":
     case ".hpp":
     case ".hxx":
-      return "C "; // C/C++
+      return "C"; // C/C++
     case ".swift":
-      return "🦄 "; // Swift
+      return "🦄"; // Swift
     case ".png":
     case ".jpg":
     case ".jpeg":
     case ".gif":
     case ".svg":
     case ".bmp":
-      return "🖼️ "; // Images
+      return "🖼️"; // Images
     case ".mp3":
     case ".wav":
     case ".flac":
@@ -86,28 +86,28 @@ function getFileIcon(fileName: string, isDirectory: boolean): string {
     case ".m4a":
     case ".aac":
     case ".wma":
-      return "🎵 "; // Audio
+      return "🎵"; // Audio
     case ".mp4":
     case ".mov":
     case ".avi":
-      return "🎬 "; // Video
+      return "🎬"; // Video
     case ".zip":
     case ".tar":
     case ".gz":
     case ".rar":
-      return "📦 "; // Archives
+      return "📦"; // Archives
     case ".exe":
     case ".dll":
     case ".app":
     case ".apk":
     case ".iso":
     case ".bin":
-      return "⚙️ "; // Executables
+      return "⚙️"; // Executables
     case ".gitignore":
     case ".gitattributes":
-      return "🔧 "; // Git files
+      return "🔧"; // Git files
     default:
-      return "📄 "; // Default file icon
+      return "📄"; // Default file icon
   }
 }
 
@@ -137,7 +137,7 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
     const text = line.text;
 
     // Match /ddd pattern at start of line
-    const match = text.match(/^(\/\d{3}) (.*)/);
+    const match = text.match(/^(\/\d{3} )(.*)/);
     if (match) {
       const prefixLength = match[1].length;
       const fileName = match[2].trim();
@@ -161,6 +161,7 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
           vscode.window.createTextEditorDecorationType({
             before: {
               contentText: icon,
+              width: "1.5em",
             },
           })
         );
@@ -176,8 +177,8 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
         .get(iconKey)!
         .push(
           new vscode.Range(
-            new vscode.Position(i, prefixLength + 1),
-            new vscode.Position(i, prefixLength + 1)
+            new vscode.Position(i, prefixLength),
+            new vscode.Position(i, prefixLength)
           )
         );
 
