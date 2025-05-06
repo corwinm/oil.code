@@ -130,6 +130,14 @@ Key:
 [^2]: "\<C-p\>" keymap might have conflicts with Vim plugins and may require additional config
 [^3]: `oil-code.close` is implemented but I was not able to set the default keymap of "\<C-c\>"
 
+## Nerd Fonts
+
+[Nerd font](https://www.nerdfonts.com/) provide standard text characters along with a collection of icons.
+
+You can set the VSCode text editor to use an installed Nerd Font by setting `"editor.fontFamily": "JetBrainsMono Nerd Font"` where "JetBrainsMono Nerd Font" is an example of a Nerd Font.
+
+Once you have a Nerd Font set for your editor font, to use these icons in your oil view, set `"oil-code.hasNerdFont": true`.
+
 ## Other great extensions
 
 - [vsnetrw](https://github.com/danprince/vsnetrw): Another great option for a split file explorer.

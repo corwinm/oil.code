@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import { getNerdFontFileIcon } from "./nerd-fonts";
 
 // Create decoration type for hidden prefix
 const hiddenPrefixDecoration = vscode.window.createTextEditorDecorationType({
@@ -131,6 +132,11 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
   // Track icon decorations for this update
   const iconDecorations = new Map<string, vscode.Range[]>();
 
+  // Add icon after the prefix and space
+  // Get appropriate icon based on configuration
+  const config = vscode.workspace.getConfiguration("oil-code");
+  const hasNerdFont = config.get("hasNerdFont") === true;
+
   // Find all matches of "/ddd " pattern at the start of lines
   for (let i = 0; i < document.lineCount; i++) {
     const line = document.lineAt(i);
@@ -148,8 +154,18 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
       const endPos = new vscode.Position(i, prefixLength);
       hiddenRanges.push(new vscode.Range(startPos, endPos));
 
-      // Add icon after the prefix and space
-      const icon = getFileIcon(fileName, isDirectory);
+      let icon;
+      let fontColor = "inherit";
+      if (hasNerdFont) {
+        const { icon: nerdIcon, color } = getNerdFontFileIcon(
+          fileName,
+          isDirectory
+        );
+        icon = nerdIcon;
+        fontColor = color;
+      } else {
+        icon = getFileIcon(fileName, isDirectory);
+      }
       const iconKey = isDirectory
         ? "directory"
         : path.extname(fileName) || "file";
@@ -162,6 +178,7 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
             before: {
               contentText: icon,
               width: "1.5em",
+              color: fontColor,
             },
           })
         );
