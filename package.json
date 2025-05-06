@@ -92,6 +92,11 @@
           "type": "boolean",
           "default": false,
           "description": "Disable opening the current working directory when nothing is open. Default is false. Set this to true if you want to disable this feature."
+        },
+        "oil-code.hasNerdFont": {
+          "type": "boolean",
+          "default": false,
+          "description": "Set this to true if you have nerd font installed. Default is false. Set this to true if you want to use nerd font icons."
         }
       }
     }
