@@ -130,9 +130,17 @@ Key:
 [^2]: "\<C-p\>" keymap might have conflicts with Vim plugins and may require additional config
 [^3]: `oil-code.close` is implemented but I was not able to set the default keymap of "\<C-c\>"
 
-## Nerd Fonts
+## Icons
 
-[Nerd font](https://www.nerdfonts.com/) provide standard text characters along with a collection of icons.
+### Default Icons
+
+The oil view provides basic emoji based icons for files. I wasn't able to find a way to use the same icons that you would see in the default file explorer. If you are looking for better icons, consider Nerd fonts as described below.
+
+### Nerd Fonts
+
+To use an improved set of icons, you can use a [Nerd font](https://www.nerdfonts.com/) in VSCode and enable these icons in oil.code.
+
+[Nerd fonts](https://www.nerdfonts.com/) provide standard text characters along with a collection of icons.
 
 You can set the VSCode text editor to use an installed Nerd Font by setting `"editor.fontFamily": "JetBrainsMono Nerd Font"` where "JetBrainsMono Nerd Font" is an example of a Nerd Font.
 
