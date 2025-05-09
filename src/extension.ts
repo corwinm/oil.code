@@ -754,12 +754,11 @@ async function refresh() {
     // Apply the edit
     await vscode.workspace.applyEdit(edit);
 
-    // Reset the document's dirty state
-    await activeEditor.document.save();
-
-    vscode.window.showInformationMessage(
-      "Directory listing refreshed from disk."
-    );
+    // Check if other directories have changes
+    if (!hasPendingChanges()) {
+      // Reset the document's dirty state
+      await activeEditor.document.save();
+    }
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to refresh directory: ${error}`);
   }
