@@ -1876,7 +1876,14 @@ export function activate(context: vscode.ExtensionContext) {
     const openFiles = vscode.workspace.textDocuments.some(
       (doc) => doc.uri.scheme === "file"
     );
-    if (rootUri && !openFiles) {
+    const openOilFiles = vscode.workspace.textDocuments.filter(
+      (doc) => doc.uri.scheme === OIL_SCHEME
+    );
+    const hasOilLoaded = openOilFiles.some((doc) => {
+      const content = doc.getText();
+      return content.length > 0;
+    });
+    if (rootUri && !openFiles && !hasOilLoaded) {
       // Open the oil file in the editor
       openOil(rootUri.fsPath);
     }
