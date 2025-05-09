@@ -32,6 +32,10 @@
       {
         "command": "oil-code.preview",
         "title": "Oil: Preview - Toggle preview window of entry under the cursor"
+      },
+      {
+        "command": "oil-code.refresh",
+        "title": "Oil: Refresh - Refresh directory listing from disk"
       }
     ],
     "languages": [
@@ -40,9 +44,6 @@
         "aliases": [
           "Oil",
           "oil"
-        ],
-        "filenames": [
-          "《 oil.code 》"
         ],
         "configuration": "./language-configuration.json"
       }
@@ -70,6 +71,11 @@
       {
         "command": "oil-code.preview",
         "key": "alt+p",
+        "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
+        "command": "oil-code.refresh",
+        "key": "alt+l",
         "when": "editorTextFocus && editorLangId == oil"
       }
     ],
