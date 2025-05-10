@@ -19,7 +19,7 @@ To open oil.code:
 | -- No Default --           | `alt+c`          | `oil-code.close`      | Close active oil file and open previous file    |
 | `-`                        | `alt+-`          | `oil-code.openParent` | Navigate to parent directory                    |
 | `ctrl+p`                   | `alt+p`          | `oil-code.preview`    | Toggle preview window of entry under the cursor |
-| `ctrl+l`                   | `alt+r`          | `oil-code.refresh`    | Refresh directory listing from disk             |
+| `ctrl+l`                   | `alt+l`          | `oil-code.refresh`    | Refresh directory listing from disk             |
 
 ### [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim) Keymaps
 
