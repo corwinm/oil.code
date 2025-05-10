@@ -685,6 +685,85 @@ function hasPendingChanges(): boolean {
   return oilState.editedPaths.size > 0;
 }
 
+// Function to refresh the current oil view
+async function refresh() {
+  logger.trace("Refreshing oil file...");
+  const activeEditor = vscode.window.activeTextEditor;
+
+  // Check if we're in an oil editor
+  if (!activeEditor || activeEditor.document.uri.scheme !== OIL_SCHEME) {
+    vscode.window.showErrorMessage("Not in an oil editor.");
+    return;
+  }
+
+  const oilState = getOilState();
+  if (!oilState) {
+    vscode.window.showErrorMessage("Failed to get oil state.");
+    return;
+  }
+
+  if (!oilState.currentPath) {
+    vscode.window.showErrorMessage("No current path found.");
+    return;
+  }
+
+  // Check if there are any pending changes in the current path
+  const hasChangesInCurrentPath = oilState.editedPaths.has(
+    oilState.currentPath
+  );
+
+  if (hasChangesInCurrentPath || activeEditor.document.isDirty) {
+    // Ask for confirmation before discarding changes
+    const response = await vscode.window.showWarningMessage(
+      "Discard changes?",
+      { modal: true },
+      "Yes",
+      "No"
+    );
+
+    if (response !== "Yes") {
+      // User chose not to discard changes
+      return;
+    }
+
+    // Remove the current path from edited paths
+    oilState.editedPaths.delete(oilState.currentPath);
+  }
+
+  try {
+    // Clear the visited path cache for the current directory to force refresh from disk
+    oilState.visitedPaths.delete(oilState.currentPath);
+
+    // Get updated directory content from disk
+    const directoryContent = await getDirectoryListing(
+      oilState.currentPath,
+      oilState
+    );
+
+    // Create a workspace edit to update the document
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(
+      activeEditor.document.uri,
+      new vscode.Range(
+        new vscode.Position(0, 0),
+        activeEditor.document.positionAt(activeEditor.document.getText().length)
+      ),
+      directoryContent
+    );
+
+    // Apply the edit
+    await vscode.workspace.applyEdit(edit);
+
+    // Check if other directories have changes
+    if (!hasPendingChanges()) {
+      // Reset the document's dirty state
+      await activeEditor.document.save();
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to refresh directory: ${error}`);
+  }
+}
+
 // Helper function to recursively remove a directory and its contents
 async function removeDirectoryRecursively(dirPath: string): Promise<void> {
   if (!fs.existsSync(dirPath)) {
@@ -1411,8 +1490,8 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
   }
 }
 
-const MAX_EXTENSION_DETECTION_RETRIES = 3;
-const EXTENSION_DETECTION_DELAY = 2000; // ms
+const MAX_EXTENSION_DETECTION_RETRIES = 6;
+const EXTENSION_DETECTION_DELAY = 500; // ms
 
 // Helper function to get setting for disabling vim keymaps
 function getDisableVimKeymapsSetting(): boolean {
@@ -1495,6 +1574,7 @@ vim.api.nvim_create_autocmd({'FileType'}, {
   callback = function()
     map("n", "-", function() vscode.action('oil-code.openParent') end)
     map("n", "<CR>", function() vscode.action('oil-code.select') end)
+    map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
   end,
 })
         `
@@ -1572,6 +1652,26 @@ async function registerVSCodeVimKeymap(): Promise<boolean> {
         keymapChanged = true;
       }
 
+      // Check for and add the Oil refresh binding if not present
+      const hasOilRefreshBinding = normalModeKeymap.some(
+        (binding) =>
+          binding.before &&
+          binding.before.length === 1 &&
+          binding.before[0] === "<c-l>" &&
+          binding.commands?.some(
+            (cmd: { command: string }) => cmd.command === "oil-code.refresh"
+          )
+      );
+
+      if (!hasOilRefreshBinding) {
+        updatedKeymap.push({
+          before: ["<c-l>"],
+          commands: [{ command: "oil-code.refresh" }],
+          when: "editorTextFocus && editorLangId == oil",
+        });
+        keymapChanged = true;
+      }
+
       // Update the configuration if changes were made
       if (keymapChanged) {
         await vimConfig.update(
@@ -1625,7 +1725,7 @@ async function attemptRegisteringVimKeymaps(
     }
 
     // If both are registered or we've exhausted attempts, we're done
-    if (neovimRegistered && vscodevimRegistered) {
+    if (neovimRegistered || vscodevimRegistered) {
       logger.info(
         "Successfully registered keymaps for all available Vim extensions"
       );
@@ -1755,7 +1855,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("oil-code.close", closeOil),
     vscode.commands.registerCommand("oil-code.select", select),
     vscode.commands.registerCommand("oil-code.openParent", openParent),
-    vscode.commands.registerCommand("oil-code.preview", preview)
+    vscode.commands.registerCommand("oil-code.preview", preview),
+    vscode.commands.registerCommand("oil-code.refresh", refresh)
   );
 
   // Make initial attempt to register Vim keymaps with retries
@@ -1775,7 +1876,14 @@ export function activate(context: vscode.ExtensionContext) {
     const openFiles = vscode.workspace.textDocuments.some(
       (doc) => doc.uri.scheme === "file"
     );
-    if (rootUri && !openFiles) {
+    const openOilFiles = vscode.workspace.textDocuments.filter(
+      (doc) => doc.uri.scheme === OIL_SCHEME
+    );
+    const hasOilLoaded = openOilFiles.some((doc) => {
+      const content = doc.getText();
+      return content.length > 0;
+    });
+    if (rootUri && !openFiles && !hasOilLoaded) {
       // Open the oil file in the editor
       openOil(rootUri.fsPath);
     }
