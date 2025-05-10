@@ -18,6 +18,7 @@ To open oil.code:
 | `Enter`                    | `alt+Enter`      | `oil-code.select`     | Open file or enter directory                    |
 | -- No Default --           | `alt+c`          | `oil-code.close`      | Close active oil file and open previous file    |
 | `-`                        | `alt+-`          | `oil-code.openParent` | Navigate to parent directory                    |
+| `_`                        | `alt+shift+-`    | `oil-code.openCwd`    | Navigate to current working directory           |
 | `ctrl+p`                   | `alt+p`          | `oil-code.preview`    | Toggle preview window of entry under the cursor |
 | `ctrl+l`                   | `alt+l`          | `oil-code.refresh`    | Refresh directory listing from disk             |
 
@@ -44,6 +45,7 @@ if vim.g.vscode then
         pattern = {"oil"},
         callback = function()
             map("n", "-", function() vscode.action('oil-code.openParent') end)
+            map("n", "_", function() vscode.action('oil-code.openCwd') end)
             map("n", "<CR>", function() vscode.action('oil-code.select') end)
             map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
         end,
@@ -120,7 +122,7 @@ Key:
 | ["\<C-c\>"] = { "actions.close", mode = "n" }                    | ✅[^3]   |
 | ["\<C-l\>"] = "actions.refresh"                                  | ✅       |
 | ["-"] = { "actions.parent", mode = "n" }                         | ✅       |
-| ["_"] = { "actions.open_cwd", mode = "n" }                       | ❌       |
+| ["_"] = { "actions.open_cwd", mode = "n" }                       | ✅       |
 | ["`"] = { "actions.cd", mode = "n" }                             | ❓       |
 | ["~"] = { "actions.cd", opts = { scope = "tab" }, mode = "n" }   | ❓       |
 | ["gs"] = { "actions.change_sort", mode = "n" }                   | ❌       |
