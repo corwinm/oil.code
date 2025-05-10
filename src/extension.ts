@@ -1490,8 +1490,8 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
   }
 }
 
-const MAX_EXTENSION_DETECTION_RETRIES = 3;
-const EXTENSION_DETECTION_DELAY = 2000; // ms
+const MAX_EXTENSION_DETECTION_RETRIES = 6;
+const EXTENSION_DETECTION_DELAY = 500; // ms
 
 // Helper function to get setting for disabling vim keymaps
 function getDisableVimKeymapsSetting(): boolean {
@@ -1725,7 +1725,7 @@ async function attemptRegisteringVimKeymaps(
     }
 
     // If both are registered or we've exhausted attempts, we're done
-    if (neovimRegistered && vscodevimRegistered) {
+    if (neovimRegistered || vscodevimRegistered) {
       logger.info(
         "Successfully registered keymaps for all available Vim extensions"
       );
