@@ -273,7 +273,7 @@ async function openOil(atPath?: string | undefined) {
   logger.trace("Opening oil file...");
   const activeEditor = vscode.window.activeTextEditor;
 
-  if (activeEditor?.document.languageId === "oil") {
+  if (activeEditor?.document.languageId === "oil" && !atPath) {
     openParent();
     return;
   }
@@ -400,7 +400,7 @@ async function getDirectoryListing(
   return listingsWithIds.join("\n");
 }
 
-async function select(overRideLineText?: string) {
+async function select(overRideLineText?: string, overRideTargetPath?: string) {
   logger.trace("Selecting file...");
   const activeEditor = vscode.window.activeTextEditor;
 
@@ -455,7 +455,9 @@ async function select(overRideLineText?: string) {
     vscode.window.showErrorMessage("No current folder path found.");
     return;
   }
-  const targetPath = path.join(currentFolderPath, fileName);
+  const targetPath = overRideTargetPath
+    ? overRideTargetPath
+    : path.join(currentFolderPath, fileName);
 
   // Store the current directory name when going up a directory
   let isGoingUp = fileName === "../";
@@ -622,6 +624,12 @@ async function select(overRideLineText?: string) {
 async function openParent() {
   logger.trace("Opening parent directory...");
   await select("../");
+}
+
+async function openCwd() {
+  logger.trace("Opening current working directory...");
+  const cwd = vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath;
+  await select("../", cwd);
 }
 
 async function onDidChangeActiveTextEditor(
@@ -1573,6 +1581,7 @@ vim.api.nvim_create_autocmd({'FileType'}, {
   pattern = {"oil"},
   callback = function()
     map("n", "-", function() vscode.action('oil-code.openParent') end)
+    map("n", "_", function() vscode.action('oil-code.openCwd') end)
     map("n", "<CR>", function() vscode.action('oil-code.select') end)
     map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
   end,
@@ -1647,7 +1656,6 @@ async function registerVSCodeVimKeymap(): Promise<boolean> {
         updatedKeymap.push({
           before: ["<cr>"],
           commands: [{ command: "oil-code.select" }],
-          when: "editorTextFocus && editorLangId == oil",
         });
         keymapChanged = true;
       }
@@ -1667,7 +1675,6 @@ async function registerVSCodeVimKeymap(): Promise<boolean> {
         updatedKeymap.push({
           before: ["<c-l>"],
           commands: [{ command: "oil-code.refresh" }],
-          when: "editorTextFocus && editorLangId == oil",
         });
         keymapChanged = true;
       }
@@ -1855,6 +1862,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("oil-code.close", closeOil),
     vscode.commands.registerCommand("oil-code.select", select),
     vscode.commands.registerCommand("oil-code.openParent", openParent),
+    vscode.commands.registerCommand("oil-code.openCwd", openCwd),
     vscode.commands.registerCommand("oil-code.preview", preview),
     vscode.commands.registerCommand("oil-code.refresh", refresh)
   );

@@ -22,6 +22,10 @@
         "title": "Oil: Open - Open Oil in active files directory"
       },
       {
+        "command": "oil-code.openCwd",
+        "title": "Oil: OpenCwd - Open current working directory"
+      },
+      {
         "command": "oil-code.close",
         "title": "Oil: Close - Close Oil if active"
       },
@@ -54,6 +58,11 @@
         "key": "alt+-"
       },
       {
+        "command": "oil-code.openCwd",
+        "key": "alt+shift+-",
+        "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
         "command": "oil-code.close",
         "key": "alt+c",
         "when": "editorTextFocus && editorLangId == oil"
@@ -62,6 +71,11 @@
         "command": "oil-code.select",
         "key": "alt+enter",
         "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
+        "command": "oil-code.openCwd",
+        "key": "shift+-",
+        "when": "editorTextFocus && editorLangId == oil && vim.mode == 'Normal'"
       },
       {
         "command": "oil-code.preview",
