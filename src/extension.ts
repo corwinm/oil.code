@@ -2,6 +2,7 @@ import path from "path";
 import * as vscode from "vscode";
 import * as fs from "fs";
 import { activateDecorations } from "./decorations";
+import { log } from "console";
 
 const logger = vscode.window.createOutputChannel("oil.code", { log: true });
 
@@ -400,7 +401,15 @@ async function getDirectoryListing(
   return listingsWithIds.join("\n");
 }
 
-async function select(overRideLineText?: string, overRideTargetPath?: string) {
+async function select({
+  overRideLineText,
+  overRideTargetPath,
+  viewColumn,
+}: {
+  overRideLineText?: string;
+  overRideTargetPath?: string;
+  viewColumn?: vscode.ViewColumn;
+} = {}) {
   logger.trace("Selecting file...");
   const activeEditor = vscode.window.activeTextEditor;
 
@@ -449,7 +458,6 @@ async function select(overRideLineText?: string, overRideTargetPath?: string) {
     return;
   }
 
-  // const currentFilePath = oilState.currentPath;
   const currentFolderPath = oilState.currentPath;
   if (!currentFolderPath) {
     vscode.window.showErrorMessage("No current folder path found.");
@@ -485,7 +493,7 @@ async function select(overRideLineText?: string, overRideTargetPath?: string) {
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
       let editor: vscode.TextEditor;
-      if (activeEditor.document.isDirty) {
+      if (activeEditor.document.isDirty && !viewColumn) {
         // Close the old document
         await vscode.window.showTextDocument(oldUri);
         await vscode.commands.executeCommand(
@@ -499,14 +507,16 @@ async function select(overRideLineText?: string, overRideTargetPath?: string) {
       } else {
         // If the document is not dirty, just show the new document
         editor = await vscode.window.showTextDocument(newDoc, {
-          viewColumn: activeEditor.viewColumn,
+          viewColumn: viewColumn || activeEditor.viewColumn,
           preview: false,
         });
         // Close the old document
-        await vscode.commands.executeCommand(
-          "workbench.action.closeActiveEditor",
-          oldUri
-        );
+        if (!viewColumn) {
+          await vscode.commands.executeCommand(
+            "workbench.action.closeActiveEditor",
+            oldUri
+          );
+        }
       }
 
       // Remove the old URI from the oils map
@@ -608,13 +618,15 @@ async function select(overRideLineText?: string, overRideTargetPath?: string) {
       });
     } else {
       await vscode.window.showTextDocument(fileDoc, {
-        viewColumn: activeEditor.viewColumn,
+        viewColumn: viewColumn || activeEditor.viewColumn,
         preview: false,
       });
-      await vscode.commands.executeCommand(
-        "workbench.action.closeActiveEditor",
-        activeEditor.document.uri
-      );
+      if (!viewColumn) {
+        await vscode.commands.executeCommand(
+          "workbench.action.closeActiveEditor",
+          activeEditor.document.uri
+        );
+      }
     }
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
@@ -623,13 +635,13 @@ async function select(overRideLineText?: string, overRideTargetPath?: string) {
 
 async function openParent() {
   logger.trace("Opening parent directory...");
-  await select("../");
+  await select({ overRideLineText: "../" });
 }
 
 async function openCwd() {
   logger.trace("Opening current working directory...");
   const cwd = vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath;
-  await select("../", cwd);
+  await select({ overRideLineText: "../", overRideTargetPath: cwd });
 }
 
 async function onDidChangeActiveTextEditor(
@@ -1489,7 +1501,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       await document.save();
 
       if (oilState.openAfterSave) {
-        await select(oilState.openAfterSave);
+        await select({ overRideLineText: oilState.openAfterSave });
         oilState.openAfterSave = undefined;
       }
     } catch (error) {
@@ -1583,6 +1595,8 @@ vim.api.nvim_create_autocmd({'FileType'}, {
     map("n", "-", function() vscode.action('oil-code.openParent') end)
     map("n", "_", function() vscode.action('oil-code.openCwd') end)
     map("n", "<CR>", function() vscode.action('oil-code.select') end)
+    map("n", "<C-h>", function() vscode.action('oil-code.selectHorizontal') end)
+    map("n", "<C-t>", function() vscode.action('oil-code.selectTab') end)
     map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
   end,
 })
@@ -1861,6 +1875,12 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("oil-code.open", openOil),
     vscode.commands.registerCommand("oil-code.close", closeOil),
     vscode.commands.registerCommand("oil-code.select", select),
+    vscode.commands.registerCommand("oil-code.selectVertical", () =>
+      select({ viewColumn: vscode.ViewColumn.Beside })
+    ),
+    vscode.commands.registerCommand("oil-code.selectTab", () =>
+      select({ viewColumn: vscode.ViewColumn.Active })
+    ),
     vscode.commands.registerCommand("oil-code.openParent", openParent),
     vscode.commands.registerCommand("oil-code.openCwd", openCwd),
     vscode.commands.registerCommand("oil-code.preview", preview),

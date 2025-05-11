@@ -13,14 +13,16 @@ To open oil.code:
 - Vim users - With a file focused and in normal mode press `-`.
 - All users - Press `alt+-`.
 
-| Vim Shortcut (normal mode) | Default Shortcut | Command               | Description                                     |
-| -------------------------- | ---------------- | --------------------- | ----------------------------------------------- |
-| `Enter`                    | `alt+Enter`      | `oil-code.select`     | Open file or enter directory                    |
-| -- No Default --           | `alt+c`          | `oil-code.close`      | Close active oil file and open previous file    |
-| `-`                        | `alt+-`          | `oil-code.openParent` | Navigate to parent directory                    |
-| `_`                        | `alt+shift+-`    | `oil-code.openCwd`    | Navigate to current working directory           |
-| `ctrl+p`                   | `alt+p`          | `oil-code.preview`    | Toggle preview window of entry under the cursor |
-| `ctrl+l`                   | `alt+l`          | `oil-code.refresh`    | Refresh directory listing from disk             |
+| Vim Shortcut (normal mode) | Default Shortcut | Command                   | Description                                      |
+| -------------------------- | ---------------- | ------------------------- | ------------------------------------------------ |
+| `Enter`                    | `alt+Enter`      | `oil-code.select`         | Open file or enter directory                     |
+| `ctrl+t`                   | `alt+t`          | `oil-code.selectTab`      | Open file or enter directory in new tab          |
+| -- No Default --           | `alt+s`          | `oil-code.selectVertical` | Open file or enter directory in adjacent v-split |
+| -- No Default --           | `alt+c`          | `oil-code.close`          | Close active oil file and open previous file     |
+| `-`                        | `alt+-`          | `oil-code.openParent`     | Navigate to parent directory                     |
+| `_`                        | `alt+shift+-`    | `oil-code.openCwd`        | Navigate to current working directory            |
+| `ctrl+p`                   | `alt+p`          | `oil-code.preview`        | Toggle preview window of entry under the cursor  |
+| `ctrl+l`                   | `alt+l`          | `oil-code.refresh`        | Refresh directory listing from disk              |
 
 ### [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim) Keymaps
 
@@ -47,6 +49,8 @@ if vim.g.vscode then
             map("n", "-", function() vscode.action('oil-code.openParent') end)
             map("n", "_", function() vscode.action('oil-code.openCwd') end)
             map("n", "<CR>", function() vscode.action('oil-code.select') end)
+            map("n", "<C-h>", function() vscode.action('oil-code.selectHorizontal') end)
+            map("n", "<C-t>", function() vscode.action('oil-code.selectTab') end)
             map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
         end,
     })
@@ -115,9 +119,9 @@ Key:
 | Open oil in multiple splits at once                              | ❌       |
 | ["g?"] = { "actions.show_help", mode = "n" }                     | ❌       |
 | ["\<CR\>"] = "actions.select"                                    | ✅       |
-| ["\<C-s\>"] = { "actions.select", opts = { vertical = true } }   | ❌       |
-| ["\<C-h\>"] = { "actions.select", opts = { horizontal = true } } | ❌       |
-| ["\<C-t\>"] = { "actions.select", opts = { tab = true } }        | ❌       |
+| ["\<C-s\>"] = { "actions.select", opts = { vertical = true } }   | ✅[^2]   |
+| ["\<C-h\>"] = { "actions.select", opts = { horizontal = true } } | ❓       |
+| ["\<C-t\>"] = { "actions.select", opts = { tab = true } }        | ✅       |
 | ["\<C-p\>"] = "actions.preview"                                  | ✅[^2]   |
 | ["\<C-c\>"] = { "actions.close", mode = "n" }                    | ✅[^3]   |
 | ["\<C-l\>"] = "actions.refresh"                                  | ✅       |
@@ -131,7 +135,7 @@ Key:
 | ["g\\"] = { "actions.toggle_trash", mode = "n" }                 | ❓       |
 
 [^1]: If VSCode is opened and no files are opened, the oil window will open. This can be disabled in settings.
-[^2]: "\<C-p\>" keymap might have conflicts with Vim plugins and may require additional config
+[^2]: Keymap might have conflicts with VSCode keymaps or and may require additional config
 [^3]: `oil-code.close` is implemented but I was not able to set the default keymap of "\<C-c\>"
 
 ## Icons

@@ -34,6 +34,14 @@
         "title": "Oil: Select - Open entry under the cursor"
       },
       {
+        "command": "oil-code.selectTab",
+        "title": "Oil: Select - Open entry under the cursor in the current tab"
+      },
+      {
+        "command": "oil-code.selectVertical",
+        "title": "Oil: Select - Open entry under the cursor in adjacent vertical editor"
+      },
+      {
         "command": "oil-code.preview",
         "title": "Oil: Preview - Toggle preview window of entry under the cursor"
       },
@@ -70,6 +78,16 @@
       {
         "command": "oil-code.select",
         "key": "alt+enter",
+        "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
+        "command": "oil-code.selectTab",
+        "key": "alt+t",
+        "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
+        "command": "oil-code.selectVertical",
+        "key": "alt+s",
         "when": "editorTextFocus && editorLangId == oil"
       },
       {
