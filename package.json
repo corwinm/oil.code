@@ -35,11 +35,11 @@
       },
       {
         "command": "oil-code.selectTab",
-        "title": "Oil: Select - Open entry under the cursor in the current tab"
+        "title": "Oil: SelectTab - Open entry under the cursor in the current tab"
       },
       {
         "command": "oil-code.selectVertical",
-        "title": "Oil: Select - Open entry under the cursor in adjacent vertical editor"
+        "title": "Oil: SelectVertical - Open entry under the cursor in adjacent vertical editor"
       },
       {
         "command": "oil-code.preview",
