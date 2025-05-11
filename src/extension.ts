@@ -2,7 +2,6 @@ import path from "path";
 import * as vscode from "vscode";
 import * as fs from "fs";
 import { activateDecorations } from "./decorations";
-import { log } from "console";
 
 const logger = vscode.window.createOutputChannel("oil.code", { log: true });
 
@@ -23,6 +22,7 @@ interface OilState {
   openAfterSave?: string;
 }
 
+// TODO: Refactor to just one oilState
 const oils = new Map<string, OilState>();
 
 // Custom URI scheme for main oil files
@@ -39,6 +39,12 @@ function initOilState() {
   const tempFileUri = vscode.Uri.parse(
     `${OIL_SCHEME}:/${currentOrWorkspacePath}`
   );
+
+  const existingState = oils.get(tempFileUri.toString());
+  if (existingState) {
+    // If the state already exists, return it
+    return existingState;
+  }
 
   const newState = {
     tempFileUri: tempFileUri,

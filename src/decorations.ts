@@ -295,26 +295,29 @@ export function activateDecorations(context: vscode.ExtensionContext) {
   );
 
   function decorateDocument(document: vscode.TextDocument) {
-    const editor = vscode.window.visibleTextEditors.find(
-      (editor) => editor.document === document
+    const editors = vscode.window.visibleTextEditors.filter(
+      (editor) => editor.document.uri === document.uri
     );
-    updateDecorations(editor);
-    if (!editor) {
-      return;
-    }
-    const firstLine = document.lineAt(0).text;
-    const match = firstLine.match(/^(\/\d{3} )/);
-    const isEditingLine = document
-      .lineAt(editor.selection.start.line)
-      .text.startsWith("/");
-    if (
-      match &&
-      isEditingLine &&
-      editor.selection.start.character < match[1].length
-    ) {
-      const newPosition = new vscode.Position(0, match[1].length);
-      editor.selection = new vscode.Selection(newPosition, newPosition);
-    }
+
+    editors.forEach((editor) => {
+      updateDecorations(editor);
+      if (!editor) {
+        return;
+      }
+      const firstLine = document.lineAt(0).text;
+      const match = firstLine.match(/^(\/\d{3} )/);
+      const isEditingLine = document
+        .lineAt(editor.selection.start.line)
+        .text.startsWith("/");
+      if (
+        match &&
+        isEditingLine &&
+        editor.selection.start.character < match[1].length
+      ) {
+        const newPosition = new vscode.Position(0, match[1].length);
+        editor.selection = new vscode.Selection(newPosition, newPosition);
+      }
+    });
   }
 
   context.subscriptions.push(
