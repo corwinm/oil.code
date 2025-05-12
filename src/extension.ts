@@ -1163,7 +1163,7 @@ function determineChanges(oilState: OilState) {
       );
       for (const [key, entry] of fileOriginalEntries) {
         if (!editedEntries.has(key)) {
-          deletedLines.add(path.join(dirPath, entry.value));
+          deletedLines.add(path.join(uriPathToDiskPath(dirPath), entry.value));
         }
         if (
           editedEntries.has(key) &&
@@ -1171,7 +1171,7 @@ function determineChanges(oilState: OilState) {
           entry.value !== editedEntries.get(key)?.value
         ) {
           // Check if the entry has been moved
-          deletedLines.add(path.join(dirPath, entry.value));
+          deletedLines.add(path.join(uriPathToDiskPath(dirPath), entry.value));
         }
       }
     }
@@ -1187,13 +1187,13 @@ function determineChanges(oilState: OilState) {
             entry.path !== originalEntry.path
           ) {
             copiedLines.push([
-              path.join(originalEntry.path, originalEntry.value),
-              path.join(dirPath, entry.value),
+              path.join(uriPathToDiskPath(originalEntry.path), originalEntry.value),
+              path.join(uriPathToDiskPath(dirPath), entry.value),
             ]);
           }
         } else {
           // New entry added
-          addedLines.add(path.join(dirPath, entry.value));
+          addedLines.add(path.join(uriPathToDiskPath(dirPath), entry.value));
         }
       }
     }
@@ -1387,7 +1387,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       }
       // Process the changes
       // Move files
-      for (const [oldPath, newPath] of movedLines) {
+      for (const [oldPath, newPath] of movedLines.map(([oldPath, newPath]) => [uriPathToDiskPath(oldPath), uriPathToDiskPath(newPath)])) {
         try {
           // Create directory structure if needed
           const dirPath = path.dirname(newPath);
