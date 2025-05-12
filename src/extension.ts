@@ -23,7 +23,8 @@ interface OilState {
 }
 
 // TODO: Refactor to just one oilState
-const oils = new Map<string, OilState>();
+// const oils = new Map<string, OilState>();
+let oilState: OilState | undefined;
 
 // Custom URI scheme for main oil files
 const OIL_SCHEME = "oil";
@@ -37,11 +38,15 @@ function initOilState() {
     : vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath;
 
   const tempFileUri = vscode.Uri.parse(
-    `${OIL_SCHEME}:/${currentOrWorkspacePath}`
+    `${OIL_SCHEME}://oil${currentOrWorkspacePath}`
   );
 
-  const existingState = oils.get(tempFileUri.toString());
+  const existingState = oilState;
   if (existingState) {
+    existingState.tempFileUri = tempFileUri;
+    existingState.currentPath = currentOrWorkspacePath;
+    existingState.openedFrom =
+      vscode.window.activeTextEditor?.document.uri.fsPath;
     // If the state already exists, return it
     return existingState;
   }
@@ -55,13 +60,13 @@ function initOilState() {
     openedFrom: vscode.window.activeTextEditor?.document.uri.fsPath,
   };
 
-  oils.set(tempFileUri.toString(), newState);
+  oilState = newState;
 
   return newState;
 }
 
 function initOilStateWithPath(path: string) {
-  const tempFileUri = vscode.Uri.parse(`${OIL_SCHEME}:/${path}`);
+  const tempFileUri = vscode.Uri.parse(`${OIL_SCHEME}://oil${path}`);
 
   const newState = {
     tempFileUri: tempFileUri,
@@ -71,34 +76,50 @@ function initOilStateWithPath(path: string) {
     editedPaths: new Map(),
   };
 
-  oils.set(tempFileUri.toString(), newState);
+  oilState = newState;
 
   return newState;
 }
 
 function getOilState(): OilState | undefined {
   const activeEditor = vscode.window.activeTextEditor;
-  if (activeEditor) {
+  if (activeEditor && oilState) {
     const documentUri = activeEditor.document.uri;
     if (documentUri.scheme === OIL_SCHEME) {
-      return oils.get(documentUri.toString());
+      return oilState;
     }
   }
   return undefined;
 }
 
+function getCurrentPath(): string | undefined {
+  const activeEditor = vscode.window.activeTextEditor;
+  if (activeEditor && oilState) {
+    const documentUri = activeEditor.document.uri;
+    if (documentUri.scheme === OIL_SCHEME) {
+      return documentUri.path;
+    }
+  }
+  return undefined;
+}
+
+function removeTrailingSlash(path: string): string {
+  return path.endsWith("/") ? path.slice(0, -1) : path;
+}
+
 // Helper function to update the URI when changing directories
 function updateOilUri(oilState: OilState, newPath: string): vscode.Uri {
   // Remove the old URI from the oils map
-  oils.delete(oilState.tempFileUri.toString());
+  // oils.delete(oilState.tempFileUri.toString());
 
-  const newUri = vscode.Uri.parse(`${OIL_SCHEME}:/${newPath}`);
+  const normalizedPath = removeTrailingSlash(newPath);
+  const newUri = vscode.Uri.parse(`${OIL_SCHEME}://oil${normalizedPath}`);
 
   // Update the state with the new URI
   oilState.tempFileUri = newUri;
 
   // Add the updated state to the map with the new key
-  oils.set(newUri.toString(), oilState);
+  // oils.set(newUri.toString(), oilState);
 
   return newUri;
 }
@@ -436,16 +457,17 @@ async function select({
     vscode.window.showErrorMessage("Failed to get oil state.");
     return;
   }
-  if (!oilState.currentPath) {
+  const currentPath = getCurrentPath();
+  if (!currentPath) {
     vscode.window.showErrorMessage("No current path found.");
     return;
   }
-  const currentFile = path.basename(oilState.currentPath);
+  const currentFile = path.basename(currentPath);
 
   // If the document has unsaved changes, capture them before navigating
   const isDirty = activeEditor.document.isDirty;
   if (isDirty) {
-    oilState.editedPaths.set(oilState.currentPath, currentLines);
+    oilState.editedPaths.set(currentPath, currentLines);
   }
 
   const document = activeEditor.document;
@@ -464,27 +486,29 @@ async function select({
     return;
   }
 
-  const currentFolderPath = oilState.currentPath;
+  const currentFolderPath = currentPath;
   if (!currentFolderPath) {
     vscode.window.showErrorMessage("No current folder path found.");
     return;
   }
-  const targetPath = overRideTargetPath
-    ? overRideTargetPath
-    : path.join(currentFolderPath, fileName);
+  const targetPath = removeTrailingSlash(
+    overRideTargetPath
+      ? overRideTargetPath
+      : path.join(currentFolderPath, fileName)
+  );
 
   // Store the current directory name when going up a directory
   let isGoingUp = fileName === "../";
   if (isGoingUp) {
     // Store current directory name (without full path)
-    oilState.currentPath = path.dirname(currentFolderPath);
+    // oilState.currentPath = path.dirname(currentFolderPath);
   }
 
   if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
     try {
       // Update the URI to represent the new directory path
       const oldUri = document.uri;
-      oilState.currentPath = targetPath;
+      // oilState.currentPath = targetPath;
 
       // Update the URI to reflect the new directory
       const newUri = updateOilUri(oilState, targetPath);
@@ -499,34 +523,36 @@ async function select({
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
       let editor: vscode.TextEditor;
-      if (activeEditor.document.isDirty && !viewColumn) {
+      // if (activeEditor.document.isDirty) {
+      if (!viewColumn) {
         // Close the old document
         await vscode.window.showTextDocument(oldUri);
         await vscode.commands.executeCommand(
           "workbench.action.revertAndCloseActiveEditor"
         );
-        // Show the new document in the same editor
-        editor = await vscode.window.showTextDocument(newDoc, {
-          viewColumn: activeEditor.viewColumn,
-          preview: false,
-        });
-      } else {
-        // If the document is not dirty, just show the new document
-        editor = await vscode.window.showTextDocument(newDoc, {
-          viewColumn: viewColumn || activeEditor.viewColumn,
-          preview: false,
-        });
-        // Close the old document
-        if (!viewColumn) {
-          await vscode.commands.executeCommand(
-            "workbench.action.closeActiveEditor",
-            oldUri
-          );
-        }
       }
+      // Show the new document in the same editor
+      editor = await vscode.window.showTextDocument(newDoc, {
+        viewColumn: viewColumn || activeEditor.viewColumn,
+        preview: false,
+      });
+      // } else {
+      //   // If the document is not dirty, just show the new document
+      //   editor = await vscode.window.showTextDocument(newDoc, {
+      //     viewColumn: viewColumn || activeEditor.viewColumn,
+      //     preview: false,
+      //   });
+      //   // Close the old document
+      //   if (!viewColumn) {
+      //     await vscode.commands.executeCommand(
+      //       "workbench.action.closeActiveEditor",
+      //       oldUri
+      //     );
+      //   }
+      // }
 
       // Remove the old URI from the oils map
-      oils.delete(oldUri.toString());
+      // oils.delete(oldUri.toString());
 
       // Position cursor appropriately
       if (isGoingUp) {
@@ -599,7 +625,7 @@ async function select({
 
     if (saveChanges === "Yes") {
       oilState.openAfterSave = fileName;
-      if (document.isDirty) {
+      if (document.isDirty && !hasPendingChanges()) {
         await document.save();
       } else {
         await onDidSaveTextDocument(document);
@@ -613,27 +639,27 @@ async function select({
   try {
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
-    if (activeEditor.document.isDirty) {
-      await vscode.window.showTextDocument(activeEditor.document.uri);
-      await vscode.commands.executeCommand(
-        "workbench.action.revertAndCloseActiveEditor"
-      );
-      await vscode.window.showTextDocument(fileDoc, {
-        viewColumn: activeEditor.viewColumn,
-        preview: false,
-      });
-    } else {
-      await vscode.window.showTextDocument(fileDoc, {
-        viewColumn: viewColumn || activeEditor.viewColumn,
-        preview: false,
-      });
-      if (!viewColumn) {
-        await vscode.commands.executeCommand(
-          "workbench.action.closeActiveEditor",
-          activeEditor.document.uri
-        );
-      }
-    }
+    // if (activeEditor.document.isDirty) {
+    await vscode.window.showTextDocument(activeEditor.document.uri);
+    await vscode.commands.executeCommand(
+      "workbench.action.revertAndCloseActiveEditor"
+    );
+    await vscode.window.showTextDocument(fileDoc, {
+      viewColumn: viewColumn || activeEditor.viewColumn,
+      preview: false,
+    });
+    // } else {
+    //   await vscode.window.showTextDocument(fileDoc, {
+    //     viewColumn: viewColumn || activeEditor.viewColumn,
+    //     preview: false,
+    //   });
+    //   if (!viewColumn) {
+    //     await vscode.commands.executeCommand(
+    //       "workbench.action.closeActiveEditor",
+    //       activeEditor.document.uri
+    //     );
+    //   }
+    // }
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
   }
@@ -728,15 +754,14 @@ async function refresh() {
     return;
   }
 
-  if (!oilState.currentPath) {
+  const currentPath = getCurrentPath();
+  if (!currentPath) {
     vscode.window.showErrorMessage("No current path found.");
     return;
   }
 
   // Check if there are any pending changes in the current path
-  const hasChangesInCurrentPath = oilState.editedPaths.has(
-    oilState.currentPath
-  );
+  const hasChangesInCurrentPath = oilState.editedPaths.has(currentPath);
 
   if (hasChangesInCurrentPath || activeEditor.document.isDirty) {
     // Ask for confirmation before discarding changes
@@ -753,18 +778,15 @@ async function refresh() {
     }
 
     // Remove the current path from edited paths
-    oilState.editedPaths.delete(oilState.currentPath);
+    oilState.editedPaths.delete(currentPath);
   }
 
   try {
     // Clear the visited path cache for the current directory to force refresh from disk
-    oilState.visitedPaths.delete(oilState.currentPath);
+    oilState.visitedPaths.delete(currentPath);
 
     // Get updated directory content from disk
-    const directoryContent = await getDirectoryListing(
-      oilState.currentPath,
-      oilState
-    );
+    const directoryContent = await getDirectoryListing(currentPath, oilState);
 
     // Create a workspace edit to update the document
     const edit = new vscode.WorkspaceEdit();
@@ -989,7 +1011,7 @@ async function updatePreviewBasedOnCursorPosition(
     vscode.window.showErrorMessage("Failed to get oil state.");
     return;
   }
-  const currentFolderPath = oilState.currentPath;
+  const currentFolderPath = getCurrentPath();
   if (!currentFolderPath) {
     vscode.window.showErrorMessage("No current folder path found.");
     return;
@@ -1257,7 +1279,8 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         vscode.window.showErrorMessage("Failed to get oil state.");
         return;
       }
-      if (!oilState.currentPath) {
+      const currentPath = getCurrentPath();
+      if (!currentPath) {
         vscode.window.showErrorMessage("No current path found.");
         return;
       }
@@ -1267,21 +1290,15 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       // Read the current content of the file
       const currentContent = document.getText();
       const currentLines = currentContent.split("\n");
-      const currentValue = oilState.visitedPaths.get(oilState.currentPath);
+      const currentValue = oilState.visitedPaths.get(currentPath);
       if (currentValue?.join("") !== currentLines.join("")) {
-        oilState.editedPaths.set(oilState.currentPath, currentLines);
+        oilState.editedPaths.set(currentPath, currentLines);
       }
       if (
-        oilState.editedPaths.get(oilState.currentPath)?.join("") !==
+        oilState.editedPaths.get(currentPath)?.join("") !==
         currentLines.join("")
       ) {
-        oilState.editedPaths.set(oilState.currentPath, currentLines);
-      }
-
-      // Get the current directory
-      if (!oilState.currentPath) {
-        vscode.window.showErrorMessage("Current directory path is not set.");
-        return;
+        oilState.editedPaths.set(currentPath, currentLines);
       }
 
       const changes = determineChanges(oilState);
@@ -1404,7 +1421,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         } catch (error) {
           vscode.window.showErrorMessage(
             `Failed to move file: ${formatPath(oldPath)} to ${newPath.replace(
-              oilState.currentPath + path.sep,
+              currentPath + path.sep,
               ""
             )} - ${error}`
           );
@@ -1426,7 +1443,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         } catch (error) {
           vscode.window.showErrorMessage(
             `Failed to copy file: ${formatPath(oldPath)} to ${newPath.replace(
-              oilState.currentPath + path.sep,
+              currentPath + path.sep,
               ""
             )} - ${error}`
           );
@@ -1485,10 +1502,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       oilState.identifierCounter = 1;
 
       // Refresh the directory listing after changes
-      const updatedContent = await getDirectoryListing(
-        oilState.currentPath,
-        oilState
-      );
+      const updatedContent = await getDirectoryListing(currentPath, oilState);
 
       // Update the file without triggering the save event again
       const edit = new vscode.WorkspaceEdit();
@@ -1795,7 +1809,7 @@ async function preview() {
     return;
   }
 
-  const currentFolderPath = oilState.currentPath;
+  const currentFolderPath = getCurrentPath();
   if (!currentFolderPath) {
     vscode.window.showErrorMessage("No current folder path found.");
     return;
