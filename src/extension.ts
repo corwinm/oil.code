@@ -22,8 +22,6 @@ interface OilState {
   openAfterSave?: string;
 }
 
-// TODO: Refactor to just one oilState
-// const oils = new Map<string, OilState>();
 let oilState: OilState | undefined;
 
 // Custom URI scheme for main oil files
@@ -109,17 +107,11 @@ function removeTrailingSlash(path: string): string {
 
 // Helper function to update the URI when changing directories
 function updateOilUri(oilState: OilState, newPath: string): vscode.Uri {
-  // Remove the old URI from the oils map
-  // oils.delete(oilState.tempFileUri.toString());
-
   const normalizedPath = removeTrailingSlash(newPath);
   const newUri = vscode.Uri.parse(`${OIL_SCHEME}://oil${normalizedPath}`);
 
   // Update the state with the new URI
   oilState.tempFileUri = newUri;
-
-  // Add the updated state to the map with the new key
-  // oils.set(newUri.toString(), oilState);
 
   return newUri;
 }
@@ -499,16 +491,11 @@ async function select({
 
   // Store the current directory name when going up a directory
   let isGoingUp = fileName === "../";
-  if (isGoingUp) {
-    // Store current directory name (without full path)
-    // oilState.currentPath = path.dirname(currentFolderPath);
-  }
 
   if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
     try {
       // Update the URI to represent the new directory path
       const oldUri = document.uri;
-      // oilState.currentPath = targetPath;
 
       // Update the URI to reflect the new directory
       const newUri = updateOilUri(oilState, targetPath);
@@ -523,7 +510,6 @@ async function select({
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
       let editor: vscode.TextEditor;
-      // if (activeEditor.document.isDirty) {
       if (!viewColumn) {
         // Close the old document
         await vscode.window.showTextDocument(oldUri);
@@ -536,23 +522,6 @@ async function select({
         viewColumn: viewColumn || activeEditor.viewColumn,
         preview: false,
       });
-      // } else {
-      //   // If the document is not dirty, just show the new document
-      //   editor = await vscode.window.showTextDocument(newDoc, {
-      //     viewColumn: viewColumn || activeEditor.viewColumn,
-      //     preview: false,
-      //   });
-      //   // Close the old document
-      //   if (!viewColumn) {
-      //     await vscode.commands.executeCommand(
-      //       "workbench.action.closeActiveEditor",
-      //       oldUri
-      //     );
-      //   }
-      // }
-
-      // Remove the old URI from the oils map
-      // oils.delete(oldUri.toString());
 
       // Position cursor appropriately
       if (isGoingUp) {
@@ -639,7 +608,6 @@ async function select({
   try {
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
-    // if (activeEditor.document.isDirty) {
     await vscode.window.showTextDocument(activeEditor.document.uri);
     await vscode.commands.executeCommand(
       "workbench.action.revertAndCloseActiveEditor"
@@ -648,18 +616,6 @@ async function select({
       viewColumn: viewColumn || activeEditor.viewColumn,
       preview: false,
     });
-    // } else {
-    //   await vscode.window.showTextDocument(fileDoc, {
-    //     viewColumn: viewColumn || activeEditor.viewColumn,
-    //     preview: false,
-    //   });
-    //   if (!viewColumn) {
-    //     await vscode.commands.executeCommand(
-    //       "workbench.action.closeActiveEditor",
-    //       activeEditor.document.uri
-    //     );
-    //   }
-    // }
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
   }
@@ -914,7 +870,7 @@ async function previewDirectory(directoryPath: string) {
 
     const previewName = path.basename(directoryPath);
     const previewUri = vscode.Uri.parse(
-      `${OIL_PREVIEW_SCHEME}:/${previewName}`
+      `${OIL_PREVIEW_SCHEME}://oil-preview${previewName}`
     );
 
     // Check if the preview URI already exists
