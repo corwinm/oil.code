@@ -31,9 +31,11 @@ const OIL_SCHEME = "oil";
 const OIL_PREVIEW_SCHEME = "oil-preview";
 
 function initOilState() {
-  const currentOrWorkspacePath = vscode.window.activeTextEditor
-    ? path.dirname(vscode.window.activeTextEditor.document.uri.fsPath)
-    : vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath;
+  const currentOrWorkspacePath = normalizePathToUri(
+    vscode.window.activeTextEditor
+      ? path.dirname(vscode.window.activeTextEditor.document.uri.fsPath)
+      : vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath
+  );
 
   const tempFileUri = vscode.Uri.parse(
     `${OIL_SCHEME}://oil${currentOrWorkspacePath}`
@@ -64,11 +66,12 @@ function initOilState() {
 }
 
 function initOilStateWithPath(path: string) {
-  const tempFileUri = vscode.Uri.parse(`${OIL_SCHEME}://oil${path}`);
+  const normalizedPath = normalizePathToUri(path);
+  const tempFileUri = vscode.Uri.parse(`${OIL_SCHEME}://oil${normalizedPath}`);
 
   const newState = {
     tempFileUri: tempFileUri,
-    currentPath: path,
+    currentPath: normalizedPath,
     identifierCounter: 1,
     visitedPaths: new Map(),
     editedPaths: new Map(),
@@ -99,6 +102,24 @@ function getCurrentPath(): string | undefined {
     }
   }
   return undefined;
+}
+
+function normalizePathToUri(path: string | undefined = ""): string {
+  if (path.startsWith("/")) {
+    return path;
+  }
+  // Normalize the path to a URI format
+  const normalizedPath = path.replace(/\\/g, "/");
+  return `/${normalizedPath}`;
+}
+
+function uriPathToDiskPath(path: string): string {
+  // If Windows, convert URI path to disk path
+  if (process.platform === "win32") {
+    return path.replace(/%20/g, " ").replace(/^\//, "").replaceAll("/", "\\");
+  }
+  // For other platforms, return the path as is
+  return path;
 }
 
 function removeTrailingSlash(path: string): string {
