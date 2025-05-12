@@ -128,7 +128,7 @@ function removeTrailingSlash(path: string): string {
 
 // Helper function to update the URI when changing directories
 function updateOilUri(oilState: OilState, newPath: string): vscode.Uri {
-  const normalizedPath = removeTrailingSlash(newPath);
+  const normalizedPath = removeTrailingSlash(normalizePathToUri(newPath));
   const newUri = vscode.Uri.parse(`${OIL_SCHEME}://oil${normalizedPath}`);
 
   // Update the state with the new URI
@@ -391,13 +391,14 @@ async function getDirectoryListing(
 ): Promise<string> {
   let pathUri = vscode.Uri.file(folderPath);
 
-  if (oilState.editedPaths.has(folderPath)) {
-    return oilState.editedPaths.get(folderPath)!.join("\n");
+  const folderPathUri = removeTrailingSlash(normalizePathToUri(folderPath));
+  if (oilState.editedPaths.has(folderPathUri)) {
+    return oilState.editedPaths.get(folderPathUri)!.join("\n");
   }
 
-  if (oilState.visitedPaths.has(folderPath)) {
+  if (oilState.visitedPaths.has(folderPathUri)) {
     // If we have visited this path before, return the cached listing
-    return oilState.visitedPaths.get(folderPath)!.join("\n");
+    return oilState.visitedPaths.get(folderPathUri)!.join("\n");
   }
 
   let results = await vscode.workspace.fs.readDirectory(pathUri);
@@ -436,7 +437,7 @@ async function getDirectoryListing(
     return `${identifier} ${name}`;
   });
 
-  oilState.visitedPaths.set(folderPath, listingsWithIds);
+  oilState.visitedPaths.set(folderPathUri, listingsWithIds);
 
   return listingsWithIds.join("\n");
 }
@@ -475,7 +476,8 @@ async function select({
     vscode.window.showErrorMessage("No current path found.");
     return;
   }
-  const currentFile = path.basename(currentPath);
+  const currentFileDiskPath = uriPathToDiskPath(currentPath);
+  const currentFile = path.basename(currentFileDiskPath);
 
   // If the document has unsaved changes, capture them before navigating
   const isDirty = activeEditor.document.isDirty;
@@ -499,15 +501,14 @@ async function select({
     return;
   }
 
-  const currentFolderPath = currentPath;
-  if (!currentFolderPath) {
+  if (!currentFileDiskPath) {
     vscode.window.showErrorMessage("No current folder path found.");
     return;
   }
   const targetPath = removeTrailingSlash(
     overRideTargetPath
       ? overRideTargetPath
-      : path.join(currentFolderPath, fileName)
+      : path.join(currentFileDiskPath, fileName)
   );
 
   // Store the current directory name when going up a directory
