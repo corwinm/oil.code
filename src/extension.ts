@@ -1387,7 +1387,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       }
       // Process the changes
       // Move files
-      for (const [oldPath, newPath] of movedLines.map(([oldPath, newPath]) => [uriPathToDiskPath(oldPath), uriPathToDiskPath(newPath)])) {
+      for (const [oldPath, newPath] of movedLines) {
         try {
           // Create directory structure if needed
           const dirPath = path.dirname(newPath);
