@@ -857,7 +857,7 @@ async function previewFile(targetPath: string) {
     // Open to the side (right split) in preview mode
     const editor = await vscode.window.showTextDocument(fileDoc, {
       viewColumn: vscode.ViewColumn.Beside, // Opens in the editor group to the right
-      preview: true, // Opens in preview mode
+      preview: false,
       preserveFocus: true, // Keeps focus on the oil file
     });
 
@@ -892,18 +892,8 @@ async function previewDirectory(directoryPath: string) {
 
     const previewName = path.basename(directoryPath);
     const previewUri = vscode.Uri.parse(
-      `${OIL_PREVIEW_SCHEME}://oil-preview${previewName}`
+      `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
     );
-
-    // Check if the preview URI already exists
-    if (
-      previewState.previewUri &&
-      previewState.previewUri.toString() === previewUri.toString()
-    ) {
-      // If the URI already exists, just update the content
-      oilPreviewProvider.writeFile(previewUri, Buffer.from(directoryContent));
-      return;
-    }
 
     // Write content to the virtual file
     oilPreviewProvider.writeFile(previewUri, Buffer.from(directoryContent));
@@ -934,7 +924,7 @@ async function previewDirectory(directoryPath: string) {
     // Show the document to the side
     const editor = await vscode.window.showTextDocument(fileDoc, {
       viewColumn: vscode.ViewColumn.Beside,
-      preview: true,
+      preview: false,
       preserveFocus: true,
     });
 
@@ -999,9 +989,9 @@ async function updatePreviewBasedOnCursorPosition(
 
   // Handle "../" special case
   if (fileName === "../") {
-    targetPath = path.dirname(currentFolderPath);
+    targetPath = path.dirname(uriPathToDiskPath(currentFolderPath));
   } else {
-    targetPath = path.join(currentFolderPath, fileName);
+    targetPath = path.join(uriPathToDiskPath(currentFolderPath), fileName);
   }
 
   // Skip if same file/directory is already being previewed
@@ -1163,14 +1153,6 @@ function determineChanges(oilState: OilState) {
       );
       for (const [key, entry] of fileOriginalEntries) {
         if (!editedEntries.has(key)) {
-          deletedLines.add(path.join(uriPathToDiskPath(dirPath), entry.value));
-        }
-        if (
-          editedEntries.has(key) &&
-          entry.path === editedEntries.get(key)?.path &&
-          entry.value !== editedEntries.get(key)?.value
-        ) {
-          // Check if the entry has been moved
           deletedLines.add(path.join(uriPathToDiskPath(dirPath), entry.value));
         }
       }
@@ -1409,7 +1391,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       for (const [oldPath, newPath] of copiedLines) {
         try {
           // Create directory structure if needed
-          const isDir = newPath.endsWith("/");
+          const isDir = newPath.endsWith(path.sep);
           const dirPath = isDir ? newPath : path.dirname(newPath);
           if (!fs.existsSync(dirPath)) {
             fs.mkdirSync(dirPath, { recursive: true });
@@ -1798,9 +1780,9 @@ async function preview() {
 
   // Handle "../" special case
   if (fileName === "../") {
-    targetPath = path.dirname(currentFolderPath);
+    targetPath = path.dirname(uriPathToDiskPath(currentFolderPath));
   } else {
-    targetPath = path.join(currentFolderPath, fileName);
+    targetPath = path.join(uriPathToDiskPath(currentFolderPath), fileName);
   }
 
   if (!fs.existsSync(targetPath)) {
