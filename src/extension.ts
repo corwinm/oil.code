@@ -1414,10 +1414,11 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
           );
         }
       }
+      
       // Create new files/directories
       for (const line of addedLines) {
         const newFilePath = line;
-        if (line.endsWith("/")) {
+        if (line.endsWith(path.sep)) {
           // Create directory
           try {
             fs.mkdirSync(newFilePath, { recursive: true });
@@ -1430,7 +1431,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
           // Create empty file
           try {
             // If it's a file in subfolders, ensure the folders exist
-            if (line.includes("/")) {
+            if (line.includes(path.sep)) {
               const dirPath = path.dirname(newFilePath);
               if (!fs.existsSync(dirPath)) {
                 fs.mkdirSync(dirPath, { recursive: true });
@@ -1448,7 +1449,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       for (const line of deletedLines) {
         const filePath = line;
         try {
-          if (line.endsWith("/")) {
+          if (line.endsWith(path.sep)) {
             // This is a directory - remove recursively
             await removeDirectoryRecursively(filePath);
           } else {
