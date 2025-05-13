@@ -2,6 +2,14 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.16](https://github.com/corwinm/oil.code/compare/v0.0.15...v0.0.16)
+
+- feat: Add Refresh command and keybindings by @corwinm in https://github.com/corwinm/oil.code/pull/13
+- fix: Check for path.sep instead of "/"
+- feat: Add Open CWD command and Fix keymaps by @corwinm in https://github.com/corwinm/oil.code/pull/14
+- feat: More features and fixes by @corwinm in https://github.com/corwinm/oil.code/pull/17
+- docs: Update Icons section in README
+
 ## [0.0.15](https://github.com/corwinm/oil.code/compare/v0.0.14...v0.0.15)
 
 - fix: Error where extension for nerd font was incorrectly mapped
