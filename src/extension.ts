@@ -582,10 +582,12 @@ async function select({
   try {
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
-    await vscode.window.showTextDocument(activeEditor.document.uri);
-    await vscode.commands.executeCommand(
-      "workbench.action.revertAndCloseActiveEditor"
-    );
+    if (!viewColumn) {
+      await vscode.window.showTextDocument(activeEditor.document.uri);
+      await vscode.commands.executeCommand(
+        "workbench.action.revertAndCloseActiveEditor"
+      );
+    }
     await vscode.window.showTextDocument(fileDoc, {
       viewColumn: viewColumn || activeEditor.viewColumn,
       preview: false,
