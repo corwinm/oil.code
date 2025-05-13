@@ -115,7 +115,7 @@ Key:
 | Move directory                                                   | ✅       |
 | Rename directory                                                 | ✅       |
 | Move and Rename directory                                        | ✅       |
-| Open oil in multiple splits at once                              | ❌       |
+| Open oil in multiple splits at once                              | ✅       |
 | ["g?"] = { "actions.show_help", mode = "n" }                     | ❌       |
 | ["\<CR\>"] = "actions.select"                                    | ✅       |
 | ["\<C-s\>"] = { "actions.select", opts = { vertical = true } }   | ✅[^2]   |
