@@ -1121,7 +1121,10 @@ function determineChanges(oilState: OilState) {
             entry.path !== originalEntry.path
           ) {
             copiedLines.push([
-              path.join(uriPathToDiskPath(originalEntry.path), originalEntry.value),
+              path.join(
+                uriPathToDiskPath(originalEntry.path),
+                originalEntry.value
+              ),
               path.join(uriPathToDiskPath(dirPath), entry.value),
             ]);
           }
@@ -1361,7 +1364,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
           );
         }
       }
-      
+
       // Create new files/directories
       for (const line of addedLines) {
         const newFilePath = line;
