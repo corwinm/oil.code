@@ -241,54 +241,6 @@ class OilPreviewFileSystemProvider implements vscode.FileSystemProvider {
 // Create and register the provider
 const oilPreviewProvider = new OilPreviewFileSystemProvider();
 
-// Function to exclude oil files from recent files by adding to exclude patterns
-async function configureRecentFilesExclusions() {
-  try {
-    // Exclude from files.exclude (affects Explorer view and cmd+p search)
-    const filesConfig = vscode.workspace.getConfiguration("files");
-    const filesExcludes = filesConfig.get<object>("exclude") || {};
-
-    // Add our patterns to excludes - more comprehensive with escaped characters
-    const updatedFilesExcludes = {
-      ...filesExcludes,
-      [`${OIL_SCHEME}:/**`]: true,
-      [`${OIL_PREVIEW_SCHEME}:/**`]: true,
-    };
-
-    // Update the configuration - fixed incorrect path
-    await filesConfig.update(
-      "exclude",
-      updatedFilesExcludes,
-      vscode.ConfigurationTarget.Global
-    );
-
-    // Exclude from search.exclude (affects cmd+p search)
-    const searchConfig = vscode.workspace.getConfiguration("search");
-    const searchExcludes = searchConfig.get<object>("exclude") || {};
-
-    // Add our patterns to search excludes - with same comprehensive patterns
-    const updatedSearchExcludes = {
-      ...searchExcludes,
-      [`${OIL_SCHEME}:/**`]: true,
-      [`${OIL_PREVIEW_SCHEME}:/**`]: true,
-    };
-
-    // Update the search configuration
-    await searchConfig.update(
-      "exclude",
-      updatedSearchExcludes,
-      vscode.ConfigurationTarget.Global
-    );
-  } catch (error) {
-    logger.error("Failed to configure exclusions:", error);
-  }
-}
-
-// Helper function to prevent oil files from appearing in the recent files list and cmd+p
-async function preventOilInRecentFiles() {
-  await configureRecentFilesExclusions();
-}
-
 let restoreAutoSave = false;
 async function checkAndDisableAutoSave() {
   const config = vscode.workspace.getConfiguration("files");
@@ -1836,8 +1788,6 @@ export function activate(context: vscode.ExtensionContext) {
     isDirectory: false,
     previewUri: null,
   };
-
-  preventOilInRecentFiles();
 
   // Set up listener for extension changes (activation/deactivation)
   const extensionChangeListener = vscode.extensions.onDidChange(() => {
