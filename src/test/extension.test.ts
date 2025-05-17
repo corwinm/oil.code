@@ -128,7 +128,16 @@ suite("Extension Test Suite", () => {
 
     // Wait for file content to update
     await waitFor(
-      () => editor.document.getText() === `/000 ../${newline}/001 oil-dir/`
+      () => editor.document.getText() === `/000 ../${newline}/001 oil-dir/`,
+      {
+        onTimeout() {
+          console.log("Timeout occurred while waiting for file content update");
+          console.log({
+            editorText: editor.document.getText(),
+            expectedText: `/000 ../${newline}/001 oil-dir/`,
+          });
+        }
+      }
     );
 
     assert.strictEqual(
