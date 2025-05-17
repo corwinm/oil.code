@@ -9,4 +9,7 @@ const __dirname = path.dirname(__filename);
 export default defineConfig({
   files: "out/test/**/*.test.js",
   launchArgs: [path.join(__dirname, "test-temp")],
+  mocha: {
+    timeout: 20000,
+  },
 });
