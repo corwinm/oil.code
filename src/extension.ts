@@ -18,7 +18,6 @@ interface OilState {
   identifierCounter: number;
   visitedPaths: Map<string, string[]>;
   editedPaths: Map<string, string[]>;
-  openedFrom?: string;
   openAfterSave?: string;
 }
 
@@ -45,8 +44,6 @@ function initOilState() {
   if (existingState) {
     existingState.tempFileUri = tempFileUri;
     existingState.currentPath = currentOrWorkspacePath;
-    existingState.openedFrom =
-      vscode.window.activeTextEditor?.document.uri.fsPath;
     // If the state already exists, return it
     return existingState;
   }
@@ -57,7 +54,6 @@ function initOilState() {
     identifierCounter: 1,
     visitedPaths: new Map(),
     editedPaths: new Map(),
-    openedFrom: vscode.window.activeTextEditor?.document.uri.fsPath,
   };
 
   oilState = newState;
@@ -295,13 +291,6 @@ async function openOil(atPath?: string | undefined) {
         preview: false,
       });
 
-      if (activeEditor) {
-        await vscode.commands.executeCommand(
-          "workbench.action.closeActiveEditor",
-          activeEditor.document.uri
-        );
-      }
-
       // Position cursor on the previously selected file if it exists in this directory
       positionCursorOnFile(editor, activeFile);
 
@@ -318,22 +307,7 @@ async function openOil(atPath?: string | undefined) {
 
 function closeOil() {
   if (vscode.window.activeTextEditor?.document.languageId === "oil") {
-    const oilState = getOilState();
-    if (oilState && oilState.openedFrom) {
-      const openedFrom = oilState.openedFrom;
-      const openedFromUri = vscode.Uri.file(openedFrom);
-      // Open the original file
-      vscode.workspace.openTextDocument(openedFromUri).then((doc) => {
-        vscode.window.showTextDocument(doc, {
-          viewColumn: vscode.ViewColumn.Active,
-        });
-      });
-    }
-
-    vscode.commands.executeCommand(
-      "workbench.action.closeActiveEditor",
-      vscode.window.activeTextEditor?.document.uri
-    );
+    vscode.commands.executeCommand("workbench.action.closeActiveEditor");
   }
 }
 
@@ -1223,6 +1197,12 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         return;
       }
       const { movedLines, copiedLines, addedLines, deletedLines } = changes;
+      logger.debug("Changes detected:", {
+        movedLines,
+        copiedLines,
+        addedLines: Array.from(addedLines),
+        deletedLines: Array.from(deletedLines),
+      });
 
       // Check for duplicate destinations and existing files that would be overwritten
       const allDestinations = new Set<string>();
@@ -1261,6 +1241,13 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
 
       // Check for duplicate destinations or existing file conflicts
       if (duplicateDestinations.size > 0 || existingFileConflicts.size > 0) {
+        logger.debug(
+          "Duplicate destinations or existing file conflicts detected:",
+          {
+            duplicateDestinations: Array.from(duplicateDestinations),
+            existingFileConflicts: Array.from(existingFileConflicts),
+          }
+        );
         let message = "The following files would be overwritten:\n\n";
         duplicateDestinations.forEach((path) => {
           message += `${formatPath(path)}\n`;
@@ -1324,6 +1311,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         oilState.openAfterSave = undefined;
         return;
       }
+      logger.debug("Processing changes...");
       // Process the changes
       // Move files
       for (const [oldPath, newPath] of movedLines) {
