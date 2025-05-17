@@ -5,6 +5,9 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 import * as sinon from "sinon";
 import { waitFor } from "./waitFor";
+import * as path from "path";
+
+const newline = path.sep === "\\" ? "\r\n" : "\n";
 
 suite("Extension Test Suite", () => {
   // Setup and teardown for Sinon stubs
@@ -74,12 +77,12 @@ suite("Extension Test Suite", () => {
     assert.ok(editor, "No active editor");
 
     await editor.edit((editBuilder) => {
-      editBuilder.insert(new vscode.Position(1, 0), "\noil-file.ts");
+      editBuilder.insert(new vscode.Position(1, 0), `${newline}oil-file.ts`);
     });
 
     assert.strictEqual(
       editor.document.getText(),
-      "/000 ../\noil-file.ts",
+      `/000 ../${newline}oil-file.ts`,
       "Text file was not typed into editor"
     );
 
@@ -90,12 +93,12 @@ suite("Extension Test Suite", () => {
 
     // Wait for file content to update
     await waitFor(
-      () => editor.document.getText() === "/000 ../\n/001 oil-file.ts"
+      () => editor.document.getText() === `/000 ../${newline}/001 oil-file.ts`
     );
 
     assert.strictEqual(
       editor.document.getText(),
-      "/000 ../\n/001 oil-file.ts",
+      `/000 ../${newline}/001 oil-file.ts`,
       "File was not saved with correct content"
     );
   });
@@ -109,12 +112,12 @@ suite("Extension Test Suite", () => {
     assert.ok(editor, "No active editor");
 
     await editor.edit((editBuilder) => {
-      editBuilder.insert(new vscode.Position(1, 0), "\noil-dir/");
+      editBuilder.insert(new vscode.Position(1, 0), `${newline}oil-dir/`);
     });
 
     assert.strictEqual(
       editor.document.getText(),
-      "/000 ../\noil-dir/",
+      `/000 ../${newline}oil-dir/`,
       "Text was not typed into editor"
     );
 
@@ -125,12 +128,12 @@ suite("Extension Test Suite", () => {
 
     // Wait for file content to update
     await waitFor(
-      () => editor.document.getText() === "/000 ../\n/001 oil-dir/"
+      () => editor.document.getText() === `/000 ../${newline}/001 oil-dir/`
     );
 
     assert.strictEqual(
       editor.document.getText(),
-      "/000 ../\n/001 oil-dir/",
+      `/000 ../${newline}/001 oil-dir/`,
       "File was not saved with correct content"
     );
   });
@@ -144,12 +147,12 @@ suite("Extension Test Suite", () => {
     assert.ok(editor, "No active editor");
 
     await editor.edit((editBuilder) => {
-      editBuilder.insert(new vscode.Position(1, 0), "\noil-dir/oil-file.ts");
+      editBuilder.insert(new vscode.Position(1, 0), `${newline}oil-dir/oil-file.ts`);
     });
 
     assert.strictEqual(
       editor.document.getText(),
-      "/000 ../\noil-dir/oil-file.ts",
+      `/000 ../${newline}oil-dir/oil-file.ts`,
       "Text was not typed into editor"
     );
 
@@ -160,12 +163,12 @@ suite("Extension Test Suite", () => {
 
     // Wait for file content to update
     await waitFor(
-      () => editor.document.getText() === "/000 ../\n/001 oil-dir/"
+      () => editor.document.getText() === `/000 ../${newline}/001 oil-dir/`
     );
 
     assert.strictEqual(
       editor.document.getText(),
-      "/000 ../\n/001 oil-dir/",
+      `/000 ../${newline}/001 oil-dir/`,
       "File was not saved with correct content"
     );
 
