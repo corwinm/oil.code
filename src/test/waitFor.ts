@@ -13,7 +13,7 @@ export async function waitFor(
   const interval = options?.interval || 100;
   const endTime = startTime + timeout;
   while (!condition()) {
-    if (endTime > endTime) {
+    if (Date.now() > endTime) {
       assert.fail(options?.message || "Condition not met within timeout");
     }
     await new Promise((resolve) => setTimeout(resolve, interval));
