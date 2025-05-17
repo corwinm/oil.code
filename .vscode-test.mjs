@@ -18,6 +18,6 @@ export default defineConfig({
   // launchArgs: [path.join(__dirname, "test-temp")],
   workspaceFolder: path.join(__dirname, "test-temp"),
   mocha: {
-    timeout: 20000,
+    timeout: 10000,
   },
 });

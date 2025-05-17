@@ -51,8 +51,8 @@ suite("Extension Test Suite", () => {
     }
   });
 
-  test.only("Oil opens", async () => {
-    // await vscode.commands.executeCommand("oil-code.open");
+  test("Oil opens", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
     await waitFor(
       () => vscode.window.activeTextEditor?.document.getText() === "/000 ../"
     );
