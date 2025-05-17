@@ -1197,6 +1197,12 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         return;
       }
       const { movedLines, copiedLines, addedLines, deletedLines } = changes;
+      logger.debug("Changes detected:", {
+        movedLines,
+        copiedLines,
+        addedLines: Array.from(addedLines),
+        deletedLines: Array.from(deletedLines),
+      });
 
       // Check for duplicate destinations and existing files that would be overwritten
       const allDestinations = new Set<string>();
@@ -1235,6 +1241,13 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
 
       // Check for duplicate destinations or existing file conflicts
       if (duplicateDestinations.size > 0 || existingFileConflicts.size > 0) {
+        logger.debug(
+          "Duplicate destinations or existing file conflicts detected:",
+          {
+            duplicateDestinations: Array.from(duplicateDestinations),
+            existingFileConflicts: Array.from(existingFileConflicts),
+          }
+        );
         let message = "The following files would be overwritten:\n\n";
         duplicateDestinations.forEach((path) => {
           message += `${formatPath(path)}\n`;
@@ -1298,6 +1311,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         oilState.openAfterSave = undefined;
         return;
       }
+      logger.debug("Processing changes...");
       // Process the changes
       // Move files
       for (const [oldPath, newPath] of movedLines) {
