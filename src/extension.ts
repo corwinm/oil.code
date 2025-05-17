@@ -322,7 +322,10 @@ async function getDirectoryListing(
     return oilState.editedPaths.get(folderPathUri)!.join("\n");
   }
 
-  if (oilState.visitedPaths.has(folderPathUri)) {
+  if (
+    oilState.editedPaths.size > 0 &&
+    oilState.visitedPaths.has(folderPathUri)
+  ) {
     // If we have visited this path before, return the cached listing
     return oilState.visitedPaths.get(folderPathUri)!.join("\n");
   }
@@ -1186,8 +1189,9 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         oilState.editedPaths.set(currentPath, currentLines);
       }
       if (
+        oilState.editedPaths.has(currentPath) &&
         oilState.editedPaths.get(currentPath)?.join("") !==
-        currentLines.join("")
+          currentLines.join("")
       ) {
         oilState.editedPaths.set(currentPath, currentLines);
       }
