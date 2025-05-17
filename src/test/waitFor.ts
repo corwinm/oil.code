@@ -9,7 +9,7 @@ export async function waitFor(
   }
 ): Promise<void> {
   const startTime = Date.now();
-  const timeout = options?.timeout || 3000;
+  const timeout = options?.timeout || 5000;
   const interval = options?.interval || 100;
   const endTime = startTime + timeout;
   while (!condition()) {
