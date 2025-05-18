@@ -299,12 +299,6 @@ suite("oil.code", () => {
       );
     });
 
-    assert.strictEqual(
-      editor.document.getText(),
-      `/000 ../${newline}sub-dir/${newline}oil-file.md`,
-      "Text file was not typed into editor"
-    );
-
     await vscode.commands.executeCommand("workbench.action.files.save");
 
     // Give the file save operation time to complete
@@ -317,6 +311,22 @@ suite("oil.code", () => {
         `/000 ../${newline}/001 sub-dir/${newline}/002 oil-file.md`
       )
     );
+
+    // Move cursor to the file name
+    const filePosition = new vscode.Position(2, 0);
+    editor.selection = new vscode.Selection(filePosition, filePosition);
+    await vscode.commands.executeCommand("oil-code.select");
+
+    const mockFileContent = `mock file content`;
+    await vscode.window.activeTextEditor?.edit((editBuilder) => {
+      editBuilder.insert(new vscode.Position(0, 0), mockFileContent);
+    });
+
+    await vscode.commands.executeCommand("workbench.action.files.save");
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    await vscode.commands.executeCommand("oil-code.open");
 
     // Move cursor to the file name
     const position = new vscode.Position(2, 0);
@@ -367,9 +377,125 @@ suite("oil.code", () => {
       ([name, type]) => type === vscode.FileType.File && name === "oil-file.md"
     );
     assert.ok(fileExists2, "File was not moved correctly");
+
+    const fileContent = await vscode.workspace.fs.readFile(
+      vscode.Uri.joinPath(workspaceFolder.uri, "sub-dir", "oil-file.md")
+    );
+    assert.strictEqual(
+      fileContent.toString(),
+      mockFileContent,
+      "File content was not moved correctly"
+    );
   });
 
-  // Move file to another directory and rename
+  test("Move file to another directory and rename", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitFor(() =>
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.document.getText(),
+        "/000 ../"
+      )
+    );
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(
+        new vscode.Position(1, 0),
+        `${newline}sub-dir/${newline}oil-file.md`
+      );
+    });
+
+    await vscode.commands.executeCommand("workbench.action.files.save");
+
+    // Give the file save operation time to complete
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Wait for file content to update
+    await waitFor(() =>
+      assert.strictEqual(
+        editor.document.getText(),
+        `/000 ../${newline}/001 sub-dir/${newline}/002 oil-file.md`
+      )
+    );
+
+    // Move cursor to the file name
+    const filePosition = new vscode.Position(2, 0);
+    editor.selection = new vscode.Selection(filePosition, filePosition);
+    await vscode.commands.executeCommand("oil-code.select");
+
+    const mockFileContent = `mock file content`;
+    await vscode.window.activeTextEditor?.edit((editBuilder) => {
+      editBuilder.insert(new vscode.Position(0, 0), mockFileContent);
+    });
+
+    await vscode.commands.executeCommand("workbench.action.files.save");
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    await vscode.commands.executeCommand("oil-code.open");
+
+    // Move cursor to the file name
+    const position = new vscode.Position(2, 0);
+    editor.selection = new vscode.Selection(position, position);
+
+    // Cut selection
+    await vscode.commands.executeCommand("editor.action.deleteLines");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Move cursor to the new directory
+    const position3 = new vscode.Position(1, 0);
+    editor.selection = new vscode.Selection(position3, position3);
+
+    await vscode.commands.executeCommand("oil-code.select");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const editor2 = vscode.window.activeTextEditor;
+    assert.ok(editor2, "No active editor");
+    editor2.selection = new vscode.Selection(position3, position3);
+    editor2.edit((editBuilder) => {
+      editBuilder.insert(new vscode.Position(0, 8), newline);
+      editBuilder.insert(new vscode.Position(1, 0), `/002 oil-file-rename.md`);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    await vscode.commands.executeCommand("workbench.action.files.save");
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    await waitFor(() =>
+      assert.strictEqual(
+        editor2.document.getText(),
+        `/000 ../${newline}/003 oil-file-rename.md`
+      )
+    );
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(workspaceFolder, "No workspace folder found");
+    // Check if the file was moved
+    const files = await vscode.workspace.fs.readDirectory(workspaceFolder.uri);
+    const fileExists = files.some(
+      ([name, type]) => type === vscode.FileType.File && name === "oil-file.md"
+    );
+    assert.ok(!fileExists, "File was not moved correctly");
+
+    const files2 = await vscode.workspace.fs.readDirectory(
+      vscode.Uri.joinPath(workspaceFolder.uri, "sub-dir")
+    );
+    const fileExists2 = files2.some(
+      ([name, type]) =>
+        type === vscode.FileType.File && name === "oil-file-rename.md"
+    );
+    assert.ok(fileExists2, "File was not moved correctly");
+
+    const fileContent = await vscode.workspace.fs.readFile(
+      vscode.Uri.joinPath(workspaceFolder.uri, "sub-dir", "oil-file-rename.md")
+    );
+    assert.strictEqual(
+      fileContent.toString(),
+      mockFileContent,
+      "File content was not moved correctly"
+    );
+  });
 
   test("Move directory to another directory", async () => {
     await vscode.commands.executeCommand("oil-code.open");
