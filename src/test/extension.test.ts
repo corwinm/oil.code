@@ -106,7 +106,8 @@ suite("Extension Test Suite", () => {
   test("Creates directory", async () => {
     await vscode.commands.executeCommand("oil-code.open");
     await waitFor(
-      () => vscode.window.activeTextEditor?.document.getText() === "/000 ../"
+      () => vscode.window.activeTextEditor?.document.getText() === "/000 ../",
+      { message: "Editor text did not match expected value" }
     );
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, "No active editor");
@@ -149,7 +150,8 @@ suite("Extension Test Suite", () => {
   test("Creates directory and file in one line", async () => {
     await vscode.commands.executeCommand("oil-code.open");
     await waitFor(
-      () => vscode.window.activeTextEditor?.document.getText() === "/000 ../"
+      () => vscode.window.activeTextEditor?.document.getText() === "/000 ../",
+      { message: "Editor text did not match expected value" }
     );
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, "No active editor");
@@ -171,7 +173,15 @@ suite("Extension Test Suite", () => {
 
     // Wait for file content to update
     await waitFor(
-      () => editor.document.getText() === `/000 ../${newline}/001 oil-dir/`
+      () => editor.document.getText() === `/000 ../${newline}/001 oil-dir/`,
+      {
+        onTimeout() {
+          return JSON.stringify({
+            editorText: editor.document.getText(),
+            expectedText: `/000 ../${newline}/001 oil-dir/`,
+          });
+        }
+      }
     );
 
     assert.strictEqual(
