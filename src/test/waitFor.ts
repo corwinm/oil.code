@@ -6,7 +6,7 @@ export async function waitFor(
     timeout?: number;
     interval?: number;
     message?: string;
-    onTimeout?: () => void;
+    onTimeout?: () => string;
   }
 ): Promise<void> {
   const startTime = Date.now();
@@ -15,7 +15,9 @@ export async function waitFor(
   const endTime = startTime + timeout;
   while (!condition()) {
     if (Date.now() > endTime) {
-      options?.onTimeout?.();
+      if (options?.onTimeout) {
+        assert.fail(options.onTimeout());
+      }
       assert.fail(options?.message || "Condition not met within timeout");
     }
     await new Promise((resolve) => setTimeout(resolve, interval));

@@ -131,8 +131,7 @@ suite("Extension Test Suite", () => {
       () => editor.document.getText() === `/000 ../${newline}/001 oil-dir/`,
       {
         onTimeout() {
-          console.log("Timeout occurred while waiting for file content update");
-          console.log({
+          return JSON.stringify({
             editorText: editor.document.getText(),
             expectedText: `/000 ../${newline}/001 oil-dir/`,
           });
