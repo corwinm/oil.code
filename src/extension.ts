@@ -1444,9 +1444,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         }
       }
 
-      // oilState.visitedPaths.clear();
       oilState.editedPaths.clear();
-      // oilState.identifierCounter = 1;
 
       // Refresh the directory listing after changes
       const updatedContent = await getDirectoryListing(currentPath, oilState);
