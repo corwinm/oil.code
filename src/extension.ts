@@ -29,6 +29,8 @@ const OIL_SCHEME = "oil";
 // Custom URI scheme for oil preview files
 const OIL_PREVIEW_SCHEME = "oil-preview";
 
+const newline = path.sep === "\\" ? "\r\n" : "\n";
+
 function initOilState() {
   const currentOrWorkspacePath = normalizePathToUri(
     vscode.window.activeTextEditor
@@ -319,7 +321,7 @@ async function getDirectoryListing(
 
   const folderPathUri = removeTrailingSlash(normalizePathToUri(folderPath));
   if (oilState.editedPaths.has(folderPathUri)) {
-    return oilState.editedPaths.get(folderPathUri)!.join("\n");
+    return oilState.editedPaths.get(folderPathUri)!.join(newline);
   }
 
   if (
@@ -327,7 +329,7 @@ async function getDirectoryListing(
     oilState.visitedPaths.has(folderPathUri)
   ) {
     // If we have visited this path before, return the cached listing
-    return oilState.visitedPaths.get(folderPathUri)!.join("\n");
+    return oilState.visitedPaths.get(folderPathUri)!.join(newline);
   }
 
   let results = await vscode.workspace.fs.readDirectory(pathUri);
@@ -368,7 +370,7 @@ async function getDirectoryListing(
 
   oilState.visitedPaths.set(folderPathUri, listingsWithIds);
 
-  return listingsWithIds.join("\n");
+  return listingsWithIds.join(newline);
 }
 
 async function select({
@@ -394,7 +396,7 @@ async function select({
 
   // Capture current content before navigating
   const currentContent = activeEditor.document.getText();
-  const currentLines = currentContent.split("\n");
+  const currentLines = currentContent.split(newline);
   const oilState = getOilState();
   if (!oilState) {
     vscode.window.showErrorMessage("Failed to get oil state.");
@@ -484,7 +486,7 @@ async function select({
           if (editor) {
             // Find the line with the directory name (with trailing slash)
             const docText = editor.document.getText();
-            const lines = docText.split("\n");
+            const lines = docText.split(newline);
 
             let foundIndex = -1;
             // Look for the folder we came from with or without trailing slash
@@ -611,7 +613,7 @@ function positionCursorOnFile(editor: vscode.TextEditor, fileName: string) {
 
   const document = editor.document;
   const text = document.getText();
-  const lines = text.split("\n");
+  const lines = text.split(newline);
 
   // If no filename is provided or it's going up a directory, place cursor on first line
   if (!fileName || fileName === "../") {
@@ -1183,7 +1185,7 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       // and any pending changes from navigation
       // Read the current content of the file
       const currentContent = document.getText();
-      const currentLines = currentContent.split("\n");
+      const currentLines = currentContent.split(newline);
       const currentValue = oilState.visitedPaths.get(currentPath);
       if (currentValue?.join("") !== currentLines.join("")) {
         oilState.editedPaths.set(currentPath, currentLines);
