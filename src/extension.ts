@@ -309,6 +309,10 @@ async function openOil(atPath?: string | undefined) {
 
 function closeOil() {
   if (vscode.window.activeTextEditor?.document.languageId === "oil") {
+    const oilState = getOilState();
+    if (oilState) {
+      checkForVisitedCleanup(oilState);
+    }
     vscode.commands.executeCommand("workbench.action.closeActiveEditor");
   }
 }
@@ -353,11 +357,27 @@ async function getDirectoryListing(
     listings.unshift("../");
   }
 
+  let existingFiles = new Map<string, string>();
+  // Diff against the cached version and remove any deleted files and add new ones
+  if (oilState.visitedPaths.has(folderPathUri)) {
+    const previousListings = oilState.visitedPaths.get(folderPathUri)!;
+    for (const file of previousListings) {
+      const fileName = file.slice(4);
+      if (listings.includes(fileName)) {
+        existingFiles.set(fileName, file);
+      }
+    }
+  }
+
   // Generate listings with hidden identifiers using global counter
   let listingsWithIds = listings.map((name) => {
     if (name === "../") {
       return `/000 ${name}`;
     }
+    if (existingFiles.has(name)) {
+      return existingFiles.get(name)!;
+    }
+
     // Use and increment the global counter for each file/directory
     const identifier = `/${oilState.identifierCounter
       .toString()
@@ -559,6 +579,9 @@ async function select({
   }
 
   try {
+    // If their are no open oil files and no edits, reset state
+    checkForVisitedCleanup(oilState);
+
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
     if (!viewColumn) {
@@ -573,6 +596,18 @@ async function select({
     });
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
+  }
+}
+
+function checkForVisitedCleanup(oilState: OilState) {
+  if (
+    vscode.window.visibleTextEditors.filter(
+      (editor) => editor.document.languageId === "oil"
+    ).length === 1 &&
+    !oilState.editedPaths.size
+  ) {
+    oilState.visitedPaths.clear();
+    oilState.identifierCounter = 1;
   }
 }
 
@@ -1409,9 +1444,9 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         }
       }
 
-      oilState.visitedPaths.clear();
+      // oilState.visitedPaths.clear();
       oilState.editedPaths.clear();
-      oilState.identifierCounter = 1;
+      // oilState.identifierCounter = 1;
 
       // Refresh the directory listing after changes
       const updatedContent = await getDirectoryListing(currentPath, oilState);
