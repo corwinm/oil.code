@@ -228,12 +228,8 @@ suite("oil.code", () => {
 
   test("Move file to another directory", async () => {
     await vscode.commands.executeCommand("oil-code.open");
-    await waitFor(() =>
-      assert.strictEqual(
-        vscode.window.activeTextEditor?.document.getText(),
-        "/000 ../"
-      )
-    );
+    await waitForDocumentText("/000 ../");
+
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, "No active editor");
 
@@ -247,12 +243,11 @@ suite("oil.code", () => {
     await saveFile();
 
     // Wait for file content to update
-    await waitFor(() =>
-      assert.strictEqual(
-        editor.document.getText(),
-        `/000 ../${newline}/001 sub-dir/${newline}/002 oil-file.md`
-      )
-    );
+    await waitForDocumentText([
+      "/000 ../",
+      "/001 sub-dir/",
+      "/002 oil-file.md",
+    ]);
 
     // Move cursor to the file name
     const filePosition = new vscode.Position(2, 0);
@@ -296,12 +291,7 @@ suite("oil.code", () => {
     await vscode.commands.executeCommand("workbench.action.files.save");
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    await waitFor(() =>
-      assert.strictEqual(
-        editor2.document.getText(),
-        `/000 ../${newline}/003 oil-file.md`
-      )
-    );
+    await waitForDocumentText(["/000 ../", "/003 oil-file.md"]);
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     assert.ok(workspaceFolder, "No workspace folder found");
@@ -332,12 +322,7 @@ suite("oil.code", () => {
 
   test("Move file to another directory and rename", async () => {
     await vscode.commands.executeCommand("oil-code.open");
-    await waitFor(() =>
-      assert.strictEqual(
-        vscode.window.activeTextEditor?.document.getText(),
-        "/000 ../"
-      )
-    );
+    await waitForDocumentText("/000 ../");
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, "No active editor");
 
@@ -351,12 +336,11 @@ suite("oil.code", () => {
     await saveFile();
 
     // Wait for file content to update
-    await waitFor(() =>
-      assert.strictEqual(
-        editor.document.getText(),
-        `/000 ../${newline}/001 sub-dir/${newline}/002 oil-file.md`
-      )
-    );
+    await waitForDocumentText([
+      "/000 ../",
+      "/001 sub-dir/",
+      "/002 oil-file.md",
+    ]);
 
     // Move cursor to the file name
     const filePosition = new vscode.Position(2, 0);
@@ -378,7 +362,6 @@ suite("oil.code", () => {
     const position = new vscode.Position(2, 0);
     editor.selection = new vscode.Selection(position, position);
 
-    // Cut selection
     await vscode.commands.executeCommand("editor.action.deleteLines");
     await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -401,12 +384,7 @@ suite("oil.code", () => {
     await vscode.commands.executeCommand("workbench.action.files.save");
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    await waitFor(() =>
-      assert.strictEqual(
-        editor2.document.getText(),
-        `/000 ../${newline}/003 oil-file-rename.md`
-      )
-    );
+    await waitForDocumentText(["/000 ../", "/003 oil-file-rename.md"]);
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     assert.ok(workspaceFolder, "No workspace folder found");
@@ -438,12 +416,7 @@ suite("oil.code", () => {
 
   test("Move directory to another directory", async () => {
     await vscode.commands.executeCommand("oil-code.open");
-    await waitFor(() =>
-      assert.strictEqual(
-        vscode.window.activeTextEditor?.document.getText(),
-        "/000 ../"
-      )
-    );
+    await waitForDocumentText("/000 ../");
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, "No active editor");
 
@@ -457,14 +430,11 @@ suite("oil.code", () => {
     await saveFile();
 
     // Wait for file content to update
-    await waitFor(() =>
-      assert.strictEqual(
-        editor.document.getText(),
-        ["/000 ../", "/001 oil-dir-child/", "/002 oil-dir-parent/"].join(
-          newline
-        )
-      )
-    );
+    await waitForDocumentText([
+      "/000 ../",
+      "/001 oil-dir-child/",
+      "/002 oil-dir-parent/",
+    ]);
 
     editor.selection = new vscode.Selection(
       new vscode.Position(1, 0),
@@ -496,12 +466,7 @@ suite("oil.code", () => {
     await vscode.commands.executeCommand("workbench.action.files.save");
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    await waitFor(() =>
-      assert.strictEqual(
-        editor2.document.getText(),
-        ["/000 ../", "/003 oil-dir-child/"].join(newline)
-      )
-    );
+    await waitForDocumentText(["/000 ../", "/003 oil-dir-child/"]);
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     assert.ok(workspaceFolder, "No workspace folder found");
@@ -545,12 +510,7 @@ suite("oil.code", () => {
 
   test("Move directory to another directory and rename", async () => {
     await vscode.commands.executeCommand("oil-code.open");
-    await waitFor(() =>
-      assert.strictEqual(
-        vscode.window.activeTextEditor?.document.getText(),
-        "/000 ../"
-      )
-    );
+    await waitForDocumentText("/000 ../");
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, "No active editor");
 
@@ -564,14 +524,11 @@ suite("oil.code", () => {
     await saveFile();
 
     // Wait for file content to update
-    await waitFor(() =>
-      assert.strictEqual(
-        editor.document.getText(),
-        ["/000 ../", "/001 oil-dir-child/", "/002 oil-dir-parent/"].join(
-          newline
-        )
-      )
-    );
+    await waitForDocumentText([
+      "/000 ../",
+      "/001 oil-dir-child/",
+      "/002 oil-dir-parent/",
+    ]);
 
     editor.selection = new vscode.Selection(
       new vscode.Position(1, 0),
@@ -603,12 +560,7 @@ suite("oil.code", () => {
     await vscode.commands.executeCommand("workbench.action.files.save");
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    await waitFor(() =>
-      assert.strictEqual(
-        editor2.document.getText(),
-        ["/000 ../", "/003 oil-dir-child-renamed/"].join(newline)
-      )
-    );
+    await waitForDocumentText(["/000 ../", "/003 oil-dir-child-renamed/"]);
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     assert.ok(workspaceFolder, "No workspace folder found");
