@@ -369,6 +369,8 @@ suite("oil.code", () => {
     assert.ok(fileExists2, "File was not moved correctly");
   });
 
+  // Move file to another directory and rename
+
   test("Move directory to another directory", async () => {
     await vscode.commands.executeCommand("oil-code.open");
     await waitFor(() =>
@@ -479,6 +481,113 @@ suite("oil.code", () => {
     );
   });
 
-  // Move file to another directory and rename
-  // Move directory to another directory and rename
+  test("Move directory to another directory and rename", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitFor(() =>
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.document.getText(),
+        "/000 ../"
+      )
+    );
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(
+        new vscode.Position(1, 0),
+        ["", "oil-dir-parent/", "oil-dir-child/oil-file.md"].join(newline)
+      );
+    });
+
+    await vscode.commands.executeCommand("workbench.action.files.save");
+
+    // Give the file save operation time to complete
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Wait for file content to update
+    await waitFor(() =>
+      assert.strictEqual(
+        editor.document.getText(),
+        ["/000 ../", "/001 oil-dir-child/", "/002 oil-dir-parent/"].join(
+          newline
+        )
+      )
+    );
+
+    editor.selection = new vscode.Selection(
+      new vscode.Position(1, 0),
+      new vscode.Position(1, 0)
+    );
+    await vscode.commands.executeCommand("editor.action.deleteLines");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    editor.selection = new vscode.Selection(
+      new vscode.Position(1, 0),
+      new vscode.Position(1, 0)
+    );
+    await vscode.commands.executeCommand("oil-code.select");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const editor2 = vscode.window.activeTextEditor;
+    assert.ok(editor2, "No active editor");
+    editor2.selection = new vscode.Selection(
+      new vscode.Position(1, 0),
+      new vscode.Position(1, 0)
+    );
+    editor2.edit((editBuilder) => {
+      editBuilder.insert(
+        new vscode.Position(1, 0),
+        ["", "/001 oil-dir-child-renamed/"].join(newline)
+      );
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    await vscode.commands.executeCommand("workbench.action.files.save");
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    await waitFor(() =>
+      assert.strictEqual(
+        editor2.document.getText(),
+        ["/000 ../", "/003 oil-dir-child-renamed/"].join(newline)
+      )
+    );
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(workspaceFolder, "No workspace folder found");
+    // Check if the file was moved
+    const files = await vscode.workspace.fs.readDirectory(workspaceFolder.uri);
+    const parentDirExists = files.some(
+      ([name, type]) =>
+        type === vscode.FileType.Directory && name === "oil-dir-parent"
+    );
+    assert.ok(parentDirExists, "Parent directory was not where it should be");
+    const childDirExists = files.some(
+      ([name, type]) =>
+        type === vscode.FileType.Directory && name === "oil-dir-child"
+    );
+    assert.ok(!childDirExists, "Child directory was not moved from parent");
+
+    const parentDirFiles = await vscode.workspace.fs.readDirectory(
+      vscode.Uri.joinPath(workspaceFolder.uri, "oil-dir-parent")
+    );
+    const childDir = parentDirFiles.some(
+      ([name, type]) =>
+        type === vscode.FileType.Directory && name === "oil-dir-child-renamed"
+    );
+    assert.ok(childDir, "Child directory was not moved to parent");
+
+    const childDirFiles = await vscode.workspace.fs.readDirectory(
+      vscode.Uri.joinPath(
+        workspaceFolder.uri,
+        "oil-dir-parent",
+        "oil-dir-child-renamed"
+      )
+    );
+    const childFileExists = childDirFiles.some(
+      ([name, type]) => type === vscode.FileType.File && name === "oil-file.md"
+    );
+    assert.ok(
+      childFileExists,
+      "Child directory files was not moved with child dir"
+    );
+  });
 });
