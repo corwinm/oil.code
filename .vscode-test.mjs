@@ -14,6 +14,7 @@ if (!fs.existsSync(testTempDir)) {
 export default defineConfig({
   files: "out/test/**/*.test.js",
   workspaceFolder: testTempDir,
+  launchArgs: ["--disable-extensions"],
   mocha: {
     timeout: 10000,
   },

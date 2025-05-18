@@ -6,7 +6,7 @@ import * as path from "path";
 
 const newline = path.sep === "\\" ? "\r\n" : "\n";
 
-suite("Extension Test Suite", () => {
+suite("oil.code", () => {
   // Setup and teardown for Sinon stubs
   let showWarningMessageStub: sinon.SinonStub;
 
@@ -20,6 +20,15 @@ suite("Extension Test Suite", () => {
 
   teardown(async () => {
     await vscode.commands.executeCommand("oil-code.close");
+
+    // Close all editors
+    const editors = vscode.window.visibleTextEditors;
+    for (const editor of editors) {
+      await vscode.commands.executeCommand(
+        "workbench.action.closeActiveEditor"
+      );
+    }
+
     // Restore the original methods after each test
     showWarningMessageStub.restore();
     // Clean up any test files created during tests
@@ -270,4 +279,96 @@ suite("Extension Test Suite", () => {
     );
     assert.ok(fileExists, "File was not renamed correctly");
   });
+
+  test("Move file to another directory", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitFor(() =>
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.document.getText(),
+        "/000 ../"
+      )
+    );
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(
+        new vscode.Position(1, 0),
+        `${newline}sub-dir/${newline}oil-file.md`
+      );
+    });
+
+    assert.strictEqual(
+      editor.document.getText(),
+      `/000 ../${newline}sub-dir/${newline}oil-file.md`,
+      "Text file was not typed into editor"
+    );
+
+    await vscode.commands.executeCommand("workbench.action.files.save");
+
+    // Give the file save operation time to complete
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Wait for file content to update
+    await waitFor(() =>
+      assert.strictEqual(
+        editor.document.getText(),
+        `/000 ../${newline}/001 sub-dir/${newline}/002 oil-file.md`
+      )
+    );
+
+    // Move cursor to the file name
+    const position = new vscode.Position(2, 0);
+    editor.selection = new vscode.Selection(position, position);
+
+    // Cut selection
+    await vscode.commands.executeCommand("editor.action.deleteLines");
+
+    // Move cursor to the new directory
+    const position3 = new vscode.Position(1, 0);
+    editor.selection = new vscode.Selection(position3, position3);
+
+    await vscode.commands.executeCommand("oil-code.select");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const editor2 = vscode.window.activeTextEditor;
+    assert.ok(editor2, "No active editor");
+    editor2.selection = new vscode.Selection(position3, position3);
+    editor2.edit((editBuilder) => {
+      editBuilder.insert(new vscode.Position(0, 8), newline);
+      editBuilder.insert(new vscode.Position(1, 0), `/002 oil-file.md`);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    await vscode.commands.executeCommand("workbench.action.files.save");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    await waitFor(() =>
+      assert.strictEqual(
+        editor2.document.getText(),
+        `/000 ../${newline}/003 oil-file.md`
+      )
+    );
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(workspaceFolder, "No workspace folder found");
+    // Check if the file was moved
+    const files = await vscode.workspace.fs.readDirectory(workspaceFolder.uri);
+    const fileExists = files.some(
+      ([name, type]) => type === vscode.FileType.File && name === "oil-file.md"
+    );
+    assert.ok(!fileExists, "File was not moved correctly");
+
+    const files2 = await vscode.workspace.fs.readDirectory(
+      vscode.Uri.joinPath(workspaceFolder.uri, "sub-dir")
+    );
+    const fileExists2 = files2.some(
+      ([name, type]) => type === vscode.FileType.File && name === "oil-file.md"
+    );
+    assert.ok(fileExists2, "File was not moved correctly");
+  });
+
+  // Move directory to another directory
+  // Move file to another directory and rename
+  // Move directory to another directory and rename
 });
