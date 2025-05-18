@@ -2,9 +2,9 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 import * as sinon from "sinon";
 import { waitFor } from "./waitFor";
-import * as path from "path";
-
-const newline = path.sep === "\\" ? "\r\n" : "\n";
+import { waitForDocumentText } from "./waitForDocumentText";
+import { newline } from "../newline";
+import { saveFile } from "./saveFile";
 
 suite("oil.code", () => {
   // Setup and teardown for Sinon stubs
@@ -20,6 +20,7 @@ suite("oil.code", () => {
 
   teardown(async () => {
     await vscode.commands.executeCommand("oil-code.close");
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Close all editors
     const editors = vscode.window.visibleTextEditors;
@@ -63,12 +64,8 @@ suite("oil.code", () => {
 
   test("Oil opens", async () => {
     await vscode.commands.executeCommand("oil-code.open");
-    await waitFor(() =>
-      assert.strictEqual(
-        vscode.window.activeTextEditor?.document.getText(),
-        "/000 ../"
-      )
-    );
+    await waitForDocumentText("/000 ../");
+
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, "No active editor");
     assert.strictEqual(
@@ -80,12 +77,8 @@ suite("oil.code", () => {
 
   test("Creates file", async () => {
     await vscode.commands.executeCommand("oil-code.open");
-    await waitFor(() =>
-      assert.strictEqual(
-        vscode.window.activeTextEditor?.document.getText(),
-        "/000 ../"
-      )
-    );
+    await waitForDocumentText("/000 ../");
+
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, "No active editor");
 
@@ -99,28 +92,15 @@ suite("oil.code", () => {
       "Text file was not typed into editor"
     );
 
-    await vscode.commands.executeCommand("workbench.action.files.save");
-
-    // Give the file save operation time to complete
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await saveFile();
 
     // Wait for file content to update
-    await waitFor(() =>
-      assert.strictEqual(
-        editor.document.getText(),
-        `/000 ../${newline}/001 oil-file.ts`
-      )
-    );
+    await waitForDocumentText(["/000 ../", "/001 oil-file.ts"]);
   });
 
   test("Creates directory", async () => {
     await vscode.commands.executeCommand("oil-code.open");
-    await waitFor(() =>
-      assert.strictEqual(
-        vscode.window.activeTextEditor?.document.getText(),
-        "/000 ../"
-      )
-    );
+    await waitForDocumentText("/000 ../");
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, "No active editor");
 
@@ -134,18 +114,10 @@ suite("oil.code", () => {
       "Text was not typed into editor"
     );
 
-    await vscode.commands.executeCommand("workbench.action.files.save");
-
-    // Give the file save operation time to complete
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await saveFile();
 
     // Wait for file content to update
-    await waitFor(() =>
-      assert.strictEqual(
-        editor.document.getText(),
-        `/000 ../${newline}/001 oil-dir/`
-      )
-    );
+    await waitForDocumentText(["/000 ../", "/001 oil-dir/"]);
   });
 
   test("Creates directory and file in one line", async () => {
@@ -172,18 +144,10 @@ suite("oil.code", () => {
       "Text was not typed into editor"
     );
 
-    await vscode.commands.executeCommand("workbench.action.files.save");
-
-    // Give the file save operation time to complete
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await saveFile();
 
     // Wait for file content to update
-    await waitFor(() =>
-      assert.strictEqual(
-        editor.document.getText(),
-        `/000 ../${newline}/001 oil-dir/`
-      )
-    );
+    await waitForDocumentText(["/000 ../", "/001 oil-dir/"]);
 
     // Check if the file was created
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -200,12 +164,9 @@ suite("oil.code", () => {
 
   test("Edit and renames file", async () => {
     await vscode.commands.executeCommand("oil-code.open");
-    await waitFor(() =>
-      assert.strictEqual(
-        vscode.window.activeTextEditor?.document.getText(),
-        "/000 ../"
-      )
-    );
+    await waitForDocumentText("/000 ../");
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
     const editor = vscode.window.activeTextEditor;
     assert.ok(editor, "No active editor");
 
@@ -219,41 +180,28 @@ suite("oil.code", () => {
       "Text file was not typed into editor"
     );
 
-    await vscode.commands.executeCommand("workbench.action.files.save");
-
-    // Give the file save operation time to complete
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await saveFile();
 
     // Wait for file content to update
-    await waitFor(() =>
-      assert.strictEqual(
-        editor.document.getText(),
-        `/000 ../${newline}/001 oil-file.md`
-      )
-    );
+    await waitForDocumentText(["/000 ../", "/001 oil-file.md"]);
 
     // Move cursor to the file name
-    const position = new vscode.Position(1, 0);
+    const position = new vscode.Position(1, 5);
     editor.selection = new vscode.Selection(position, position);
     await vscode.commands.executeCommand("oil-code.select");
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     const mockFileContent = `mock file content`;
     await vscode.window.activeTextEditor?.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(0, 0), mockFileContent);
     });
 
-    await vscode.commands.executeCommand("workbench.action.files.save");
-
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await saveFile();
 
     await vscode.commands.executeCommand("oil-code.open");
 
-    await waitFor(() =>
-      assert.strictEqual(
-        vscode.window.activeTextEditor?.document.getText(),
-        `/000 ../${newline}/001 oil-file.md`
-      )
-    );
+    await waitForDocumentText(["/000 ../", "/001 oil-file.md"]);
 
     const editor2 = vscode.window.activeTextEditor;
     assert.ok(editor2, "No active editor");
@@ -262,13 +210,10 @@ suite("oil.code", () => {
     editor2.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(1, 5), `new-`);
     });
-    await vscode.commands.executeCommand("workbench.action.files.save");
-    await waitFor(() =>
-      assert.strictEqual(
-        vscode.window.activeTextEditor?.document.getText(),
-        `/000 ../${newline}/001 new-oil-file.md`
-      )
-    );
+
+    await saveFile();
+
+    await waitForDocumentText(["/000 ../", "/002 new-oil-file.md"]);
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     assert.ok(workspaceFolder, "No workspace folder found");
@@ -299,10 +244,7 @@ suite("oil.code", () => {
       );
     });
 
-    await vscode.commands.executeCommand("workbench.action.files.save");
-
-    // Give the file save operation time to complete
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await saveFile();
 
     // Wait for file content to update
     await waitFor(() =>
@@ -406,10 +348,7 @@ suite("oil.code", () => {
       );
     });
 
-    await vscode.commands.executeCommand("workbench.action.files.save");
-
-    // Give the file save operation time to complete
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await saveFile();
 
     // Wait for file content to update
     await waitFor(() =>
@@ -515,10 +454,7 @@ suite("oil.code", () => {
       );
     });
 
-    await vscode.commands.executeCommand("workbench.action.files.save");
-
-    // Give the file save operation time to complete
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await saveFile();
 
     // Wait for file content to update
     await waitFor(() =>
@@ -625,10 +561,7 @@ suite("oil.code", () => {
       );
     });
 
-    await vscode.commands.executeCommand("workbench.action.files.save");
-
-    // Give the file save operation time to complete
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await saveFile();
 
     // Wait for file content to update
     await waitFor(() =>

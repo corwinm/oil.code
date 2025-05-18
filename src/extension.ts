@@ -2,6 +2,7 @@ import path from "path";
 import * as vscode from "vscode";
 import * as fs from "fs";
 import { activateDecorations } from "./decorations";
+import { newline } from "./newline";
 
 const logger = vscode.window.createOutputChannel("oil.code", { log: true });
 
@@ -28,8 +29,6 @@ const OIL_SCHEME = "oil";
 
 // Custom URI scheme for oil preview files
 const OIL_PREVIEW_SCHEME = "oil-preview";
-
-const newline = path.sep === "\\" ? "\r\n" : "\n";
 
 function initOilState() {
   const currentOrWorkspacePath = normalizePathToUri(
@@ -584,6 +583,7 @@ async function select({
 
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
+    const viewColumnToUse = viewColumn || activeEditor.viewColumn;
     if (!viewColumn) {
       await vscode.window.showTextDocument(activeEditor.document.uri);
       await vscode.commands.executeCommand(
@@ -591,7 +591,7 @@ async function select({
       );
     }
     await vscode.window.showTextDocument(fileDoc, {
-      viewColumn: viewColumn || activeEditor.viewColumn,
+      viewColumn: viewColumnToUse,
       preview: false,
     });
   } catch (error) {
@@ -1113,14 +1113,18 @@ function determineChanges(oilState: OilState) {
     const deletedLines = new Set<string>();
 
     for (const [dirPath, lines] of oilState.editedPaths.entries()) {
-      const editedEntries = oilLinesToOilMap(lines, dirPath);
+      const editedEntries = oilLinesToOilEntries(lines, dirPath);
       // Check for deleted entries
       const fileOriginalEntries = oilLinesToOilEntries(
         oilState.visitedPaths.get(dirPath) || [],
         dirPath
       );
       for (const [key, entry] of fileOriginalEntries) {
-        if (!editedEntries.has(key)) {
+        const editedEntry = editedEntries.find(
+          (editedEntry) =>
+            editedEntry[0] === key && editedEntry[1].value === entry.value
+        );
+        if (!editedEntry) {
           deletedLines.add(path.join(uriPathToDiskPath(dirPath), entry.value));
         }
       }
