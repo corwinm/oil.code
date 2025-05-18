@@ -23,10 +23,11 @@ suite("oil.code", () => {
 
     // Close all editors
     const editors = vscode.window.visibleTextEditors;
-    for (const editor of editors) {
+    for (const _ of editors) {
       await vscode.commands.executeCommand(
         "workbench.action.closeActiveEditor"
       );
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     // Restore the original methods after each test
