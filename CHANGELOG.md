@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.18](https://github.com/corwinm/oil.code/compare/v0.0.17...v0.0.18)
+
+- fix: Initial tests and bugfixes by @corwinm in https://github.com/corwinm/oil.code/pull/20
+
 ## [0.0.17](https://github.com/corwinm/oil.code/compare/v0.0.16...v0.0.17)
 
 - fix: Open oil in new editor by @corwinm in https://github.com/corwinm/oil.code/pull/19
