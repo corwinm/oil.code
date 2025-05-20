@@ -1800,6 +1800,51 @@ async function preview() {
   }
 }
 
+// Change the VSCode working directory to current oil directory
+async function changeDirectory() {
+  const oilState = getOilState();
+  if (!oilState) {
+    vscode.window.showErrorMessage("Failed to get oil state.");
+    return;
+  }
+  const currentPath = getCurrentPath();
+  if (!currentPath) {
+    vscode.window.showErrorMessage("No current path found.");
+    return;
+  }
+
+  // Check if we have pending changes
+  if (
+    oilState.editedPaths.size > 0 ||
+    vscode.window.activeTextEditor?.document.isDirty
+  ) {
+    const result = await vscode.window.showWarningMessage(
+      "Discard changes?",
+      { modal: true },
+      "Yes"
+    );
+    if (result !== "Yes") {
+      return;
+    }
+  }
+
+  const currentPathDisk = uriPathToDiskPath(currentPath);
+  // Update VS Code's workspace folders
+  try {
+    const folderUri = vscode.Uri.file(currentPathDisk);
+
+    // Update the first workspace folder to the new location
+    // Open the new directory instead of updating workspace folders
+    vscode.commands.executeCommand("vscode.openFolder", folderUri, {
+      forceNewWindow: false,
+    });
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Failed to change working directory: ${error}`
+    );
+  }
+}
+
 // In your extension's activate function
 export function activate(context: vscode.ExtensionContext) {
   logger.trace("oil.code extension started.");
@@ -1892,49 +1937,4 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
   // Make sure to clean up by closing any preview
   closePreview();
-}
-
-// Change the VSCode working directory to current oil directory
-async function changeDirectory() {
-  const oilState = getOilState();
-  if (!oilState) {
-    vscode.window.showErrorMessage("Failed to get oil state.");
-    return;
-  }
-  const currentPath = getCurrentPath();
-  if (!currentPath) {
-    vscode.window.showErrorMessage("No current path found.");
-    return;
-  }
-
-  // Check if we have pending changes
-  if (
-    oilState.editedPaths.size > 0 ||
-    vscode.window.activeTextEditor?.document.isDirty
-  ) {
-    const result = await vscode.window.showWarningMessage(
-      "Discard changes?",
-      { modal: true },
-      "Yes"
-    );
-    if (result !== "Yes") {
-      return;
-    }
-  }
-
-  const currentPathDisk = uriPathToDiskPath(currentPath);
-  // Update VS Code's workspace folders
-  try {
-    const folderUri = vscode.Uri.file(currentPathDisk);
-
-    // Update the first workspace folder to the new location
-    // Open the new directory instead of updating workspace folders
-    vscode.commands.executeCommand("vscode.openFolder", folderUri, {
-      forceNewWindow: false,
-    });
-  } catch (error) {
-    vscode.window.showErrorMessage(
-      `Failed to change working directory: ${error}`
-    );
-  }
 }
