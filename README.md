@@ -23,6 +23,7 @@ To open oil.code:
 | `_`                        | `alt+shift+-`    | `oil-code.openCwd`        | Navigate to current working directory            |
 | `ctrl+p`                   | `alt+p`          | `oil-code.preview`        | Toggle preview window of entry under the cursor  |
 | `ctrl+l`                   | `alt+l`          | `oil-code.refresh`        | Refresh directory listing from disk              |
+| `\``                       | `alt+\``         | `oil-code.cd`             | Change Directory to current                      |
 
 ### [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim) Keymaps
 
@@ -51,6 +52,7 @@ if vim.g.vscode then
             map("n", "<CR>", function() vscode.action('oil-code.select') end)
             map("n", "<C-t>", function() vscode.action('oil-code.selectTab') end)
             map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
+            map("n", "\`", function() vscode.action('oil-code.cd') end)
         end,
     })
 end
@@ -126,7 +128,7 @@ Key:
 | ["\<C-l\>"] = "actions.refresh"                                  | ✅       |
 | ["-"] = { "actions.parent", mode = "n" }                         | ✅       |
 | ["_"] = { "actions.open_cwd", mode = "n" }                       | ✅       |
-| ["`"] = { "actions.cd", mode = "n" }                             | ❓       |
+| ["`"] = { "actions.cd", mode = "n" }                             | ✅[^4]   |
 | ["~"] = { "actions.cd", opts = { scope = "tab" }, mode = "n" }   | ❓       |
 | ["gs"] = { "actions.change_sort", mode = "n" }                   | ❌       |
 | ["gx"] = "actions.open_external"                                 | ❓       |
@@ -136,6 +138,7 @@ Key:
 [^1]: If VSCode is opened and no files are opened, the oil window will open. This can be disabled in settings.
 [^2]: Keymap might have conflicts with VSCode keymaps or and may require additional config
 [^3]: `oil-code.close` is implemented but I was not able to set the default keymap of "\<C-c\>"
+[^4]: `oil-code.cd` is implemented but the workspace reloads and pending changes do not persist.
 
 ## Icons
 

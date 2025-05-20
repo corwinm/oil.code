@@ -1566,6 +1566,7 @@ vim.api.nvim_create_autocmd({'FileType'}, {
     map("n", "<CR>", function() vscode.action('oil-code.select') end)
     map("n", "<C-t>", function() vscode.action('oil-code.selectTab') end)
     map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
+    map("n", "\`", function() vscode.action('oil-code.cd') end)
   end,
 })
         `
@@ -1605,14 +1606,10 @@ async function registerVSCodeVimKeymap(): Promise<boolean> {
       let keymapChanged = false;
 
       // Check for and add the Oil open binding if not present
-      const hasOilOpenBinding = normalModeKeymap.some(
-        (binding) =>
-          binding.before &&
-          binding.before.length === 1 &&
-          binding.before[0] === "-" &&
-          binding.commands?.some(
-            (cmd: { command: string }) => cmd.command === "oil-code.open"
-          )
+      const hasOilOpenBinding = normalModeKeymap.some((binding) =>
+        binding.commands?.some(
+          (cmd: { command: string }) => cmd.command === "oil-code.open"
+        )
       );
 
       if (!hasOilOpenBinding) {
@@ -1624,14 +1621,10 @@ async function registerVSCodeVimKeymap(): Promise<boolean> {
       }
 
       // Check for and add the Oil select binding if not present
-      const hasOilSelectBinding = normalModeKeymap.some(
-        (binding) =>
-          binding.before &&
-          binding.before.length === 1 &&
-          binding.before[0] === "<cr>" &&
-          binding.commands?.some(
-            (cmd: { command: string }) => cmd.command === "oil-code.select"
-          )
+      const hasOilSelectBinding = normalModeKeymap.some((binding) =>
+        binding.commands?.some(
+          (cmd: { command: string }) => cmd.command === "oil-code.select"
+        )
       );
 
       if (!hasOilSelectBinding) {
@@ -1643,20 +1636,30 @@ async function registerVSCodeVimKeymap(): Promise<boolean> {
       }
 
       // Check for and add the Oil refresh binding if not present
-      const hasOilRefreshBinding = normalModeKeymap.some(
-        (binding) =>
-          binding.before &&
-          binding.before.length === 1 &&
-          binding.before[0] === "<c-l>" &&
-          binding.commands?.some(
-            (cmd: { command: string }) => cmd.command === "oil-code.refresh"
-          )
+      const hasOilRefreshBinding = normalModeKeymap.some((binding) =>
+        binding.commands?.some(
+          (cmd: { command: string }) => cmd.command === "oil-code.refresh"
+        )
       );
 
       if (!hasOilRefreshBinding) {
         updatedKeymap.push({
           before: ["<c-l>"],
           commands: [{ command: "oil-code.refresh" }],
+        });
+        keymapChanged = true;
+      }
+
+      // Check for and add the Oil cd binding if not present
+      const hasOilCdBinding = normalModeKeymap.some((binding) =>
+        binding.commands?.some(
+          (cmd: { command: string }) => cmd.command === "oil-code.cd"
+        )
+      );
+      if (!hasOilCdBinding) {
+        updatedKeymap.push({
+          before: ["`"],
+          commands: [{ command: "oil-code.cd" }],
         });
         keymapChanged = true;
       }
@@ -1850,7 +1853,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("oil-code.openParent", openParent),
     vscode.commands.registerCommand("oil-code.openCwd", openCwd),
     vscode.commands.registerCommand("oil-code.preview", preview),
-    vscode.commands.registerCommand("oil-code.refresh", refresh)
+    vscode.commands.registerCommand("oil-code.refresh", refresh),
+    vscode.commands.registerCommand("oil-code.cd", changeDirectory)
   );
 
   // Make initial attempt to register Vim keymaps with retries
@@ -1888,4 +1892,49 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
   // Make sure to clean up by closing any preview
   closePreview();
+}
+
+// Change the VSCode working directory to current oil directory
+async function changeDirectory() {
+  const oilState = getOilState();
+  if (!oilState) {
+    vscode.window.showErrorMessage("Failed to get oil state.");
+    return;
+  }
+  const currentPath = getCurrentPath();
+  if (!currentPath) {
+    vscode.window.showErrorMessage("No current path found.");
+    return;
+  }
+
+  // Check if we have pending changes
+  if (
+    oilState.editedPaths.size > 0 ||
+    vscode.window.activeTextEditor?.document.isDirty
+  ) {
+    const result = await vscode.window.showWarningMessage(
+      "Discard changes?",
+      { modal: true },
+      "Yes"
+    );
+    if (result !== "Yes") {
+      return;
+    }
+  }
+
+  const currentPathDisk = uriPathToDiskPath(currentPath);
+  // Update VS Code's workspace folders
+  try {
+    const folderUri = vscode.Uri.file(currentPathDisk);
+
+    // Update the first workspace folder to the new location
+    // Open the new directory instead of updating workspace folders
+    vscode.commands.executeCommand("vscode.openFolder", folderUri, {
+      forceNewWindow: false,
+    });
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Failed to change working directory: ${error}`
+    );
+  }
 }
