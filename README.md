@@ -13,17 +13,17 @@ To open oil.code:
 - Vim users - With a file focused and in normal mode press `-`.
 - All users - Press `alt+-`.
 
-| Vim Shortcut (normal mode) | Default Shortcut | Command                   | Description                                      |
-| -------------------------- | ---------------- | ------------------------- | ------------------------------------------------ |
-| `Enter`                    | `alt+Enter`      | `oil-code.select`         | Open file or enter directory                     |
-| `ctrl+t`                   | `alt+t`          | `oil-code.selectTab`      | Open file or enter directory in new tab          |
-| -- No Default --           | `alt+s`          | `oil-code.selectVertical` | Open file or enter directory in adjacent v-split |
-| -- No Default --           | `alt+c`          | `oil-code.close`          | Close active oil file and open previous file     |
-| `-`                        | `alt+-`          | `oil-code.openParent`     | Navigate to parent directory                     |
-| `_`                        | `alt+shift+-`    | `oil-code.openCwd`        | Navigate to current working directory            |
-| `ctrl+p`                   | `alt+p`          | `oil-code.preview`        | Toggle preview window of entry under the cursor  |
-| `ctrl+l`                   | `alt+l`          | `oil-code.refresh`        | Refresh directory listing from disk              |
-| `\``                       | `alt+\``         | `oil-code.cd`             | Change Directory to current                      |
+| Vim Shortcut (normal mode) | Default Shortcut    | Command                   | Description                                      |
+| -------------------------- | ------------------- | ------------------------- | ------------------------------------------------ |
+| `Enter`                    | `alt+Enter`         | `oil-code.select`         | Open file or enter directory                     |
+| `ctrl+t`                   | `alt+t`             | `oil-code.selectTab`      | Open file or enter directory in new tab          |
+| -- No Default --           | `alt+s`             | `oil-code.selectVertical` | Open file or enter directory in adjacent v-split |
+| -- No Default --           | `alt+c`             | `oil-code.close`          | Close active oil file and open previous file     |
+| `-`                        | `alt+-`             | `oil-code.openParent`     | Navigate to parent directory                     |
+| `_`                        | `alt+shift+-`       | `oil-code.openCwd`        | Navigate to current working directory            |
+| `ctrl+p`                   | `alt+p`             | `oil-code.preview`        | Toggle preview window of entry under the cursor  |
+| `ctrl+l`                   | `alt+l`             | `oil-code.refresh`        | Refresh directory listing from disk              |
+| <code>\`</code>            | <code>alt+\`</code> | `oil-code.cd`             | Change Directory to current                      |
 
 ### [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim) Keymaps
 
