@@ -1835,8 +1835,8 @@ async function changeDirectory() {
 
     // Update the first workspace folder to the new location
     // Open the new directory instead of updating workspace folders
-    vscode.commands.executeCommand("vscode.openFolder", folderUri, {
-      forceNewWindow: false,
+    await vscode.commands.executeCommand("vscode.openFolder", folderUri, {
+      forceReuseWindow: false,
     });
   } catch (error) {
     vscode.window.showErrorMessage(

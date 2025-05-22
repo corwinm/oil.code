@@ -1,18 +1,47 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import * as sinon from "sinon";
-import { waitFor } from "./waitFor";
-import { waitForDocumentText } from "./waitForDocumentText";
+import { waitFor } from "./utils/waitFor";
+import { waitForDocumentText } from "./utils/waitForDocumentText";
 import { newline } from "../newline";
-import { saveFile } from "./saveFile";
-import { sleep } from "./sleep";
-import { assertProjectFileStructure } from "./assertProjectFileStructure";
+import { saveFile } from "./utils/saveFile";
+import { sleep } from "./utils/sleep";
+import { assertProjectFileStructure } from "./utils/assertProjectFileStructure";
+
+async function cleanupTestDir() {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (workspaceFolder) {
+    const testTempDir = vscode.Uri.joinPath(workspaceFolder.uri);
+    try {
+      const files = await vscode.workspace.fs.readDirectory(testTempDir);
+      for (const [name, type] of files) {
+        if (type === vscode.FileType.File) {
+          await vscode.workspace.fs.delete(
+            vscode.Uri.joinPath(testTempDir, name)
+          );
+        }
+        if (type === vscode.FileType.Directory) {
+          await vscode.workspace.fs.delete(
+            vscode.Uri.joinPath(testTempDir, name),
+            { recursive: true }
+          );
+        }
+      }
+    } catch (error) {
+      // Directory might not exist yet, which is fine
+      console.log(
+        "Test-temp cleanup error (can be ignored if directory does not exist):",
+        error
+      );
+    }
+  }
+}
 
 suite("oil.code", () => {
   // Setup and teardown for Sinon stubs
   let showWarningMessageStub: sinon.SinonStub;
 
-  setup(() => {
+  setup(async () => {
     // Stub vscode.window.showWarningMessage to automatically return a response
     // This avoids blocking dialogs during tests
     showWarningMessageStub = sinon.stub(vscode.window, "showWarningMessage");
@@ -35,33 +64,8 @@ suite("oil.code", () => {
 
     // Restore the original methods after each test
     showWarningMessageStub.restore();
-    // Clean up any test files created during tests
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (workspaceFolder) {
-      const testTempDir = vscode.Uri.joinPath(workspaceFolder.uri);
-      try {
-        const files = await vscode.workspace.fs.readDirectory(testTempDir);
-        for (const [name, type] of files) {
-          if (type === vscode.FileType.File) {
-            await vscode.workspace.fs.delete(
-              vscode.Uri.joinPath(testTempDir, name)
-            );
-          }
-          if (type === vscode.FileType.Directory) {
-            await vscode.workspace.fs.delete(
-              vscode.Uri.joinPath(testTempDir, name),
-              { recursive: true }
-            );
-          }
-        }
-      } catch (error) {
-        // Directory might not exist yet, which is fine
-        console.log(
-          "Test-temp cleanup error (can be ignored if directory does not exist):",
-          error
-        );
-      }
-    }
+
+    await cleanupTestDir();
   });
 
   test("Oil opens", async () => {
