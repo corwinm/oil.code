@@ -502,4 +502,50 @@ suite("oil.code", () => {
       "    oil-file.md",
     ]);
   });
+
+  test("Create directory and change working directory", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText("/000 ../");
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(new vscode.Position(1, 0), `${newline}oil-dir/`);
+    });
+
+    assert.strictEqual(
+      editor.document.getText(),
+      `/000 ../${newline}oil-dir/`,
+      "Text was not typed into editor"
+    );
+
+    await saveFile();
+
+    // Wait for file content to update
+    await waitForDocumentText(["/000 ../", "/001 oil-dir/"]);
+
+    // Move cursor to the file name
+    const position = new vscode.Position(1, 0);
+    editor.selection = new vscode.Selection(position, position);
+    await vscode.commands.executeCommand("oil-code.select");
+
+    await sleep(300);
+
+    // Mock response to vscode.openFolder
+    // This is a workaround since calling this causes the test to disconnect
+    // from the test runner and fail.
+    const executeCommandSpy = sinon.stub(vscode.commands, "executeCommand");
+    executeCommandSpy.withArgs("oil-code.cd").callThrough();
+    executeCommandSpy.withArgs("vscode.openFolder").returns(Promise.resolve());
+    await vscode.commands.executeCommand("oil-code.cd");
+
+    await waitFor(() =>
+      // Check that the vscode.openFolder command was called
+      assert.ok(
+        executeCommandSpy.calledWith("vscode.openFolder"),
+        "vscode.openFolder was not called"
+      )
+    );
+  });
 });
