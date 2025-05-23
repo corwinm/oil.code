@@ -1,18 +1,47 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import * as sinon from "sinon";
-import { waitFor } from "./waitFor";
-import { waitForDocumentText } from "./waitForDocumentText";
+import { waitFor } from "./utils/waitFor";
+import { waitForDocumentText } from "./utils/waitForDocumentText";
 import { newline } from "../newline";
-import { saveFile } from "./saveFile";
-import { sleep } from "./sleep";
-import { assertProjectFileStructure } from "./assertProjectFileStructure";
+import { saveFile } from "./utils/saveFile";
+import { sleep } from "./utils/sleep";
+import { assertProjectFileStructure } from "./utils/assertProjectFileStructure";
+
+async function cleanupTestDir() {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (workspaceFolder) {
+    const testTempDir = vscode.Uri.joinPath(workspaceFolder.uri);
+    try {
+      const files = await vscode.workspace.fs.readDirectory(testTempDir);
+      for (const [name, type] of files) {
+        if (type === vscode.FileType.File) {
+          await vscode.workspace.fs.delete(
+            vscode.Uri.joinPath(testTempDir, name)
+          );
+        }
+        if (type === vscode.FileType.Directory) {
+          await vscode.workspace.fs.delete(
+            vscode.Uri.joinPath(testTempDir, name),
+            { recursive: true }
+          );
+        }
+      }
+    } catch (error) {
+      // Directory might not exist yet, which is fine
+      console.log(
+        "Test-temp cleanup error (can be ignored if directory does not exist):",
+        error
+      );
+    }
+  }
+}
 
 suite("oil.code", () => {
   // Setup and teardown for Sinon stubs
   let showWarningMessageStub: sinon.SinonStub;
 
-  setup(() => {
+  setup(async () => {
     // Stub vscode.window.showWarningMessage to automatically return a response
     // This avoids blocking dialogs during tests
     showWarningMessageStub = sinon.stub(vscode.window, "showWarningMessage");
@@ -35,33 +64,8 @@ suite("oil.code", () => {
 
     // Restore the original methods after each test
     showWarningMessageStub.restore();
-    // Clean up any test files created during tests
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (workspaceFolder) {
-      const testTempDir = vscode.Uri.joinPath(workspaceFolder.uri);
-      try {
-        const files = await vscode.workspace.fs.readDirectory(testTempDir);
-        for (const [name, type] of files) {
-          if (type === vscode.FileType.File) {
-            await vscode.workspace.fs.delete(
-              vscode.Uri.joinPath(testTempDir, name)
-            );
-          }
-          if (type === vscode.FileType.Directory) {
-            await vscode.workspace.fs.delete(
-              vscode.Uri.joinPath(testTempDir, name),
-              { recursive: true }
-            );
-          }
-        }
-      } catch (error) {
-        // Directory might not exist yet, which is fine
-        console.log(
-          "Test-temp cleanup error (can be ignored if directory does not exist):",
-          error
-        );
-      }
-    }
+
+    await cleanupTestDir();
   });
 
   test("Oil opens", async () => {
@@ -497,5 +501,51 @@ suite("oil.code", () => {
       "  oil-dir-child-renamed/",
       "    oil-file.md",
     ]);
+  });
+
+  test("Create directory and change working directory", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText("/000 ../");
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(new vscode.Position(1, 0), `${newline}oil-dir/`);
+    });
+
+    assert.strictEqual(
+      editor.document.getText(),
+      `/000 ../${newline}oil-dir/`,
+      "Text was not typed into editor"
+    );
+
+    await saveFile();
+
+    // Wait for file content to update
+    await waitForDocumentText(["/000 ../", "/001 oil-dir/"]);
+
+    // Move cursor to the file name
+    const position = new vscode.Position(1, 0);
+    editor.selection = new vscode.Selection(position, position);
+    await vscode.commands.executeCommand("oil-code.select");
+
+    await sleep(300);
+
+    // Mock response to vscode.openFolder
+    // This is a workaround since calling this causes the test to disconnect
+    // from the test runner and fail.
+    const executeCommandSpy = sinon.stub(vscode.commands, "executeCommand");
+    executeCommandSpy.withArgs("oil-code.cd").callThrough();
+    executeCommandSpy.withArgs("vscode.openFolder").returns(Promise.resolve());
+    await vscode.commands.executeCommand("oil-code.cd");
+
+    await waitFor(() =>
+      // Check that the vscode.openFolder command was called
+      assert.ok(
+        executeCommandSpy.calledWith("vscode.openFolder"),
+        "vscode.openFolder was not called"
+      )
+    );
   });
 });

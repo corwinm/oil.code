@@ -1,7 +1,7 @@
 import assert from "assert";
 import * as vscode from "vscode";
 import { waitFor } from "./waitFor";
-import { newline } from "../newline";
+import { newline } from "../../newline";
 
 export async function waitForDocumentText(documentText: string | string[]) {
   await waitFor(() =>

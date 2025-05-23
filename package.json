@@ -48,6 +48,11 @@
       {
         "command": "oil-code.refresh",
         "title": "Oil: Refresh - Refresh directory listing from disk"
+      },
+      {
+        "command": "oil-code.cd",
+        "title": "Oil: cd - Change directory to the currently opened directory",
+        "when": "editorTextFocus && editorLangId == oil"
       }
     ],
     "languages": [
@@ -108,6 +113,11 @@
       {
         "command": "oil-code.refresh",
         "key": "alt+l",
+        "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
+        "command": "oil-code.cd",
+        "key": "alt+`",
         "when": "editorTextFocus && editorLangId == oil"
       }
     ],

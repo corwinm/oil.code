@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { tryCatch } from "../tryCatch";
+import { tryCatch } from "../../tryCatch";
 
 export async function waitFor(
   assertion: () => void,
