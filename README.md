@@ -24,6 +24,7 @@ To open oil.code:
 | `ctrl+p`                   | `alt+p`             | `oil-code.preview`        | Toggle preview window of entry under the cursor  |
 | `ctrl+l`                   | `alt+l`             | `oil-code.refresh`        | Refresh directory listing from disk              |
 | <code>\`</code>            | <code>alt+\`</code> | `oil-code.cd`             | Change Directory to current                      |
+| -- No Default --           | `alt+shift+h`       | `oil-code.help`           | Display oil.code default keymaps                 |
 
 ### [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim) Keymaps
 
@@ -52,7 +53,7 @@ if vim.g.vscode then
             map("n", "<CR>", function() vscode.action('oil-code.select') end)
             map("n", "<C-t>", function() vscode.action('oil-code.selectTab') end)
             map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
-            map("n", "\`", function() vscode.action('oil-code.cd') end)
+            map("n", "`", function() vscode.action('oil-code.cd') end)
         end,
     })
 end
@@ -118,13 +119,13 @@ Key:
 | Rename directory                                                 | ✅       |
 | Move and Rename directory                                        | ✅       |
 | Open oil in multiple splits at once                              | ✅       |
-| ["g?"] = { "actions.show_help", mode = "n" }                     | ❌       |
+| ["g?"] = { "actions.show_help", mode = "n" }                     | ✅[^2]   |
 | ["\<CR\>"] = "actions.select"                                    | ✅       |
 | ["\<C-s\>"] = { "actions.select", opts = { vertical = true } }   | ✅[^2]   |
 | ["\<C-h\>"] = { "actions.select", opts = { horizontal = true } } | ❓       |
 | ["\<C-t\>"] = { "actions.select", opts = { tab = true } }        | ✅       |
-| ["\<C-p\>"] = "actions.preview"                                  | ✅[^2]   |
-| ["\<C-c\>"] = { "actions.close", mode = "n" }                    | ✅[^3]   |
+| ["\<C-p\>"] = "actions.preview"                                  | ✅[^3]   |
+| ["\<C-c\>"] = { "actions.close", mode = "n" }                    | ✅[^2]   |
 | ["\<C-l\>"] = "actions.refresh"                                  | ✅       |
 | ["-"] = { "actions.parent", mode = "n" }                         | ✅       |
 | ["_"] = { "actions.open_cwd", mode = "n" }                       | ✅       |
@@ -136,8 +137,8 @@ Key:
 | ["g\\"] = { "actions.toggle_trash", mode = "n" }                 | ❓       |
 
 [^1]: If VSCode is opened and no files are opened, the oil window will open. This can be disabled in settings.
-[^2]: Keymap might have conflicts with VSCode keymaps or and may require additional config
-[^3]: `oil-code.close` is implemented but I was not able to set the default keymap of "\<C-c\>"
+[^2]: Implemented but I was not able to set the default keymap to match Oil.nvim
+[^3]: Keymap might have conflicts with VSCode keymaps or and may require additional config
 [^4]: `oil-code.cd` is implemented but the workspace reloads and pending changes do not persist.
 
 ## Icons

@@ -76,8 +76,8 @@
       },
       {
         "command": "oil-code.help",
-        "key": "g?",
-        "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal' || neovim.mode == normal)"
+        "key": "alt+shift+h",
+        "when": "editorTextFocus && editorLangId == oil"
       },
       {
         "command": "oil-code.openCwd",

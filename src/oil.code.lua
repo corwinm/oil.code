@@ -17,6 +17,5 @@ vim.api.nvim_create_autocmd({'FileType'}, {
     map("n", "<C-t>", function() vscode.action('oil-code.selectTab') end)
     map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
     map("n", "`", function() vscode.action('oil-code.cd') end)
-    map("n", "g?", function() vscode.action('oil-code.help') end)
   end,
 })

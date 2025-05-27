@@ -1824,20 +1824,30 @@ async function changeDirectory() {
 
 // Displays helpful information about oil commands that are available
 async function showHelp() {
-  const helpHeaders = ["Command", "Key Binding", "Description"];
+  const helpHeaders = [
+    "Command",
+    "Vim Key Binding",
+    "Default Shortcut",
+    "Description",
+  ];
   // Create a table of commands and default keymaps
   const helpTable = [
-    ["open", "-", "Open oil from the currents file parent directory"],
-    ["help", "", "Show this help information"],
-    ["close", "", "Close oil explorer"],
-    ["select", "Enter", "Open selected file/directory"],
-    ["selectTab", "Ctrl+t", "Open selected file in a new tab"],
-    ["selectVertical", "", "Open selected file in a vertical split"],
-    ["openParent", "-", "Navigate to parent directory"],
-    ["openCwd", "_", "Navigate to workspace root"],
-    ["preview", "Ctrl+p", "Preview file/directory at cursor"],
-    ["refresh", "Ctrl+l", "Refresh current directory view"],
-    ["cd", "`", "Change VSCode working directory to current oil directory"],
+    ["open", "-", "alt+-", "Open oil from the currents file parent directory"],
+    ["help", "", "alt+shift+h", "Show this help information"],
+    ["close", "", "alt+c", "Close oil explorer"],
+    ["select", "Enter", "alt+Enter", "Open selected file/directory"],
+    ["selectTab", "ctrl+t", "alt+t", "Open selected file in a new tab"],
+    ["selectVertical", "", "alt+s", "Open selected file in a vertical split"],
+    ["openParent", "-", "alt+-", "Navigate to parent directory"],
+    ["openCwd", "_", "alt_shift+-", "Navigate to workspace root"],
+    ["preview", "ctrl+p", "alt+p", "Preview file/directory at cursor"],
+    ["refresh", "ctrl+l", "alt+l", "Refresh current directory view"],
+    [
+      "cd",
+      "`",
+      "alt+`",
+      "Change VSCode working directory to current oil directory",
+    ],
   ];
 
   // Display the message in a Markdown preview panel
@@ -1862,6 +1872,8 @@ async function showHelp() {
       th, td { padding: 8px 16px; text-align: left; }
       th { border-bottom: 2px solid var(--vscode-list-hoverBackground); }
       td { border-bottom: 1px solid var(--vscode-list-hoverBackground); }
+      .horizontal-links { display: flex; list-style: none; padding: 0; }
+      .horizontal-links li { margin-right: 20px; }
     </style>
   </head>
   <body>
@@ -1881,14 +1893,14 @@ async function showHelp() {
           )
           .join("")}
       </table>
-      <h2>Links</h2>
-      <ul>
+      <h2 id="oil-links">Links</h2>
+      <ul class="horizontal-links" aria-labelledby="oil-links">
         <li><a href="https://github.com/corwinm/oil.code">GitHub Repository</a></li>
         <li><a href="https://github.com/corwinm/oil.code/issues">Issue Tracker</a></li>
         <li><a href="https://github.com/corwinm/oil.code/issues/new?template=bug_report.md">Report a Bug</a></li>
         <li><a href="https://github.com/corwinm/oil.code/issues/new?template=feature_request.md">Request a Feature</a></li>
       </ul>
-      <p>If you find oil.code useful, please consider starring the repository on GitHub.</p>
+      <p>If you find oil.code useful, please consider starring the repository on GitHub and reviewing it on the VS Code Marketplace.</p>
     </div>
   </body>
   </html>`;
