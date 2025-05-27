@@ -1,0 +1,82 @@
+name: Feature Request
+description: Suggest an idea for oil.code
+title: "[Feature]: "
+labels: ["enhancement"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible to help us understand your request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem?
+      description: A clear and concise description of what the problem is.
+      placeholder: I'm always frustrated when...
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: A clear and concise description of what you want to happen.
+      placeholder: I would like...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Describe alternatives you've considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+      placeholder: Other approaches could be...
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would be helpful
+        - High - Important for my workflow
+        - Critical - Blocking my use of the extension
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: feature-category
+    attributes:
+      label: Feature Category
+      description: What type of feature is this? (Check all that apply)
+      options:
+        - label: File/Directory operations
+        - label: Navigation improvements
+        - label: UI/UX enhancements
+        - label: Keyboard shortcuts/Vim bindings
+        - label: Performance improvements
+        - label: Configuration options
+        - label: Integration with other extensions
+        - label: Other
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Describe your specific use case and how this feature would help you.
+      placeholder: In my workflow, I often need to...
+
+  - type: textarea
+    id: mockup
+    attributes:
+      label: Mockups/Examples
+      description: If applicable, add mockups, screenshots, or examples of similar features in other tools.
+      placeholder: You can attach images by clicking this area to highlight it and then dragging files in.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context or screenshots about the feature request here.
+      placeholder: Any additional information...

@@ -22,6 +22,10 @@
         "title": "Oil: Open - Open Oil in active files directory"
       },
       {
+        "command": "oil-code.help",
+        "title": "Oil: Help - Display default oil keymaps"
+      },
+      {
         "command": "oil-code.openCwd",
         "title": "Oil: OpenCwd - Open current working directory"
       },
@@ -69,6 +73,11 @@
       {
         "command": "oil-code.open",
         "key": "alt+-"
+      },
+      {
+        "command": "oil-code.help",
+        "key": "g?",
+        "when": "editorTextFocus && editorLangId == oil && (vim.mode == 'Normal' || neovim.mode == normal)"
       },
       {
         "command": "oil-code.openCwd",
