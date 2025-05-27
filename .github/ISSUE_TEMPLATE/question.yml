@@ -1,0 +1,99 @@
+name: Question/Support
+description: Ask a question or get support for oil.code
+title: "[Question]: "
+labels: ["question"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out! Please provide as much detail as possible so we can help you effectively.
+
+  - type: input
+    id: version
+    attributes:
+      label: Extension Version
+      description: What version of oil.code are you running?
+      placeholder: e.g., 0.0.3
+    validations:
+      required: true
+
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code Version
+      description: What version of VS Code are you using?
+      placeholder: e.g., 1.85.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: question-type
+    attributes:
+      label: Question Type
+      description: What type of question is this?
+      options:
+        - How to use a feature
+        - Configuration help
+        - Troubleshooting
+        - Best practices
+        - Integration with other tools
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: Please describe your question in detail...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What are you trying to accomplish? What have you already tried?
+      placeholder: |
+        I'm trying to...
+        I've already tried...
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Configuration
+      description: Share any relevant VS Code settings or oil.code configuration
+      placeholder: Paste your relevant settings here...
+      render: json
+
+  - type: checkboxes
+    id: vim-extensions
+    attributes:
+      label: Vim Extensions
+      description: Are you using any Vim extensions? (Check all that apply)
+      options:
+        - label: VSCodeVim
+        - label: VSCode Neovim
+        - label: Other Vim extension
+        - label: None
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: Any other details that might be helpful
+      placeholder: Screenshots, error messages, or other relevant information...
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Before submitting, please confirm:
+      options:
+        - label: I have searched existing issues and discussions
+          required: true
+        - label: I have read the README and documentation
+          required: true
+e

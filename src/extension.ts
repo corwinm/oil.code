@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import { activateDecorations } from "./decorations";
 import { newline } from "./newline";
+import oilCodeLua from "./oil.code.lua";
 
 const logger = vscode.window.createOutputChannel("oil.code", { log: true });
 
@@ -1546,31 +1547,7 @@ async function registerNeovimKeymap(): Promise<boolean> {
       logger.info("Registering Neovim keymaps");
 
       // Use the Neovim extension's command API to register Lua code
-      await vscode.commands.executeCommand(
-        "vscode-neovim.lua",
-        `
-local vscode = require('vscode')
-local map = vim.keymap.set
-vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter'}, {
-  pattern = {"*"},
-  callback = function()
-    map("n", "-", function() vscode.action('oil-code.open') end)
-  end,
-})
-
-vim.api.nvim_create_autocmd({'FileType'}, {
-  pattern = {"oil"},
-  callback = function()
-    map("n", "-", function() vscode.action('oil-code.openParent') end)
-    map("n", "_", function() vscode.action('oil-code.openCwd') end)
-    map("n", "<CR>", function() vscode.action('oil-code.select') end)
-    map("n", "<C-t>", function() vscode.action('oil-code.selectTab') end)
-    map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
-    map("n", "\`", function() vscode.action('oil-code.cd') end)
-  end,
-})
-        `
-      );
+      await vscode.commands.executeCommand("vscode-neovim.lua", oilCodeLua);
 
       logger.info("Neovim keymaps registered successfully");
       return true;
@@ -1845,6 +1822,90 @@ async function changeDirectory() {
   }
 }
 
+// Displays helpful information about oil commands that are available
+async function showHelp() {
+  const helpHeaders = [
+    "Command",
+    "Vim Key Binding",
+    "Default Shortcut",
+    "Description",
+  ];
+  // Create a table of commands and default keymaps
+  const helpTable = [
+    ["open", "-", "alt+-", "Open oil from the currents file parent directory"],
+    ["help", "", "alt+shift+h", "Show this help information"],
+    ["close", "", "alt+c", "Close oil explorer"],
+    ["select", "Enter", "alt+Enter", "Open selected file/directory"],
+    ["selectTab", "ctrl+t", "alt+t", "Open selected file in a new tab"],
+    ["selectVertical", "", "alt+s", "Open selected file in a vertical split"],
+    ["openParent", "-", "alt+-", "Navigate to parent directory"],
+    ["openCwd", "_", "alt_shift+-", "Navigate to workspace root"],
+    ["preview", "ctrl+p", "alt+p", "Preview file/directory at cursor"],
+    ["refresh", "ctrl+l", "alt+l", "Refresh current directory view"],
+    [
+      "cd",
+      "`",
+      "alt+`",
+      "Change VSCode working directory to current oil directory",
+    ],
+  ];
+
+  // Display the message in a Markdown preview panel
+  const panel = vscode.window.createWebviewPanel(
+    "oilHelp",
+    "Oil Help",
+    vscode.ViewColumn.Active,
+    {
+      enableScripts: false,
+    }
+  );
+
+  panel.webview.html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <style>
+      body { font-family: var(--vscode-editor-font-family); padding: 20px; }
+      h1 { margin-bottom: 20px; }
+      p { margin-bottom: 10px; max-width: 600px; }
+      table { border-collapse: collapse; margin: 20px 0; }
+      th, td { padding: 8px 16px; text-align: left; }
+      th { border-bottom: 2px solid var(--vscode-list-hoverBackground); }
+      td { border-bottom: 1px solid var(--vscode-list-hoverBackground); }
+      .horizontal-links { display: flex; list-style: none; padding: 0; }
+      .horizontal-links li { margin-right: 20px; }
+    </style>
+  </head>
+  <body>
+    <div class="markdown-preview">
+      <h1>Oil Commands</h1>
+      <p>Oil.code is a file explorer for VSCode that allows you to navigate and manage files and directories directly in your editor window.</p>
+      <p>Here are the available commands and their default key bindings:</p>
+      <p>Note: Key bindings may vary based on your configuration.</p>
+      <table>
+        <tr>
+          ${helpHeaders.map((header) => `<th>${header}</th>`).join("")}
+        </tr>
+        ${helpTable
+          .map(
+            (row) =>
+              `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`
+          )
+          .join("")}
+      </table>
+      <h2 id="oil-links">Links</h2>
+      <ul class="horizontal-links" aria-labelledby="oil-links">
+        <li><a href="https://github.com/corwinm/oil.code">GitHub Repository</a></li>
+        <li><a href="https://github.com/corwinm/oil.code/issues">Issue Tracker</a></li>
+        <li><a href="https://github.com/corwinm/oil.code/issues/new?template=bug_report.md">Report a Bug</a></li>
+        <li><a href="https://github.com/corwinm/oil.code/issues/new?template=feature_request.md">Request a Feature</a></li>
+      </ul>
+      <p>If you find oil.code useful, please consider starring the repository on GitHub and reviewing it on the VS Code Marketplace.</p>
+    </div>
+  </body>
+  </html>`;
+}
+
 // In your extension's activate function
 export function activate(context: vscode.ExtensionContext) {
   logger.trace("oil.code extension started.");
@@ -1887,6 +1948,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor),
     vscode.workspace.onDidSaveTextDocument(onDidSaveTextDocument),
     vscode.commands.registerCommand("oil-code.open", openOil),
+    vscode.commands.registerCommand("oil-code.help", showHelp),
     vscode.commands.registerCommand("oil-code.close", closeOil),
     vscode.commands.registerCommand("oil-code.select", select),
     vscode.commands.registerCommand("oil-code.selectVertical", () =>
