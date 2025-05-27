@@ -1866,9 +1866,10 @@ async function showHelp() {
   <head>
     <style>
       body { font-family: var(--vscode-editor-font-family); padding: 20px; }
-      h1 { margin-bottom: 20px; }
+      h1 { margin-bottom: 20px; margin-top: 0; }
       p { margin-bottom: 10px; max-width: 600px; }
       table { border-collapse: collapse; margin: 20px 0; }
+      caption { font-weight: bold; margin-bottom: 10px; }
       th, td { padding: 8px 16px; text-align: left; }
       th { border-bottom: 2px solid var(--vscode-list-hoverBackground); }
       td { border-bottom: 1px solid var(--vscode-list-hoverBackground); }
@@ -1878,11 +1879,10 @@ async function showHelp() {
   </head>
   <body>
     <div class="markdown-preview">
-      <h1>Oil Commands</h1>
+      <h1>Oil Help</h1>
       <p>Oil.code is a file explorer for VSCode that allows you to navigate and manage files and directories directly in your editor window.</p>
-      <p>Here are the available commands and their default key bindings:</p>
-      <p>Note: Key bindings may vary based on your configuration.</p>
       <table>
+        <caption>Available Commands with default keybinding/shortcut</caption>
         <tr>
           ${helpHeaders.map((header) => `<th>${header}</th>`).join("")}
         </tr>
@@ -1896,11 +1896,12 @@ async function showHelp() {
       <h2 id="oil-links">Links</h2>
       <ul class="horizontal-links" aria-labelledby="oil-links">
         <li><a href="https://github.com/corwinm/oil.code">GitHub Repository</a></li>
+        <li><a href="https://marketplace.visualstudio.com/items?itemName=haphazarddev.oil-code">VS Code Marketplace</a></li>
         <li><a href="https://github.com/corwinm/oil.code/issues">Issue Tracker</a></li>
-        <li><a href="https://github.com/corwinm/oil.code/issues/new?template=bug_report.md">Report a Bug</a></li>
-        <li><a href="https://github.com/corwinm/oil.code/issues/new?template=feature_request.md">Request a Feature</a></li>
+        <li><a href="https://github.com/corwinm/oil.code/issues/new?template=bug_report.yml">Report a Bug</a></li>
+        <li><a href="https://github.com/corwinm/oil.code/issues/new?template=feature_request.yml">Request a Feature</a></li>
       </ul>
-      <p>If you find oil.code useful, please consider starring the repository on GitHub and reviewing it on the VS Code Marketplace.</p>
+      <p>If you find oil.code useful, please consider starring the repository on <a href="https://github.com/corwinm/oil.code">GitHub</a> and reviewing it on the <a href="https://marketplace.visualstudio.com/items?itemName=haphazarddev.oil-code">VS Code Marketplace</a>.</p>
     </div>
   </body>
   </html>`;
