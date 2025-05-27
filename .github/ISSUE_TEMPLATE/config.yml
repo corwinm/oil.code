@@ -8,4 +8,7 @@ contact_links:
     about: Ask questions and discuss ideas with the community
   - name: 🌟 Star the Project
     url: https://github.com/corwinm/oil.code
-    about: If you find oil.code useful, please consider starring the repository and reviewing it on the VS Code Marketplace
+    about: If you find oil.code useful, please consider starring the repository
+  - name: ⭐ Leave a review
+    url: https://marketplace.visualstudio.com/items?itemName=haphazarddev.oil-code&ssr=false#review-details
+    about: If you find oil.code useful, please consider reviewing it on the VS Code Marketplace
