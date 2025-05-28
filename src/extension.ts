@@ -1844,8 +1844,11 @@ async function changeDirectory() {
   }
 }
 
+let helpPanel: vscode.WebviewPanel | null = null;
+
 // Displays helpful information about oil commands that are available
 async function showHelp() {
+  helpPanel?.dispose(); // Close any existing help panel
   const helpHeaders = [
     "Command",
     "Vim Key Binding",
@@ -1927,6 +1930,8 @@ async function showHelp() {
     </div>
   </body>
   </html>`;
+
+  helpPanel = panel;
 }
 
 // In your extension's activate function

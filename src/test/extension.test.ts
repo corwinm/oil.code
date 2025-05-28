@@ -40,8 +40,9 @@ async function cleanupTestDir() {
 suite("oil.code", () => {
   // Setup and teardown for Sinon stubs
   let showWarningMessageStub: sinon.SinonStub;
+  let executeCommandSpy: sinon.SinonStub;
 
-  setup(async () => {
+  setup(() => {
     // Stub vscode.window.showWarningMessage to automatically return a response
     // This avoids blocking dialogs during tests
     showWarningMessageStub = sinon.stub(vscode.window, "showWarningMessage");
@@ -50,21 +51,23 @@ suite("oil.code", () => {
   });
 
   teardown(async () => {
+    // Restore the original methods after each test
+    showWarningMessageStub.restore();
+    executeCommandSpy?.restore();
+
     await vscode.commands.executeCommand("oil-code.close");
     await sleep(100);
 
     // Close all editors
-    const editors = vscode.window.visibleTextEditors;
-    for (const _ of editors) {
+    const editors = vscode.window.tabGroups.all.flatMap((group) =>
+      group.tabs.map((tab) => tab.input)
+    );
+    for await (const _ of editors) {
       await vscode.commands.executeCommand(
         "workbench.action.closeActiveEditor"
       );
       await sleep(100);
     }
-
-    // Restore the original methods after each test
-    showWarningMessageStub.restore();
-
     await cleanupTestDir();
   });
 
@@ -535,7 +538,7 @@ suite("oil.code", () => {
     // Mock response to vscode.openFolder
     // This is a workaround since calling this causes the test to disconnect
     // from the test runner and fail.
-    const executeCommandSpy = sinon.stub(vscode.commands, "executeCommand");
+    executeCommandSpy = sinon.stub(vscode.commands, "executeCommand");
     executeCommandSpy.withArgs("oil-code.cd").callThrough();
     executeCommandSpy.withArgs("vscode.openFolder").returns(Promise.resolve());
     await vscode.commands.executeCommand("oil-code.cd");
@@ -548,4 +551,26 @@ suite("oil.code", () => {
       )
     );
   });
+
+  test("Displays help page", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText("/000 ../");
+
+    await vscode.commands.executeCommand("oil-code.help");
+    await sleep(100);
+    await waitFor(() => {
+      const tabGroup = vscode.window.tabGroups.all.at(0);
+      assert.ok(tabGroup, "No tab group found");
+      const previewTab = tabGroup.tabs.at(-1);
+      assert.ok(previewTab, "No preview tab found in the tab group");
+      assert.strictEqual(
+        (previewTab.input as vscode.TabInputWebview).viewType,
+        "mainThreadWebview-oilHelp"
+      );
+
+      assert.strictEqual(previewTab.label, "Oil Help");
+    });
+  });
+
+  // TODO: Add tests for previewing files and directories
 });
