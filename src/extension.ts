@@ -806,27 +806,10 @@ async function previewFile(targetPath: string) {
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
 
-    // Close previous previewed editor if it exists
-    if (previewState.previewedEditor) {
-      // Check if the preview editor's document is still open
-      const isPreviewOpen = vscode.window.visibleTextEditors.some(
-        (editor) =>
-          editor.document.uri.toString() ===
-          previewState.previewedEditor!.document.uri.toString()
-      );
-
-      if (isPreviewOpen) {
-        await vscode.commands.executeCommand(
-          "workbench.action.closeActiveEditor",
-          previewState.previewedEditor.document.uri
-        );
-      }
-    }
-
     // Open to the side (right split) in preview mode
     const editor = await vscode.window.showTextDocument(fileDoc, {
       viewColumn: vscode.ViewColumn.Beside, // Opens in the editor group to the right
-      preview: false,
+      preview: true,
       preserveFocus: true, // Keeps focus on the oil file
     });
 
@@ -871,29 +854,10 @@ async function previewDirectory(directoryPath: string) {
     const fileDoc = await vscode.workspace.openTextDocument(previewUri);
     await vscode.languages.setTextDocumentLanguage(fileDoc, "oil");
 
-    // Close previous previewed editor if it exists
-    if (previewState.previewedEditor) {
-      const previewedEditorUri = previewState.previewedEditor.document.uri;
-      setTimeout(async () => {
-        // Check if the preview editor's document is still open in any visible editors
-        const isPreviewOpen = vscode.window.visibleTextEditors.some(
-          (editor) =>
-            editor.document.uri.toString() === previewedEditorUri.toString()
-        );
-
-        if (isPreviewOpen) {
-          await vscode.commands.executeCommand(
-            "workbench.action.closeActiveEditor",
-            previewedEditorUri
-          );
-        }
-      }, 0);
-    }
-
     // Show the document to the side
     const editor = await vscode.window.showTextDocument(fileDoc, {
       viewColumn: vscode.ViewColumn.Beside,
-      preview: false,
+      preview: true,
       preserveFocus: true,
     });
 
@@ -1020,15 +984,27 @@ async function closePreview() {
       }
     } else {
       // For regular file previews
-      const editorsToClose = vscode.window.visibleTextEditors.filter(
-        (editor) => editor.document.uri.fsPath === previewState.previewedFile
-      );
+
+      const tabsToClose = [];
+      for (const tabGroups of vscode.window.tabGroups.all) {
+        for (const tab of tabGroups.tabs) {
+          if (
+            tab.input &&
+            tab.input instanceof vscode.TabInputText &&
+            tab.isPreview &&
+            tab.input.uri.toString() ===
+              previewState.previewedEditor?.document.uri.toString()
+          ) {
+            tabsToClose.push(tab);
+          }
+        }
+      }
 
       // Close each matching editor
-      for (const editor of editorsToClose) {
-        await vscode.commands.executeCommand(
-          "workbench.action.closeActiveEditor",
-          editor.document.uri
+      for (const tab of tabsToClose) {
+        await vscode.window.tabGroups.close(
+          tab,
+          true // Close all editors in the group
         );
       }
     }
@@ -1767,7 +1743,7 @@ async function preview() {
   }
 
   // Close any existing preview
-  await closePreview();
+  // await closePreview();
 
   // Preview differently based on whether it's a file or directory
   if (isDir) {
