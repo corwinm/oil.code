@@ -485,7 +485,14 @@ async function select({
       const newDoc = await vscode.workspace.openTextDocument(newUri);
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
-      let editor: vscode.TextEditor;
+      disableUpdatePreview = true;
+
+      // Show the new document in the same editor
+      const editor = await vscode.window.showTextDocument(newDoc, {
+        viewColumn: viewColumn || activeEditor.viewColumn,
+        preview: false,
+      });
+
       if (!viewColumn) {
         // Close the old document
         await vscode.window.showTextDocument(oldUri);
@@ -493,11 +500,6 @@ async function select({
           "workbench.action.revertAndCloseActiveEditor"
         );
       }
-      // Show the new document in the same editor
-      editor = await vscode.window.showTextDocument(newDoc, {
-        viewColumn: viewColumn || activeEditor.viewColumn,
-        preview: false,
-      });
 
       // Position cursor appropriately
       if (isGoingUp) {
@@ -525,6 +527,7 @@ async function select({
               }
             }
 
+            disableUpdatePreview = false;
             if (foundIndex >= 0) {
               // Position cursor at the found line
               editor.selection = new vscode.Selection(
@@ -543,6 +546,7 @@ async function select({
           }
         }, 100);
       } else {
+        disableUpdatePreview = false;
         // When going into a directory, position at first line
         editor.selection = new vscode.Selection(0, 0, 0, 0);
       }
@@ -635,7 +639,10 @@ async function onDidChangeActiveTextEditor(
   const oilState = getOilState();
 
   // Close preview when leaving oil view
-  if (editor.document.uri.scheme !== OIL_SCHEME && previewState.previewedFile) {
+  if (
+    ![OIL_SCHEME, OIL_PREVIEW_SCHEME].includes(editor.document.uri.scheme) &&
+    previewState.previewedFile
+  ) {
     await closePreview();
   }
   if (!oilState) {
@@ -862,6 +869,11 @@ async function previewDirectory(directoryPath: string) {
       vscode.window.showErrorMessage("No oil state found.");
       return;
     }
+    const previewName = path.basename(directoryPath);
+
+    if (previewState.previewedFile === directoryPath) {
+      return; // If already previewing this directory, do nothing
+    }
 
     // Get directory listing in oil format
     const directoryContent = await getDirectoryListing(
@@ -870,7 +882,6 @@ async function previewDirectory(directoryPath: string) {
       true
     );
 
-    const previewName = path.basename(directoryPath);
     const previewUri = vscode.Uri.parse(
       `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
     );
@@ -908,6 +919,8 @@ async function previewDirectory(directoryPath: string) {
   }
 }
 
+let disableUpdatePreview = false;
+
 // Helper function to update preview based on cursor position
 async function updatePreviewBasedOnCursorPosition(
   event: vscode.TextEditorSelectionChangeEvent
@@ -915,7 +928,8 @@ async function updatePreviewBasedOnCursorPosition(
   // Only respond to selection changes in the oil file
   if (
     !event.textEditor ||
-    event.textEditor.document.uri.scheme !== OIL_SCHEME
+    event.textEditor.document.uri.scheme !== OIL_SCHEME ||
+    disableUpdatePreview
   ) {
     return;
   }
@@ -1906,7 +1920,11 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.registerFileSystemProvider(
       OIL_PREVIEW_SCHEME,
       oilPreviewProvider,
-      { isReadonly: false }
+      {
+        isReadonly: new vscode.MarkdownString(
+          "This is a oil.code preview and cannot be edited."
+        ),
+      }
     )
   );
 
