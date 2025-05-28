@@ -599,18 +599,39 @@ async function select({
     checkForVisitedCleanup(oilState);
 
     const fileUri = vscode.Uri.file(targetPath);
-    const fileDoc = await vscode.workspace.openTextDocument(fileUri);
     const viewColumnToUse = viewColumn || activeEditor.viewColumn;
-    if (!viewColumn) {
-      await vscode.window.showTextDocument(activeEditor.document.uri);
-      await vscode.commands.executeCommand(
-        "workbench.action.revertAndCloseActiveEditor"
-      );
+
+    // Check if the file is binary
+    const isBinary = await isBinaryFile(targetPath);
+
+    if (isBinary) {
+      // For binary files, close the oil editor first if needed, then use vscode.open
+      if (!viewColumn) {
+        await vscode.window.showTextDocument(activeEditor.document.uri);
+        await vscode.commands.executeCommand(
+          "workbench.action.revertAndCloseActiveEditor"
+        );
+      }
+
+      // Open binary file with appropriate viewer
+      await vscode.commands.executeCommand("vscode.open", fileUri, {
+        viewColumn: viewColumnToUse,
+        preview: false,
+      });
+    } else {
+      // For text files, use the standard text document opening
+      const fileDoc = await vscode.workspace.openTextDocument(fileUri);
+      if (!viewColumn) {
+        await vscode.window.showTextDocument(activeEditor.document.uri);
+        await vscode.commands.executeCommand(
+          "workbench.action.revertAndCloseActiveEditor"
+        );
+      }
+      await vscode.window.showTextDocument(fileDoc, {
+        viewColumn: viewColumnToUse,
+        preview: false,
+      });
     }
-    await vscode.window.showTextDocument(fileDoc, {
-      viewColumn: viewColumnToUse,
-      preview: false,
-    });
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
   }
@@ -830,43 +851,113 @@ let previewState: PreviewState = {
   previewEnabled: false, // Whether preview is enabled
 };
 
+// Helper function to check if a file is binary by examining its content
+async function isBinaryFile(filePath: string): Promise<boolean> {
+  try {
+    // Read the first 1024 bytes of the file to check for binary content
+    const buffer = Buffer.alloc(1024);
+    const fd = await fs.promises.open(filePath, "r");
+    const { bytesRead } = await fd.read(buffer, 0, 1024, 0);
+    await fd.close();
+
+    // If file is empty, treat as text
+    if (bytesRead === 0) {
+      return false;
+    }
+
+    // Check for null bytes, which are a strong indicator of binary content
+    for (let i = 0; i < bytesRead; i++) {
+      if (buffer[i] === 0) {
+        return true;
+      }
+    }
+
+    // Count non-printable characters
+    let nonPrintableCount = 0;
+    for (let i = 0; i < bytesRead; i++) {
+      const byte = buffer[i];
+      // Consider bytes outside printable ASCII range (except common whitespace)
+      if (byte < 32 && byte !== 9 && byte !== 10 && byte !== 13) {
+        nonPrintableCount++;
+      } else if (byte > 126) {
+        nonPrintableCount++;
+      }
+    }
+
+    // If more than 30% of the sample contains non-printable characters, consider it binary
+    const threshold = bytesRead * 0.3;
+    return nonPrintableCount > threshold;
+  } catch (error) {
+    // If we can't read the file, assume it's text and let VS Code handle the error
+    return false;
+  }
+}
+
 // Function to preview a file
 async function previewFile(targetPath: string) {
   try {
     const fileExists = fs.existsSync(targetPath);
-    // Read the file content from disk
-    const fileContent = fileExists
-      ? await vscode.workspace.fs.readFile(vscode.Uri.file(targetPath))
-      : Buffer.from("");
-
-    // Create a unique preview URI for the file using the original filename to preserve extension
-    const previewName = path.basename(targetPath);
-    const previewUri = vscode.Uri.parse(
-      `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
-    );
+    if (!fileExists) {
+      vscode.window.showErrorMessage(`File does not exist: ${targetPath}`);
+      return;
+    }
 
     const previousPreviewUri = previewState.previewUri;
-    // Write content to the virtual file system
-    oilPreviewProvider.writeFile(previewUri, fileContent);
 
-    // Open the virtual document
-    const fileDoc = await vscode.workspace.openTextDocument(previewUri);
+    // Check if the file is binary/non-text
+    if (await isBinaryFile(targetPath)) {
+      // For binary files, open the original file directly using vscode.open command
+      const fileUri = vscode.Uri.file(targetPath);
 
-    // Open to the side (right split) in preview mode
-    const editor = await vscode.window.showTextDocument(fileDoc, {
-      viewColumn: vscode.ViewColumn.Beside, // Opens in the editor group to the right
-      preview: true,
-      preserveFocus: true, // Keeps focus on the oil file
-    });
+      // Use the vscode.open command to open the binary file in VS Code's appropriate viewer
+      await vscode.commands.executeCommand("vscode.open", fileUri, {
+        viewColumn: vscode.ViewColumn.Beside,
+        preview: true,
+        preserveFocus: true,
+      });
 
-    // Update preview state
-    previewState.previewedFile = targetPath;
-    previewState.previewedEditor = editor;
-    previewState.isDirectory = false;
-    previewState.previewUri = previewUri;
+      // Update preview state - we won't have an editor reference for binary files
+      previewState.previewedFile = targetPath;
+      previewState.previewedEditor = null; // No text editor for binary files
+      previewState.isDirectory = false;
+      previewState.previewUri = fileUri; // Use the original file URI for binary files
+    } else {
+      // For text files, use the virtual file system as before
+      const fileContent = await vscode.workspace.fs.readFile(
+        vscode.Uri.file(targetPath)
+      );
+
+      // Create a unique preview URI for the file using the original filename to preserve extension
+      const previewName = path.basename(targetPath);
+      const previewUri = vscode.Uri.parse(
+        `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
+      );
+
+      // Write content to the virtual file system
+      oilPreviewProvider.writeFile(previewUri, fileContent);
+
+      // Open the virtual document
+      const fileDoc = await vscode.workspace.openTextDocument(previewUri);
+
+      // Open to the side (right split) in preview mode
+      const editor = await vscode.window.showTextDocument(fileDoc, {
+        viewColumn: vscode.ViewColumn.Beside, // Opens in the editor group to the right
+        preview: true,
+        preserveFocus: true, // Keeps focus on the oil file
+      });
+
+      // Update preview state
+      previewState.previewedFile = targetPath;
+      previewState.previewedEditor = editor;
+      previewState.isDirectory = false;
+      previewState.previewUri = previewUri;
+    }
 
     if (previousPreviewUri) {
-      oilPreviewProvider.delete(previousPreviewUri);
+      // Only delete from the virtual file system if it was a virtual file
+      if (previousPreviewUri.scheme === OIL_PREVIEW_SCHEME) {
+        oilPreviewProvider.delete(previousPreviewUri);
+      }
     }
 
     // Start listening for cursor movements if not already listening
@@ -1030,7 +1121,6 @@ async function closePreview() {
 
   // Close the preview if it's open
   if (previewState.previewedFile && previewState.previewUri) {
-    // For both file and directory previews using OilPreviewFileSystemProvider
     const previewUri = previewState.previewUri;
 
     // Reset state
@@ -1039,12 +1129,9 @@ async function closePreview() {
     previewState.isDirectory = false;
     previewState.previewUri = null;
 
-    // Close any editors showing this virtual file
+    // Close any editors showing this file (both virtual and real files)
     for (const editor of vscode.window.visibleTextEditors) {
-      if (
-        editor.document.uri.scheme === OIL_PREVIEW_SCHEME &&
-        editor.document.uri.toString() === previewUri.toString()
-      ) {
+      if (editor.document.uri.toString() === previewUri.toString()) {
         // Close the editor showing the preview
         await vscode.commands.executeCommand(
           "workbench.action.closeActiveEditor",
@@ -1053,11 +1140,13 @@ async function closePreview() {
       }
     }
 
-    // Clean up the virtual file
-    try {
-      oilPreviewProvider.delete(previewUri);
-    } catch (err) {
-      logger.error("Failed to delete virtual preview file:", err);
+    // Clean up the virtual file (only if it's a virtual file)
+    if (previewUri.scheme === OIL_PREVIEW_SCHEME) {
+      try {
+        oilPreviewProvider.delete(previewUri);
+      } catch (err) {
+        logger.error("Failed to delete virtual preview file:", err);
+      }
     }
   }
 }
