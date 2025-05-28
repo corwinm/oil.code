@@ -468,6 +468,8 @@ async function select({
   // Store the current directory name when going up a directory
   let isGoingUp = fileName === "../";
 
+  disableUpdatePreview = true;
+
   if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
     try {
       // Update the URI to represent the new directory path
@@ -484,8 +486,6 @@ async function select({
       // Open the document with the new URI
       const newDoc = await vscode.workspace.openTextDocument(newUri);
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
-
-      disableUpdatePreview = true;
 
       // Show the new document in the same editor
       const editor = await vscode.window.showTextDocument(newDoc, {
@@ -543,12 +543,21 @@ async function select({
               // Default to first line if not found
               editor.selection = new vscode.Selection(0, 0, 0, 0);
             }
+            if (previewState.previewEnabled) {
+              preview(true);
+            }
           }
         }, 100);
       } else {
-        disableUpdatePreview = false;
-        // When going into a directory, position at first line
-        editor.selection = new vscode.Selection(0, 0, 0, 0);
+        setTimeout(() => {
+          disableUpdatePreview = false;
+          // When going into a directory, position at first line
+          editor.selection = new vscode.Selection(0, 0, 0, 0);
+          // Manually update preview if enabled
+          if (previewState.previewEnabled) {
+            preview(true);
+          }
+        }, 100);
       }
 
       // Mark the file as modified if there are pending changes
@@ -645,6 +654,15 @@ async function onDidChangeActiveTextEditor(
   ) {
     await closePreview();
   }
+
+  // If we are returning to an oil file and preview is enabled, update the preview
+  if (
+    editor.document.uri.scheme === OIL_SCHEME &&
+    previewState.previewEnabled
+  ) {
+    await preview(true);
+  }
+
   if (!oilState) {
     await checkAndEnableAutoSave();
     return;
@@ -800,6 +818,7 @@ interface PreviewState {
   cursorListenerDisposable: vscode.Disposable | null; // For tracking cursor movements
   isDirectory: boolean; // Whether the preview is showing a directory
   previewUri: vscode.Uri | null; // URI to the virtual preview document (used for both files and directories)
+  previewEnabled: boolean; // Whether preview is enabled
 }
 
 let previewState: PreviewState = {
@@ -808,6 +827,7 @@ let previewState: PreviewState = {
   cursorListenerDisposable: null,
   isDirectory: false,
   previewUri: null,
+  previewEnabled: false, // Whether preview is enabled
 };
 
 // Function to preview a file
@@ -915,7 +935,7 @@ async function previewDirectory(directoryPath: string) {
         );
     }
   } catch (error) {
-    vscode.window.showErrorMessage(`Failed to preview directory: ${error}`);
+    logger.error("Failed to preview directory:", error);
   }
 }
 
@@ -1708,7 +1728,7 @@ async function attemptRegisteringVimKeymaps(
   }
 }
 
-async function preview() {
+async function preview(overrideEnabled: boolean = false) {
   const activeEditor = vscode.window.activeTextEditor;
 
   if (!activeEditor) {
@@ -1717,7 +1737,7 @@ async function preview() {
   }
 
   // Check if the current file is our oil temp file
-  if (path.basename(activeEditor.document.uri.scheme) !== OIL_SCHEME) {
+  if (activeEditor.document.uri.scheme !== OIL_SCHEME) {
     return;
   }
 
@@ -1763,12 +1783,13 @@ async function preview() {
 
   // If this file/directory is already being previewed, close the preview (toggle behavior)
   if (previewState.previewedFile === targetPath) {
-    await closePreview();
+    previewState.previewEnabled = overrideEnabled;
+    if (!overrideEnabled) {
+      await closePreview();
+    }
     return;
   }
-
-  // Close any existing preview
-  // await closePreview();
+  previewState.previewEnabled = true;
 
   // Preview differently based on whether it's a file or directory
   if (isDir) {
@@ -1938,6 +1959,7 @@ export function activate(context: vscode.ExtensionContext) {
     cursorListenerDisposable: null,
     isDirectory: false,
     previewUri: null,
+    previewEnabled: false,
   };
 
   // Set up listener for extension changes (activation/deactivation)
