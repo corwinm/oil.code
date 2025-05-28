@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.20](https://github.com/corwinm/oil.code/compare/v0.0.19...v0.0.20)
+
+- fix: Preview instability by @corwinm in https://github.com/corwinm/oil.code/pull/26
+
 ## [0.0.19](https://github.com/corwinm/oil.code/compare/v0.0.18...v0.0.19)
 
 - feat: Add cd command and keymaps by @corwinm in https://github.com/corwinm/oil.code/pull/21
