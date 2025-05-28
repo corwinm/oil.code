@@ -789,7 +789,7 @@ interface PreviewState {
   previewedEditor: vscode.TextEditor | null; // Reference to preview editor
   cursorListenerDisposable: vscode.Disposable | null; // For tracking cursor movements
   isDirectory: boolean; // Whether the preview is showing a directory
-  previewUri: vscode.Uri | null; // URI to the in-memory preview document
+  previewUri: vscode.Uri | null; // URI to the virtual preview document (used for both files and directories)
 }
 
 let previewState: PreviewState = {
@@ -803,8 +803,22 @@ let previewState: PreviewState = {
 // Function to preview a file
 async function previewFile(targetPath: string) {
   try {
-    const fileUri = vscode.Uri.file(targetPath);
-    const fileDoc = await vscode.workspace.openTextDocument(fileUri);
+    // Read the file content from disk
+    const fileContent = await vscode.workspace.fs.readFile(
+      vscode.Uri.file(targetPath)
+    );
+
+    // Create a unique preview URI for the file using the original filename to preserve extension
+    const previewName = path.basename(targetPath);
+    const previewUri = vscode.Uri.parse(
+      `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
+    );
+
+    // Write content to the virtual file system
+    oilPreviewProvider.writeFile(previewUri, fileContent);
+
+    // Open the virtual document
+    const fileDoc = await vscode.workspace.openTextDocument(previewUri);
 
     // Open to the side (right split) in preview mode
     const editor = await vscode.window.showTextDocument(fileDoc, {
@@ -817,6 +831,7 @@ async function previewFile(targetPath: string) {
     previewState.previewedFile = targetPath;
     previewState.previewedEditor = editor;
     previewState.isDirectory = false;
+    previewState.previewUri = previewUri;
 
     // Start listening for cursor movements if not already listening
     if (!previewState.cursorListenerDisposable) {
@@ -961,59 +976,36 @@ async function closePreview() {
   }
 
   // Close the preview if it's open
-  if (previewState.previewedFile) {
-    if (previewState.isDirectory && previewState.previewUri) {
-      // For directory previews, close and clean up the virtual file
-      const previewUri = previewState.previewUri;
-
-      // Close any editors showing this virtual file
-      for (const editor of vscode.window.visibleTextEditors) {
-        if (editor.document.uri.toString() === previewUri.toString()) {
-          await vscode.commands.executeCommand(
-            "workbench.action.closeActiveEditor",
-            editor.document.uri
-          );
-        }
-      }
-
-      // Clean up the virtual file
-      try {
-        oilPreviewProvider.delete(previewUri);
-      } catch (err) {
-        logger.error("Failed to delete virtual preview file:", err);
-      }
-    } else {
-      // For regular file previews
-
-      const tabsToClose = [];
-      for (const tabGroups of vscode.window.tabGroups.all) {
-        for (const tab of tabGroups.tabs) {
-          if (
-            tab.input &&
-            tab.input instanceof vscode.TabInputText &&
-            tab.isPreview &&
-            tab.input.uri.toString() ===
-              previewState.previewedEditor?.document.uri.toString()
-          ) {
-            tabsToClose.push(tab);
-          }
-        }
-      }
-
-      // Close each matching editor
-      for (const tab of tabsToClose) {
-        await vscode.window.tabGroups.close(
-          tab,
-          true // Close all editors in the group
-        );
-      }
-    }
+  if (previewState.previewedFile && previewState.previewUri) {
+    // For both file and directory previews using OilPreviewFileSystemProvider
+    const previewUri = previewState.previewUri;
 
     // Reset state
     previewState.previewedFile = null;
     previewState.previewedEditor = null;
     previewState.isDirectory = false;
     previewState.previewUri = null;
+
+    // Close any editors showing this virtual file
+    for (const editor of vscode.window.visibleTextEditors) {
+      if (
+        editor.document.uri.scheme === OIL_PREVIEW_SCHEME &&
+        editor.document.uri.toString() === previewUri.toString()
+      ) {
+        // Close the editor showing the preview
+        await vscode.commands.executeCommand(
+          "workbench.action.closeActiveEditor",
+          editor.document.uri
+        );
+      }
+    }
+
+    // Clean up the virtual file
+    try {
+      oilPreviewProvider.delete(previewUri);
+    } catch (err) {
+      logger.error("Failed to delete virtual preview file:", err);
+    }
   }
 }
 
