@@ -1,7 +1,7 @@
 import path from "path";
 import * as vscode from "vscode";
 import * as fs from "fs";
-import { activateDecorations } from "./decorations";
+import { activateDecorations, updateDecorations } from "./decorations";
 import { newline } from "./newline";
 import oilCodeLua from "./oil.code.lua";
 
@@ -208,7 +208,7 @@ class OilPreviewFileSystemProvider implements vscode.FileSystemProvider {
     if (content) {
       return content;
     }
-    throw vscode.FileSystemError.FileNotFound(uri);
+    return new Uint8Array(); // Return empty array if not found
   }
 
   // Delete an in-memory document
@@ -319,7 +319,8 @@ function closeOil() {
 
 async function getDirectoryListing(
   folderPath: string,
-  oilState: OilState
+  oilState: OilState,
+  preview: boolean = false
 ): Promise<string> {
   let pathUri = vscode.Uri.file(folderPath);
 
@@ -379,11 +380,13 @@ async function getDirectoryListing(
     }
 
     // Use and increment the global counter for each file/directory
-    const identifier = `/${oilState.identifierCounter
-      .toString()
-      .padStart(3, "0")}`;
+    const identifier = preview
+      ? "/000"
+      : `/${oilState.identifierCounter.toString().padStart(3, "0")}`;
 
-    oilState.identifierCounter++;
+    if (!preview) {
+      oilState.identifierCounter++;
+    }
 
     return `${identifier} ${name}`;
   });
@@ -803,10 +806,11 @@ let previewState: PreviewState = {
 // Function to preview a file
 async function previewFile(targetPath: string) {
   try {
+    const fileExists = fs.existsSync(targetPath);
     // Read the file content from disk
-    const fileContent = await vscode.workspace.fs.readFile(
-      vscode.Uri.file(targetPath)
-    );
+    const fileContent = fileExists
+      ? await vscode.workspace.fs.readFile(vscode.Uri.file(targetPath))
+      : Buffer.from("");
 
     // Create a unique preview URI for the file using the original filename to preserve extension
     const previewName = path.basename(targetPath);
@@ -814,6 +818,7 @@ async function previewFile(targetPath: string) {
       `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
     );
 
+    const previousPreviewUri = previewState.previewUri;
     // Write content to the virtual file system
     oilPreviewProvider.writeFile(previewUri, fileContent);
 
@@ -832,6 +837,10 @@ async function previewFile(targetPath: string) {
     previewState.previewedEditor = editor;
     previewState.isDirectory = false;
     previewState.previewUri = previewUri;
+
+    if (previousPreviewUri) {
+      oilPreviewProvider.delete(previousPreviewUri);
+    }
 
     // Start listening for cursor movements if not already listening
     if (!previewState.cursorListenerDisposable) {
@@ -855,7 +864,11 @@ async function previewDirectory(directoryPath: string) {
     }
 
     // Get directory listing in oil format
-    const directoryContent = await getDirectoryListing(directoryPath, oilState);
+    const directoryContent = await getDirectoryListing(
+      directoryPath,
+      oilState,
+      true
+    );
 
     const previewName = path.basename(directoryPath);
     const previewUri = vscode.Uri.parse(
@@ -875,6 +888,7 @@ async function previewDirectory(directoryPath: string) {
       preview: true,
       preserveFocus: true,
     });
+    updateDecorations(editor);
 
     // Update preview state
     previewState.previewedFile = directoryPath;
@@ -932,6 +946,7 @@ async function updatePreviewBasedOnCursorPosition(
     vscode.window.showErrorMessage("No current folder path found.");
     return;
   }
+  const previousPreviewedUri = previewState.previewUri;
 
   let targetPath: string;
 
@@ -947,13 +962,13 @@ async function updatePreviewBasedOnCursorPosition(
     return;
   }
 
-  // Check if the target exists
-  if (!fs.existsSync(targetPath)) {
-    return;
-  }
-
   // Determine if it's a directory or file
-  const isDir = fs.lstatSync(targetPath).isDirectory();
+  let isDir = false;
+  try {
+    isDir = fs.lstatSync(targetPath).isDirectory();
+  } catch (error) {
+    isDir = false; // If it doesn't exist, treat as file
+  }
 
   // Update the preview with the new file or directory
   try {
@@ -964,6 +979,10 @@ async function updatePreviewBasedOnCursorPosition(
     }
   } catch (error) {
     logger.error("Failed to update preview:", error);
+  }
+
+  if (previousPreviewedUri) {
+    oilPreviewProvider.delete(previousPreviewedUri);
   }
 }
 
