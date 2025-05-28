@@ -40,8 +40,9 @@ async function cleanupTestDir() {
 suite("oil.code", () => {
   // Setup and teardown for Sinon stubs
   let showWarningMessageStub: sinon.SinonStub;
+  let executeCommandSpy: sinon.SinonStub;
 
-  setup(async () => {
+  setup(() => {
     // Stub vscode.window.showWarningMessage to automatically return a response
     // This avoids blocking dialogs during tests
     showWarningMessageStub = sinon.stub(vscode.window, "showWarningMessage");
@@ -50,21 +51,23 @@ suite("oil.code", () => {
   });
 
   teardown(async () => {
+    // Restore the original methods after each test
+    showWarningMessageStub.restore();
+    executeCommandSpy?.restore();
+
     await vscode.commands.executeCommand("oil-code.close");
     await sleep(100);
 
     // Close all editors
-    const editors = vscode.window.visibleTextEditors;
-    for (const _ of editors) {
+    const editors = vscode.window.tabGroups.all.flatMap((group) =>
+      group.tabs.map((tab) => tab.input)
+    );
+    for await (const _ of editors) {
       await vscode.commands.executeCommand(
         "workbench.action.closeActiveEditor"
       );
       await sleep(100);
     }
-
-    // Restore the original methods after each test
-    showWarningMessageStub.restore();
-
     await cleanupTestDir();
   });
 
@@ -535,7 +538,7 @@ suite("oil.code", () => {
     // Mock response to vscode.openFolder
     // This is a workaround since calling this causes the test to disconnect
     // from the test runner and fail.
-    const executeCommandSpy = sinon.stub(vscode.commands, "executeCommand");
+    executeCommandSpy = sinon.stub(vscode.commands, "executeCommand");
     executeCommandSpy.withArgs("oil-code.cd").callThrough();
     executeCommandSpy.withArgs("vscode.openFolder").returns(Promise.resolve());
     await vscode.commands.executeCommand("oil-code.cd");
@@ -547,5 +550,176 @@ suite("oil.code", () => {
         "vscode.openFolder was not called"
       )
     );
+  });
+
+  test("Displays help page", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText("/000 ../");
+
+    await vscode.commands.executeCommand("oil-code.help");
+    await sleep(100);
+    await waitFor(() => {
+      const tabGroup = vscode.window.tabGroups.all.at(0);
+      assert.ok(tabGroup, "No tab group found");
+      const previewTab = tabGroup.tabs.at(-1);
+      assert.ok(previewTab, "No preview tab found in the tab group");
+      assert.strictEqual(
+        (previewTab.input as vscode.TabInputWebview).viewType,
+        "mainThreadWebview-oilHelp"
+      );
+
+      assert.strictEqual(previewTab.label, "Oil Help");
+    });
+  });
+
+  test("Preview file", async () => {
+    const testContent = `# Oil FileThis${newline}is a test file for Oil Code extension.`;
+    await vscode.workspace.fs.writeFile(
+      vscode.Uri.joinPath(
+        vscode.workspace.workspaceFolders![0].uri,
+        "oil-file.md"
+      ),
+      Buffer.from(testContent, "utf-8")
+    );
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText(["/000 ../", "/001 oil-file.md"]);
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    // Move cursor to the file name
+    const position = new vscode.Position(1, 0);
+    editor.selection = new vscode.Selection(position, position);
+    await vscode.commands.executeCommand("oil-code.preview");
+
+    await waitFor(() => {
+      const previewTab = vscode.window.tabGroups.all.at(1)?.tabs.at(0);
+      assert.ok(previewTab, "Preview tab not found");
+      assert.strictEqual(
+        (previewTab.input as vscode.TabInputText).uri.toString(),
+        "oil-preview://oil-preview/oil-file.md"
+      );
+      const previewEditor = vscode.window.visibleTextEditors.find(
+        (editor) =>
+          editor.document.uri.toString() ===
+          "oil-preview://oil-preview/oil-file.md"
+      );
+      assert.ok(previewEditor, "No editor found for the preview tab");
+      assert.strictEqual(
+        previewEditor.document.getText(),
+        testContent,
+        "Preview content does not match expected content"
+      );
+    });
+  });
+
+  test("Preview directory and file", async () => {
+    const testContent = `# Oil FileThis${newline}is a test file for Oil Code extension.`;
+    await vscode.workspace.fs.createDirectory(
+      vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, "oil-dir")
+    );
+    await vscode.workspace.fs.writeFile(
+      vscode.Uri.joinPath(
+        vscode.workspace.workspaceFolders![0].uri,
+        "oil-dir",
+        "oil-file1.md"
+      ),
+      Buffer.from(testContent, "utf-8")
+    );
+    await vscode.workspace.fs.writeFile(
+      vscode.Uri.joinPath(
+        vscode.workspace.workspaceFolders![0].uri,
+        "oil-dir",
+        "oil-file2.md"
+      ),
+      Buffer.from(testContent, "utf-8")
+    );
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText(["/000 ../", "/001 oil-dir/"]);
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    // Move cursor to the file name
+    const position = new vscode.Position(1, 0);
+    editor.selection = new vscode.Selection(position, position);
+    await vscode.commands.executeCommand("oil-code.preview");
+
+    await waitFor(() => {
+      const previewTab = vscode.window.tabGroups.all.at(1)?.tabs.at(0);
+      assert.ok(previewTab, "Preview tab not found");
+      assert.strictEqual(
+        (previewTab.input as vscode.TabInputText).uri.toString(),
+        "oil-preview://oil-preview/oil-dir"
+      );
+      const previewEditor = vscode.window.visibleTextEditors.find(
+        (editor) =>
+          editor.document.uri.toString() === "oil-preview://oil-preview/oil-dir"
+      );
+      assert.ok(previewEditor, "No editor found for the preview tab");
+      assert.strictEqual(
+        previewEditor.document.getText(),
+        ["/000 ../", "/000 oil-file1.md", "/000 oil-file2.md"].join(newline),
+        "Preview content does not match expected content"
+      );
+    });
+
+    await vscode.commands.executeCommand("oil-code.select");
+
+    await sleep(100);
+
+    await waitForDocumentText([
+      "/000 ../",
+      "/002 oil-file1.md",
+      "/003 oil-file2.md",
+    ]);
+
+    await waitFor(() => {
+      const previewTab = vscode.window.tabGroups.all.at(1)?.tabs.at(0);
+      assert.ok(previewTab, "Preview tab not found");
+      assert.strictEqual(
+        (previewTab.input as vscode.TabInputText).uri.toString(),
+        "oil-preview://oil-preview/test-temp"
+      );
+      const previewEditor = vscode.window.visibleTextEditors.find(
+        (editor) =>
+          editor.document.uri.toString() ===
+          "oil-preview://oil-preview/test-temp"
+      );
+      assert.ok(previewEditor, "No editor found for the preview tab");
+      assert.strictEqual(
+        previewEditor.document.getText(),
+        ["/000 ../", "/000 oil-dir/"].join(newline),
+        "Preview content does not match expected content"
+      );
+    });
+
+    // Move cursor to the file name
+    const editor2 = vscode.window.activeTextEditor;
+    assert.ok(editor2, "No active editor");
+    const position2 = new vscode.Position(1, 0);
+    editor2.selection = new vscode.Selection(position2, position2);
+
+    await sleep(100);
+
+    await waitFor(() => {
+      const previewTab = vscode.window.tabGroups.all.at(1)?.tabs.at(0);
+      assert.ok(previewTab, "Preview tab not found");
+      assert.strictEqual(
+        (previewTab.input as vscode.TabInputText).uri.toString(),
+        "oil-preview://oil-preview/oil-file1.md"
+      );
+      const previewEditor = vscode.window.visibleTextEditors.find(
+        (editor) =>
+          editor.document.uri.toString() ===
+          "oil-preview://oil-preview/oil-file1.md"
+      );
+      assert.ok(previewEditor, "No editor found for the preview tab");
+      assert.strictEqual(
+        previewEditor.document.getText(),
+        testContent,
+        "Preview content does not match expected content"
+      );
+    });
   });
 });

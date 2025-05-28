@@ -1,7 +1,7 @@
 import path from "path";
 import * as vscode from "vscode";
 import * as fs from "fs";
-import { activateDecorations } from "./decorations";
+import { activateDecorations, updateDecorations } from "./decorations";
 import { newline } from "./newline";
 import oilCodeLua from "./oil.code.lua";
 
@@ -208,7 +208,7 @@ class OilPreviewFileSystemProvider implements vscode.FileSystemProvider {
     if (content) {
       return content;
     }
-    throw vscode.FileSystemError.FileNotFound(uri);
+    return new Uint8Array(); // Return empty array if not found
   }
 
   // Delete an in-memory document
@@ -319,7 +319,8 @@ function closeOil() {
 
 async function getDirectoryListing(
   folderPath: string,
-  oilState: OilState
+  oilState: OilState,
+  preview: boolean = false
 ): Promise<string> {
   let pathUri = vscode.Uri.file(folderPath);
 
@@ -379,11 +380,13 @@ async function getDirectoryListing(
     }
 
     // Use and increment the global counter for each file/directory
-    const identifier = `/${oilState.identifierCounter
-      .toString()
-      .padStart(3, "0")}`;
+    const identifier = preview
+      ? "/000"
+      : `/${oilState.identifierCounter.toString().padStart(3, "0")}`;
 
-    oilState.identifierCounter++;
+    if (!preview) {
+      oilState.identifierCounter++;
+    }
 
     return `${identifier} ${name}`;
   });
@@ -465,6 +468,8 @@ async function select({
   // Store the current directory name when going up a directory
   let isGoingUp = fileName === "../";
 
+  disableUpdatePreview = true;
+
   if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
     try {
       // Update the URI to represent the new directory path
@@ -482,7 +487,12 @@ async function select({
       const newDoc = await vscode.workspace.openTextDocument(newUri);
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
-      let editor: vscode.TextEditor;
+      // Show the new document in the same editor
+      const editor = await vscode.window.showTextDocument(newDoc, {
+        viewColumn: viewColumn || activeEditor.viewColumn,
+        preview: false,
+      });
+
       if (!viewColumn) {
         // Close the old document
         await vscode.window.showTextDocument(oldUri);
@@ -490,11 +500,6 @@ async function select({
           "workbench.action.revertAndCloseActiveEditor"
         );
       }
-      // Show the new document in the same editor
-      editor = await vscode.window.showTextDocument(newDoc, {
-        viewColumn: viewColumn || activeEditor.viewColumn,
-        preview: false,
-      });
 
       // Position cursor appropriately
       if (isGoingUp) {
@@ -522,6 +527,7 @@ async function select({
               }
             }
 
+            disableUpdatePreview = false;
             if (foundIndex >= 0) {
               // Position cursor at the found line
               editor.selection = new vscode.Selection(
@@ -537,11 +543,21 @@ async function select({
               // Default to first line if not found
               editor.selection = new vscode.Selection(0, 0, 0, 0);
             }
+            if (previewState.previewEnabled) {
+              preview(true);
+            }
           }
         }, 100);
       } else {
-        // When going into a directory, position at first line
-        editor.selection = new vscode.Selection(0, 0, 0, 0);
+        setTimeout(() => {
+          disableUpdatePreview = false;
+          // When going into a directory, position at first line
+          editor.selection = new vscode.Selection(0, 0, 0, 0);
+          // Manually update preview if enabled
+          if (previewState.previewEnabled) {
+            preview(true);
+          }
+        }, 100);
       }
 
       // Mark the file as modified if there are pending changes
@@ -632,9 +648,21 @@ async function onDidChangeActiveTextEditor(
   const oilState = getOilState();
 
   // Close preview when leaving oil view
-  if (editor.document.uri.scheme !== OIL_SCHEME && previewState.previewedFile) {
+  if (
+    ![OIL_SCHEME, OIL_PREVIEW_SCHEME].includes(editor.document.uri.scheme) &&
+    previewState.previewedFile
+  ) {
     await closePreview();
   }
+
+  // If we are returning to an oil file and preview is enabled, update the preview
+  if (
+    editor.document.uri.scheme === OIL_SCHEME &&
+    previewState.previewEnabled
+  ) {
+    await preview(true);
+  }
+
   if (!oilState) {
     await checkAndEnableAutoSave();
     return;
@@ -789,7 +817,8 @@ interface PreviewState {
   previewedEditor: vscode.TextEditor | null; // Reference to preview editor
   cursorListenerDisposable: vscode.Disposable | null; // For tracking cursor movements
   isDirectory: boolean; // Whether the preview is showing a directory
-  previewUri: vscode.Uri | null; // URI to the in-memory preview document
+  previewUri: vscode.Uri | null; // URI to the virtual preview document (used for both files and directories)
+  previewEnabled: boolean; // Whether preview is enabled
 }
 
 let previewState: PreviewState = {
@@ -798,35 +827,35 @@ let previewState: PreviewState = {
   cursorListenerDisposable: null,
   isDirectory: false,
   previewUri: null,
+  previewEnabled: false, // Whether preview is enabled
 };
 
 // Function to preview a file
 async function previewFile(targetPath: string) {
   try {
-    const fileUri = vscode.Uri.file(targetPath);
-    const fileDoc = await vscode.workspace.openTextDocument(fileUri);
+    const fileExists = fs.existsSync(targetPath);
+    // Read the file content from disk
+    const fileContent = fileExists
+      ? await vscode.workspace.fs.readFile(vscode.Uri.file(targetPath))
+      : Buffer.from("");
 
-    // Close previous previewed editor if it exists
-    if (previewState.previewedEditor) {
-      // Check if the preview editor's document is still open
-      const isPreviewOpen = vscode.window.visibleTextEditors.some(
-        (editor) =>
-          editor.document.uri.toString() ===
-          previewState.previewedEditor!.document.uri.toString()
-      );
+    // Create a unique preview URI for the file using the original filename to preserve extension
+    const previewName = path.basename(targetPath);
+    const previewUri = vscode.Uri.parse(
+      `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
+    );
 
-      if (isPreviewOpen) {
-        await vscode.commands.executeCommand(
-          "workbench.action.closeActiveEditor",
-          previewState.previewedEditor.document.uri
-        );
-      }
-    }
+    const previousPreviewUri = previewState.previewUri;
+    // Write content to the virtual file system
+    oilPreviewProvider.writeFile(previewUri, fileContent);
+
+    // Open the virtual document
+    const fileDoc = await vscode.workspace.openTextDocument(previewUri);
 
     // Open to the side (right split) in preview mode
     const editor = await vscode.window.showTextDocument(fileDoc, {
       viewColumn: vscode.ViewColumn.Beside, // Opens in the editor group to the right
-      preview: false,
+      preview: true,
       preserveFocus: true, // Keeps focus on the oil file
     });
 
@@ -834,6 +863,11 @@ async function previewFile(targetPath: string) {
     previewState.previewedFile = targetPath;
     previewState.previewedEditor = editor;
     previewState.isDirectory = false;
+    previewState.previewUri = previewUri;
+
+    if (previousPreviewUri) {
+      oilPreviewProvider.delete(previousPreviewUri);
+    }
 
     // Start listening for cursor movements if not already listening
     if (!previewState.cursorListenerDisposable) {
@@ -855,11 +889,19 @@ async function previewDirectory(directoryPath: string) {
       vscode.window.showErrorMessage("No oil state found.");
       return;
     }
+    const previewName = path.basename(directoryPath);
+
+    if (previewState.previewedFile === directoryPath) {
+      return; // If already previewing this directory, do nothing
+    }
 
     // Get directory listing in oil format
-    const directoryContent = await getDirectoryListing(directoryPath, oilState);
+    const directoryContent = await getDirectoryListing(
+      directoryPath,
+      oilState,
+      true
+    );
 
-    const previewName = path.basename(directoryPath);
     const previewUri = vscode.Uri.parse(
       `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
     );
@@ -871,31 +913,13 @@ async function previewDirectory(directoryPath: string) {
     const fileDoc = await vscode.workspace.openTextDocument(previewUri);
     await vscode.languages.setTextDocumentLanguage(fileDoc, "oil");
 
-    // Close previous previewed editor if it exists
-    if (previewState.previewedEditor) {
-      const previewedEditorUri = previewState.previewedEditor.document.uri;
-      setTimeout(async () => {
-        // Check if the preview editor's document is still open in any visible editors
-        const isPreviewOpen = vscode.window.visibleTextEditors.some(
-          (editor) =>
-            editor.document.uri.toString() === previewedEditorUri.toString()
-        );
-
-        if (isPreviewOpen) {
-          await vscode.commands.executeCommand(
-            "workbench.action.closeActiveEditor",
-            previewedEditorUri
-          );
-        }
-      }, 0);
-    }
-
     // Show the document to the side
     const editor = await vscode.window.showTextDocument(fileDoc, {
       viewColumn: vscode.ViewColumn.Beside,
-      preview: false,
+      preview: true,
       preserveFocus: true,
     });
+    updateDecorations(editor);
 
     // Update preview state
     previewState.previewedFile = directoryPath;
@@ -911,9 +935,11 @@ async function previewDirectory(directoryPath: string) {
         );
     }
   } catch (error) {
-    vscode.window.showErrorMessage(`Failed to preview directory: ${error}`);
+    logger.error("Failed to preview directory:", error);
   }
 }
+
+let disableUpdatePreview = false;
 
 // Helper function to update preview based on cursor position
 async function updatePreviewBasedOnCursorPosition(
@@ -922,7 +948,8 @@ async function updatePreviewBasedOnCursorPosition(
   // Only respond to selection changes in the oil file
   if (
     !event.textEditor ||
-    event.textEditor.document.uri.scheme !== OIL_SCHEME
+    event.textEditor.document.uri.scheme !== OIL_SCHEME ||
+    disableUpdatePreview
   ) {
     return;
   }
@@ -953,6 +980,7 @@ async function updatePreviewBasedOnCursorPosition(
     vscode.window.showErrorMessage("No current folder path found.");
     return;
   }
+  const previousPreviewedUri = previewState.previewUri;
 
   let targetPath: string;
 
@@ -968,13 +996,13 @@ async function updatePreviewBasedOnCursorPosition(
     return;
   }
 
-  // Check if the target exists
-  if (!fs.existsSync(targetPath)) {
-    return;
-  }
-
   // Determine if it's a directory or file
-  const isDir = fs.lstatSync(targetPath).isDirectory();
+  let isDir = false;
+  try {
+    isDir = fs.lstatSync(targetPath).isDirectory();
+  } catch (error) {
+    isDir = false; // If it doesn't exist, treat as file
+  }
 
   // Update the preview with the new file or directory
   try {
@@ -985,6 +1013,10 @@ async function updatePreviewBasedOnCursorPosition(
     }
   } catch (error) {
     logger.error("Failed to update preview:", error);
+  }
+
+  if (previousPreviewedUri) {
+    oilPreviewProvider.delete(previousPreviewedUri);
   }
 }
 
@@ -997,35 +1029,23 @@ async function closePreview() {
   }
 
   // Close the preview if it's open
-  if (previewState.previewedFile) {
-    if (previewState.isDirectory && previewState.previewUri) {
-      // For directory previews, close and clean up the virtual file
-      const previewUri = previewState.previewUri;
+  if (previewState.previewedFile && previewState.previewUri) {
+    // For both file and directory previews using OilPreviewFileSystemProvider
+    const previewUri = previewState.previewUri;
 
-      // Close any editors showing this virtual file
-      for (const editor of vscode.window.visibleTextEditors) {
-        if (editor.document.uri.toString() === previewUri.toString()) {
-          await vscode.commands.executeCommand(
-            "workbench.action.closeActiveEditor",
-            editor.document.uri
-          );
-        }
-      }
+    // Reset state
+    previewState.previewedFile = null;
+    previewState.previewedEditor = null;
+    previewState.isDirectory = false;
+    previewState.previewUri = null;
 
-      // Clean up the virtual file
-      try {
-        oilPreviewProvider.delete(previewUri);
-      } catch (err) {
-        logger.error("Failed to delete virtual preview file:", err);
-      }
-    } else {
-      // For regular file previews
-      const editorsToClose = vscode.window.visibleTextEditors.filter(
-        (editor) => editor.document.uri.fsPath === previewState.previewedFile
-      );
-
-      // Close each matching editor
-      for (const editor of editorsToClose) {
+    // Close any editors showing this virtual file
+    for (const editor of vscode.window.visibleTextEditors) {
+      if (
+        editor.document.uri.scheme === OIL_PREVIEW_SCHEME &&
+        editor.document.uri.toString() === previewUri.toString()
+      ) {
+        // Close the editor showing the preview
         await vscode.commands.executeCommand(
           "workbench.action.closeActiveEditor",
           editor.document.uri
@@ -1033,11 +1053,12 @@ async function closePreview() {
       }
     }
 
-    // Reset state
-    previewState.previewedFile = null;
-    previewState.previewedEditor = null;
-    previewState.isDirectory = false;
-    previewState.previewUri = null;
+    // Clean up the virtual file
+    try {
+      oilPreviewProvider.delete(previewUri);
+    } catch (err) {
+      logger.error("Failed to delete virtual preview file:", err);
+    }
   }
 }
 
@@ -1707,7 +1728,7 @@ async function attemptRegisteringVimKeymaps(
   }
 }
 
-async function preview() {
+async function preview(overrideEnabled: boolean = false) {
   const activeEditor = vscode.window.activeTextEditor;
 
   if (!activeEditor) {
@@ -1716,7 +1737,7 @@ async function preview() {
   }
 
   // Check if the current file is our oil temp file
-  if (path.basename(activeEditor.document.uri.scheme) !== OIL_SCHEME) {
+  if (activeEditor.document.uri.scheme !== OIL_SCHEME) {
     return;
   }
 
@@ -1762,12 +1783,13 @@ async function preview() {
 
   // If this file/directory is already being previewed, close the preview (toggle behavior)
   if (previewState.previewedFile === targetPath) {
-    await closePreview();
+    previewState.previewEnabled = overrideEnabled;
+    if (!overrideEnabled) {
+      await closePreview();
+    }
     return;
   }
-
-  // Close any existing preview
-  await closePreview();
+  previewState.previewEnabled = true;
 
   // Preview differently based on whether it's a file or directory
   if (isDir) {
@@ -1822,8 +1844,11 @@ async function changeDirectory() {
   }
 }
 
+let helpPanel: vscode.WebviewPanel | null = null;
+
 // Displays helpful information about oil commands that are available
 async function showHelp() {
+  helpPanel?.dispose(); // Close any existing help panel
   const helpHeaders = [
     "Command",
     "Vim Key Binding",
@@ -1905,6 +1930,8 @@ async function showHelp() {
     </div>
   </body>
   </html>`;
+
+  helpPanel = panel;
 }
 
 // In your extension's activate function
@@ -1919,7 +1946,11 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.registerFileSystemProvider(
       OIL_PREVIEW_SCHEME,
       oilPreviewProvider,
-      { isReadonly: false }
+      {
+        isReadonly: new vscode.MarkdownString(
+          "This is a oil.code preview and cannot be edited."
+        ),
+      }
     )
   );
 
@@ -1933,6 +1964,7 @@ export function activate(context: vscode.ExtensionContext) {
     cursorListenerDisposable: null,
     isDirectory: false,
     previewUri: null,
+    previewEnabled: false,
   };
 
   // Set up listener for extension changes (activation/deactivation)
