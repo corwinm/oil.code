@@ -1093,6 +1093,9 @@ function oilLinesToOilEntries(
     if (entry.identifier === "/000") {
       continue;
     }
+    if (!entry.value) {
+      continue; // Skip empty lines
+    }
     map.push([entry.identifier, entry]);
   }
   return map;
