@@ -269,6 +269,7 @@ async function openOil(atPath?: string | undefined) {
     return;
   }
 
+  disableUpdatePreview = false;
   const oilState = atPath ? initOilStateWithPath(atPath) : initOilState();
   const activeFile = path.basename(activeEditor?.document.uri.fsPath || "");
 
@@ -529,6 +530,7 @@ async function select({
 
             disableUpdatePreview = false;
             if (foundIndex >= 0) {
+              // TODO: This isn't working consistently, need to debug
               // Position cursor at the found line
               editor.selection = new vscode.Selection(
                 foundIndex,
@@ -601,37 +603,22 @@ async function select({
     const fileUri = vscode.Uri.file(targetPath);
     const viewColumnToUse = viewColumn || activeEditor.viewColumn;
 
-    // Check if the file is binary
-    const isBinary = await isBinaryFile(targetPath);
-
-    if (isBinary) {
-      // For binary files, close the oil editor first if needed, then use vscode.open
-      if (!viewColumn) {
-        await vscode.window.showTextDocument(activeEditor.document.uri);
-        await vscode.commands.executeCommand(
-          "workbench.action.revertAndCloseActiveEditor"
-        );
-      }
-
-      // Open binary file with appropriate viewer
-      await vscode.commands.executeCommand("vscode.open", fileUri, {
-        viewColumn: viewColumnToUse,
-        preview: false,
-      });
-    } else {
-      // For text files, use the standard text document opening
-      const fileDoc = await vscode.workspace.openTextDocument(fileUri);
-      if (!viewColumn) {
-        await vscode.window.showTextDocument(activeEditor.document.uri);
-        await vscode.commands.executeCommand(
-          "workbench.action.revertAndCloseActiveEditor"
-        );
-      }
-      await vscode.window.showTextDocument(fileDoc, {
-        viewColumn: viewColumnToUse,
-        preview: false,
-      });
+    // Close the oil editor first if needed, then use vscode.open
+    if (!viewColumn) {
+      await vscode.window.showTextDocument(activeEditor.document.uri);
+      await vscode.commands.executeCommand(
+        "workbench.action.revertAndCloseActiveEditor"
+      );
     }
+    // TODO: Handle focus and close preview images if possible
+
+    disableUpdatePreview = false;
+
+    // Open binary file with appropriate viewer
+    await vscode.commands.executeCommand("vscode.open", fileUri, {
+      viewColumn: viewColumnToUse,
+      preview: false,
+    });
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
   }
@@ -715,6 +702,12 @@ function positionCursorOnFile(editor: vscode.TextEditor, fileName: string) {
       // Position cursor at the beginning of the line
       editor.selection = new vscode.Selection(i, 0, i, 0);
       editor.revealRange(new vscode.Range(i, 0, i, 0));
+      setTimeout(() => {
+        updatePreviewBasedOnCursorPosition({
+          textEditor: editor,
+          selections: [editor.selection],
+        } as unknown as vscode.TextEditorSelectionChangeEvent);
+      }, 0);
       return;
     }
   }
