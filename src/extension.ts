@@ -1489,6 +1489,14 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         updatedContent
       );
 
+      const cursorPosition = vscode.window.activeTextEditor?.selection.active;
+      let cursorOnFileName = "";
+      if (cursorPosition) {
+        // Get file name from the current cursor position
+        const currentLine = document.lineAt(cursorPosition.line).text;
+        cursorOnFileName = currentLine.replace(/^\/\d{3} /, "").trim();
+      }
+
       await vscode.workspace.applyEdit(edit);
 
       // Save the document after updating to prevent it from showing as having unsaved changes
@@ -1497,6 +1505,18 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
       if (oilState.openAfterSave) {
         await select({ overRideLineText: oilState.openAfterSave });
         oilState.openAfterSave = undefined;
+        return;
+      }
+
+      // If we are in an oil file, update the cursor position
+      const activeEditor = vscode.window.activeTextEditor;
+      if (
+        activeEditor &&
+        activeEditor.document.uri.scheme === OIL_SCHEME &&
+        cursorOnFileName
+      ) {
+        // Position the cursor on the first line or the file that was just saved
+        positionCursorOnFile(activeEditor, cursorOnFileName);
       }
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to process changes: ${error}`);
