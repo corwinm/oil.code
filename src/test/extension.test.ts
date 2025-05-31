@@ -217,6 +217,33 @@ suite("oil.code", () => {
     ]);
   });
 
+  test("Creates file and ignores empty lines", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitFor(() =>
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.document.getText(),
+        "/000 ../"
+      )
+    );
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(
+        new vscode.Position(1, 0),
+        ["", "oil-file.md", ""].join(newline)
+      );
+    });
+
+    await saveFile();
+
+    // Wait for file content to update
+    await waitForDocumentText(["/000 ../", "/001 oil-file.md"]);
+
+    // Check if the file was created
+    await assertProjectFileStructure(["oil-file.md"]);
+  });
+
   test("Edit and renames file", async () => {
     await vscode.commands.executeCommand("oil-code.open");
     await waitForDocumentText("/000 ../");
