@@ -1495,6 +1495,11 @@ async function onDidSaveTextDocument(document: vscode.TextDocument) {
         // Get file name from the current cursor position
         const currentLine = document.lineAt(cursorPosition.line).text;
         cursorOnFileName = currentLine.replace(/^\/\d{3} /, "").trim();
+        if (cursorOnFileName.includes("/")) {
+          // If the cursor is on a file with a path, just use the folder name
+          const parts = cursorOnFileName.split("/");
+          cursorOnFileName = parts.at(0) + "/";
+        }
       }
 
       await vscode.workspace.applyEdit(edit);
