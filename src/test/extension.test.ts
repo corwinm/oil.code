@@ -222,9 +222,6 @@ suite("oil.code", () => {
       "/006 oil-file.md",
     ]);
 
-    // Check cursor position is updated
-    assert.strictEqual(editor.selection.active.line, 3);
-
     // Check if the file was created
     await assertProjectFileStructure([
       "index.html",
@@ -239,6 +236,9 @@ suite("oil.code", () => {
       "oil-file.js",
       "oil-file.md",
     ]);
+
+    // Check cursor position is updated
+    assert.strictEqual(editor.selection.active.line, 3);
   });
 
   test("Creates file and ignores empty lines", async () => {
@@ -264,6 +264,7 @@ suite("oil.code", () => {
 
     // Wait for file content to update
     await waitForDocumentText(["/000 ../", "/001 oil-file.md"]);
+
     // Check cursor position is updated
     assert.strictEqual(editor.selection.active.line, 1);
 
