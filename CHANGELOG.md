@@ -2,6 +2,11 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.21](https://github.com/corwinm/oil.code/compare/v0.0.20...v0.0.21)
+
+- fix: Ignore empty lines when determining changes by @corwinm in https://github.com/corwinm/oil.code/pull/28
+- fix: Update cursor position after save by @corwinm in https://github.com/corwinm/oil.code/pull/29
+
 ## [0.0.20](https://github.com/corwinm/oil.code/compare/v0.0.19...v0.0.20)
 
 - fix: Preview instability by @corwinm in https://github.com/corwinm/oil.code/pull/26
