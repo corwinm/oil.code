@@ -8,6 +8,7 @@ import { saveFile } from "./utils/saveFile";
 import { sleep } from "./utils/sleep";
 import { assertProjectFileStructure } from "./utils/assertProjectFileStructure";
 import { moveCursorToLine } from "./utils/moveCursorToLine";
+import { assertSelectionOnLine } from "./utils/assertSelectionOnLine";
 
 async function cleanupTestDir() {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -172,11 +173,7 @@ suite("oil.code", () => {
 
     // Check if the file was created
     await assertProjectFileStructure(["oil-dir/", "  oil-file.ts"]);
-    assert.strictEqual(
-      editor.selection.active.line,
-      1,
-      "Cursor position is not updated"
-    );
+    assertSelectionOnLine(editor, 1);
   });
 
   test("Creates various files and directories in one step", async () => {
@@ -238,7 +235,7 @@ suite("oil.code", () => {
     ]);
 
     // Check cursor position is updated
-    assert.strictEqual(editor.selection.active.line, 3);
+    assertSelectionOnLine(editor, 3);
   });
 
   test("Creates file and ignores empty lines", async () => {
@@ -266,7 +263,7 @@ suite("oil.code", () => {
     await waitForDocumentText(["/000 ../", "/001 oil-file.md"]);
 
     // Check cursor position is updated
-    assert.strictEqual(editor.selection.active.line, 1);
+    assertSelectionOnLine(editor, 1);
 
     // Check if the file was created
     await assertProjectFileStructure(["oil-file.md"]);
