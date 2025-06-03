@@ -108,11 +108,7 @@ suite("oil.code", () => {
     // Wait for file content to update
     await waitForDocumentText(["/000 ../", "/001 oil-file.ts"]);
     await assertProjectFileStructure(["oil-file.ts"]);
-    assert.strictEqual(
-      editor.selection.active.line,
-      0,
-      "Cursor position is not updated"
-    );
+    assertSelectionOnLine(editor, 0);
   });
 
   test("Creates directory", async () => {
@@ -137,11 +133,7 @@ suite("oil.code", () => {
     // Wait for file content to update
     await waitForDocumentText(["/000 ../", "/001 oil-dir/"]);
     await assertProjectFileStructure(["oil-dir/"]);
-    assert.strictEqual(
-      editor.selection.active.line,
-      1,
-      "Cursor position is not updated"
-    );
+    assertSelectionOnLine(editor, 1);
   });
 
   test("Creates directory and file in one line", async () => {
