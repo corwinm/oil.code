@@ -4,6 +4,8 @@
 
 Provides an [oil.nvim](https://github.com/stevearc/oil.nvim) like experience for VSCode.
 
+Oil lets you navigate your file system, copy, move, and rename files and directories all without leaving your file editor.
+
 This plugin works best with [VSCodeVim](https://github.com/VSCodeVim/Vim) or [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim) but can still be used without a Vim plugin.
 
 ## Shortcuts
