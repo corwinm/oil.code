@@ -2,6 +2,12 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.22](https://github.com/corwinm/oil.code/compare/v0.0.21...v0.0.22)
+
+- chore(deps): Update brace-expansion to resolve dependabot alert
+- test: Update cursor position tests by @corwinm in https://github.com/corwinm/oil.code/pull/30
+- fix: Update tar-fs by @corwinm in https://github.com/corwinm/oil.code/pull/31
+
 ## [0.0.21](https://github.com/corwinm/oil.code/compare/v0.0.20...v0.0.21)
 
 - fix: Ignore empty lines when determining changes by @corwinm in https://github.com/corwinm/oil.code/pull/28
