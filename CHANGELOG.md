@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.23](https://github.com/corwinm/oil.code/compare/v0.0.22...v0.0.23)
+
+- ci: Update build to wait for all tests to publish and upload build to release
+
 ## [0.0.22](https://github.com/corwinm/oil.code/compare/v0.0.21...v0.0.22)
 
 - chore(deps): Update brace-expansion to resolve dependabot alert
