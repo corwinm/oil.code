@@ -21,9 +21,11 @@ export function setOilState(state: OilState | undefined) {
 export function getCurrentPath(): string | undefined {
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor && oilState) {
+    const documentUri = activeEditor.document.uri;
     const scheme = activeEditor.document.uri.scheme;
+    // Check if the scheme is either "oil" or "oil-preview"
     if (scheme === "oil" || scheme === "oil-preview") {
-      return oilState.currentPath;
+      return documentUri.path;
     }
   }
   return undefined;

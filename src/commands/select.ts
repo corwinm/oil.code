@@ -9,14 +9,14 @@ import {
   updateOilUri,
 } from "../utils/pathUtils";
 import { getDirectoryListing } from "../utils/fileUtils";
-import {
-  positionCursorOnFile,
-  checkForVisitedCleanup,
-} from "../utils/oilUtils";
-import { updateDecorations } from "../decorations";
+import { checkForVisitedCleanup, hasPendingChanges } from "../utils/oilUtils";
 import { newline } from "../newline";
 import { updateDisableUpdatePreview } from "./disableUpdatePreview";
 import { logger } from "../logger";
+import { oilFileProvider } from "../providers/providers";
+import { previewState } from "../state/previewState";
+import { preview } from "./preview";
+import { onDidSaveTextDocument } from "../handlers/onDidSaveTextDocument";
 
 export async function select({
   overRideLineText,
@@ -94,52 +94,97 @@ export async function select({
 
   if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
     try {
-      // Update the oil state with the new path
-      const newUri = updateOilUri(oilState, targetPath);
-      oilState.currentPath = removeTrailingSlash(targetPath);
+      // Update the URI to represent the new directory path
+      const oldUri = document.uri;
 
-      // Get the directory listing for the new path
+      // Update the URI to reflect the new directory
+      const newUri = updateOilUri(oilState, targetPath);
+
       const directoryContent = await getDirectoryListing(targetPath, oilState);
 
-      // Create a new document with the directory listing
-      const newDoc = await vscode.workspace.openTextDocument({
-        content: directoryContent,
-        language: "oil",
-      });
-
-      // Update the URI to our custom scheme
-      const edit = new vscode.WorkspaceEdit();
-      edit.renameFile(newDoc.uri, newUri);
-      await vscode.workspace.applyEdit(edit);
+      // Transfer the content to the new URI
+      oilFileProvider.writeFile(newUri, Buffer.from(directoryContent));
 
       // Open the document with the new URI
-      const finalDoc = await vscode.workspace.openTextDocument(newUri);
-      await vscode.languages.setTextDocumentLanguage(finalDoc, "oil");
+      const newDoc = await vscode.workspace.openTextDocument(newUri);
+      await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
       // Show the new document in the same editor
-      const editor = await vscode.window.showTextDocument(finalDoc, {
+      const editor = await vscode.window.showTextDocument(newDoc, {
         viewColumn: viewColumn || activeEditor.viewColumn,
         preview: false,
       });
 
       if (!viewColumn) {
+        // Close the old document
+        await vscode.window.showTextDocument(oldUri);
         await vscode.commands.executeCommand(
-          "workbench.action.closeActiveEditor"
+          "workbench.action.revertAndCloseActiveEditor"
         );
       }
 
-      updateDecorations(editor);
-
       // Position cursor appropriately
       if (isGoingUp) {
-        positionCursorOnFile(editor, currentFile);
+        // When going up a directory, we need to find the directory we came from
+        const lastSelected = currentFile.replace(/^\/\d{3} /, "");
+
+        // Use setTimeout to ensure the editor content is updated
+        setTimeout(() => {
+          if (editor) {
+            // Find the line with the directory name (with trailing slash)
+            const docText = editor.document.getText();
+            const lines = docText.split(newline);
+
+            let foundIndex = -1;
+            // Look for the folder we came from with or without trailing slash
+            for (let i = 0; i < lines.length; i++) {
+              // Extract actual name from each line by removing the hidden identifier
+              const lineName = lines[i].replace(/^\/\d{3} /, "").trim();
+              if (
+                lineName === lastSelected ||
+                lineName === `${lastSelected}/`
+              ) {
+                foundIndex = i;
+                break;
+              }
+            }
+
+            updateDisableUpdatePreview(false);
+            if (foundIndex >= 0) {
+              // Position cursor at the found line
+              editor.selection = new vscode.Selection(
+                foundIndex,
+                0,
+                foundIndex,
+                0
+              );
+              editor.revealRange(
+                new vscode.Range(foundIndex, 0, foundIndex, 0)
+              );
+            } else {
+              // Default to first line if not found
+              editor.selection = new vscode.Selection(0, 0, 0, 0);
+            }
+            if (previewState.previewEnabled) {
+              preview(true);
+            }
+          }
+        }, 100);
       } else {
-        positionCursorOnFile(editor, "");
+        setTimeout(() => {
+          updateDisableUpdatePreview(false);
+          // When going into a directory, position at first line
+          editor.selection = new vscode.Selection(0, 0, 0, 0);
+          // Manually update preview if enabled
+          if (previewState.previewEnabled) {
+            preview(true);
+          }
+        }, 100);
       }
 
       // Mark the file as modified if there are pending changes
-      if (oilState.editedPaths.size === 0) {
-        await finalDoc.save();
+      if (!hasPendingChanges(oilState)) {
+        editor.document.save();
       }
 
       return;
@@ -160,10 +205,10 @@ export async function select({
 
     if (saveChanges === "Yes") {
       oilState.openAfterSave = fileName;
-      if (document.isDirty && oilState.editedPaths.size === 0) {
+      if (document.isDirty && !hasPendingChanges(oilState)) {
         await document.save();
       } else {
-        await document.save();
+        await onDidSaveTextDocument(document);
       }
       return;
     }

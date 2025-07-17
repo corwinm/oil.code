@@ -7,12 +7,14 @@ import { setOilState } from "../state/oilState";
 import { getDirectoryListing } from "../utils/fileUtils";
 import { checkAndDisableAutoSave } from "../utils/settings";
 import { logger } from "../logger";
+import { openParent } from "./openParent";
 
 export async function openOil(atPath?: string | undefined) {
   logger.trace("Opening oil file...");
   const activeEditor = vscode.window.activeTextEditor;
 
   if (activeEditor?.document.languageId === "oil" && !atPath) {
+    openParent();
     return;
   }
 
