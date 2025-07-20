@@ -130,9 +130,10 @@ export async function select({
 
         // Use setTimeout to ensure the editor content is updated
         setTimeout(() => {
-          if (editor) {
+          const editorForSelection = vscode.window.activeTextEditor;
+          if (editorForSelection) {
             // Find the line with the directory name (with trailing slash)
-            const docText = editor.document.getText();
+            const docText = editorForSelection.document.getText();
             const lines = docText.split(newline);
 
             let foundIndex = -1;
@@ -152,18 +153,18 @@ export async function select({
             updateDisableUpdatePreview(false);
             if (foundIndex >= 0) {
               // Position cursor at the found line
-              editor.selection = new vscode.Selection(
+              editorForSelection.selection = new vscode.Selection(
                 foundIndex,
                 0,
                 foundIndex,
                 0
               );
-              editor.revealRange(
+              editorForSelection.revealRange(
                 new vscode.Range(foundIndex, 0, foundIndex, 0)
               );
             } else {
               // Default to first line if not found
-              editor.selection = new vscode.Selection(0, 0, 0, 0);
+              editorForSelection.selection = new vscode.Selection(0, 0, 0, 0);
             }
             if (previewState.previewEnabled) {
               preview(true);

@@ -11,6 +11,7 @@ export class OilFileSystemProvider implements vscode.FileSystemProvider {
   // Create or update an in-memory document
   writeFile(uri: vscode.Uri, content: Uint8Array): void {
     this._documents.set(uri.toString(), content);
+    this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri }]);
   }
 
   // Read an in-memory document
@@ -19,12 +20,13 @@ export class OilFileSystemProvider implements vscode.FileSystemProvider {
     if (content) {
       return content;
     }
-    return new Uint8Array();
+    throw vscode.FileSystemError.FileNotFound(uri);
   }
 
   // Delete an in-memory document
   delete(uri: vscode.Uri): void {
     this._documents.delete(uri.toString());
+    this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri }]);
   }
 
   // Required methods for FileSystemProvider interface
@@ -37,7 +39,7 @@ export class OilFileSystemProvider implements vscode.FileSystemProvider {
       type: vscode.FileType.File,
       ctime: Date.now(),
       mtime: Date.now(),
-      size: 0,
+      size: this._documents.get(_uri.toString())?.length || 0,
     };
   }
 

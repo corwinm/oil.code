@@ -1,6 +1,5 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import { updateDecorations } from "../decorations";
 import { oilFileProvider } from "../providers/providers";
 import { initOilStateWithPath, initOilState } from "../state/initState";
 import { setOilState } from "../state/oilState";
@@ -8,6 +7,7 @@ import { getDirectoryListing } from "../utils/fileUtils";
 import { checkAndDisableAutoSave } from "../utils/settings";
 import { logger } from "../logger";
 import { openParent } from "./openParent";
+import { positionCursorOnFile } from "../utils/oilUtils";
 
 export async function openOil(atPath?: string | undefined) {
   logger.trace("Opening oil file...");
@@ -27,7 +27,6 @@ export async function openOil(atPath?: string | undefined) {
 
   if (folderPath) {
     try {
-      await checkAndDisableAutoSave();
       const directoryContent = await getDirectoryListing(folderPath, oilState);
 
       // Create an in-memory file
@@ -44,22 +43,9 @@ export async function openOil(atPath?: string | undefined) {
         preview: false,
       });
 
-      updateDecorations(editor);
-
       // Position cursor on the active file if it exists
-      if (activeFile) {
-        const document = editor.document;
-        const text = document.getText();
-        const lines = text.split("\n");
-        for (let i = 0; i < lines.length; i++) {
-          const lineName = lines[i].replace(/^\/\d{3} /, "").trim();
-          if (lineName === activeFile) {
-            editor.selection = new vscode.Selection(i, 0, i, 0);
-            editor.revealRange(new vscode.Range(i, 0, i, 0));
-            break;
-          }
-        }
-      }
+      positionCursorOnFile(editor, activeFile);
+      await checkAndDisableAutoSave();
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to open oil file: ${error}`);
     }

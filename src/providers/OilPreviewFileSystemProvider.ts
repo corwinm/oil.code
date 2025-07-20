@@ -11,6 +11,7 @@ export class OilPreviewFileSystemProvider implements vscode.FileSystemProvider {
   // Create or update an in-memory document
   writeFile(uri: vscode.Uri, content: Uint8Array): void {
     this._documents.set(uri.toString(), content);
+    this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri }]);
   }
 
   // Read an in-memory document
@@ -25,6 +26,7 @@ export class OilPreviewFileSystemProvider implements vscode.FileSystemProvider {
   // Delete an in-memory document
   delete(uri: vscode.Uri): void {
     this._documents.delete(uri.toString());
+    this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri }]);
   }
 
   // Required methods for FileSystemProvider interface
