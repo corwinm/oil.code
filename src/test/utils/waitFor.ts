@@ -1,5 +1,6 @@
 import * as assert from "assert";
 import { tryCatch } from "../../tryCatch";
+import { error } from "console";
 
 export async function waitFor(
   assertion: () => void,
@@ -14,8 +15,11 @@ export async function waitFor(
   const timeout = options?.timeout || 3000;
   const interval = options?.interval || 100;
   const endTime = startTime + timeout;
-  const [_, error] = tryCatch(() => assertion());
-  while (error) {
+  while (true) {
+    const [_, error] = tryCatch(assertion);
+    if (!error) {
+      return;
+    }
     if (Date.now() > endTime) {
       if (options?.onTimeout) {
         assert.fail(options.onTimeout());
