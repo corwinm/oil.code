@@ -678,6 +678,7 @@ suite("oil.code", () => {
       ),
       Buffer.from(testContent, "utf-8")
     );
+
     await vscode.commands.executeCommand("oil-code.open");
     await waitForDocumentText(["/000 ../", "/001 oil-dir/"]);
 
@@ -685,8 +686,8 @@ suite("oil.code", () => {
     assert.ok(editor, "No active editor");
 
     // Move cursor to the file name
-    const position = new vscode.Position(1, 0);
-    editor.selection = new vscode.Selection(position, position);
+    await sleep(100);
+    editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("oil-code.preview");
 
     await waitFor(() => {
@@ -707,6 +708,8 @@ suite("oil.code", () => {
         "Preview content does not match expected content"
       );
     });
+
+    await sleep(100);
 
     await vscode.commands.executeCommand("oil-code.select");
 
@@ -739,10 +742,9 @@ suite("oil.code", () => {
     });
 
     // Move cursor to the file name
-    const editor2 = vscode.window.activeTextEditor;
-    assert.ok(editor2, "No active editor");
-    const position2 = new vscode.Position(1, 0);
-    editor2.selection = new vscode.Selection(position2, position2);
+    const editor3 = vscode.window.activeTextEditor;
+    assert.ok(editor3, "No active editor");
+    editor3.selection = new vscode.Selection(1, 5, 1, 5);
 
     await sleep(100);
 

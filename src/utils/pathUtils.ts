@@ -38,3 +38,13 @@ export function updateOilUri(
 export function formatPath(path: string): string {
   return vscode.workspace.asRelativePath(path);
 }
+
+export function oilUriToDiskPath(uri: vscode.Uri): string {
+  // Convert an Oil URI to a file system path
+  if (!(uri.scheme === "oil" || uri.scheme === "oil-preview")) {
+    throw new Error("Invalid Oil URI");
+  }
+  return `${uri.path
+    .replace("oil://oil", "")
+    .replace("oil-preview://oil-preview", "")}/`;
+}

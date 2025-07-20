@@ -3,15 +3,16 @@ import * as fs from "fs";
 import * as path from "path";
 import { OIL_SCHEME, OIL_PREVIEW_SCHEME } from "../constants";
 import { getOilState, getCurrentPath } from "../state/oilState";
-import { previewState, setPreviewState } from "../state/previewState";
+import { getPreviewState, setPreviewState } from "../state/previewState";
 import { uriPathToDiskPath } from "../utils/pathUtils";
 import { getDirectoryListing } from "../utils/fileUtils";
 import { updateDecorations } from "../decorations";
 import { oilPreviewProvider } from "../providers/providers";
-import { disableUpdatePreview } from "./disableUpdatePreview";
 import { logger } from "../logger";
+import { isUpdatePreviewDisabled } from "./disableUpdatePreview";
 
 export async function preview(overrideEnabled: boolean = false) {
+  logger.trace("Previewing file or directory...");
   const activeEditor = vscode.window.activeTextEditor;
 
   if (!activeEditor) {
@@ -65,9 +66,9 @@ export async function preview(overrideEnabled: boolean = false) {
   const isDir = fs.lstatSync(targetPath).isDirectory();
 
   // If this file/directory is already being previewed, close the preview (toggle behavior)
-  if (previewState.previewedFile === targetPath) {
+  if (getPreviewState().previewedFile === targetPath) {
     const newPreviewState = {
-      ...previewState,
+      ...getPreviewState(),
       previewEnabled: overrideEnabled,
     };
     setPreviewState(newPreviewState);
@@ -77,7 +78,11 @@ export async function preview(overrideEnabled: boolean = false) {
     return;
   }
 
-  const newPreviewState = { ...previewState, previewEnabled: true };
+  const newPreviewState = {
+    ...getPreviewState(),
+    previewFile: targetPath,
+    previewEnabled: true,
+  };
   setPreviewState(newPreviewState);
 
   // Preview differently based on whether it's a file or directory
@@ -89,6 +94,7 @@ export async function preview(overrideEnabled: boolean = false) {
 }
 
 async function previewFile(targetPath: string) {
+  logger.trace("Previewing file:", targetPath);
   try {
     const fileExists = fs.existsSync(targetPath);
     // Read the file content from disk
@@ -102,7 +108,7 @@ async function previewFile(targetPath: string) {
       `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
     );
 
-    const previousPreviewUri = previewState.previewUri;
+    const previousPreviewUri = getPreviewState().previewUri;
 
     // Write content to the virtual file system
     oilPreviewProvider.writeFile(previewUri, fileContent);
@@ -119,7 +125,7 @@ async function previewFile(targetPath: string) {
 
     // Update preview state
     const newPreviewState = {
-      ...previewState,
+      ...getPreviewState(),
       previewedFile: targetPath,
       previewedEditor: editor,
       isDirectory: false,
@@ -132,9 +138,10 @@ async function previewFile(targetPath: string) {
     }
 
     // Start listening for cursor movements if not already listening
-    if (!previewState.cursorListenerDisposable) {
+    if (!getPreviewState().cursorListenerDisposable) {
+      logger.trace("Starting cursor listener for preview updates...");
       const newState = {
-        ...previewState,
+        ...getPreviewState(),
         cursorListenerDisposable: vscode.window.onDidChangeTextEditorSelection(
           updatePreviewBasedOnCursorPosition
         ),
@@ -147,6 +154,7 @@ async function previewFile(targetPath: string) {
 }
 
 async function previewDirectory(directoryPath: string) {
+  logger.trace("Previewing directory:", directoryPath);
   try {
     const oilState = getOilState();
     if (!oilState) {
@@ -155,7 +163,7 @@ async function previewDirectory(directoryPath: string) {
     }
     const previewName = path.basename(directoryPath);
 
-    if (previewState.previewedFile === directoryPath) {
+    if (getPreviewState().previewedFile === directoryPath) {
       return; // If already previewing this directory, do nothing
     }
 
@@ -187,7 +195,7 @@ async function previewDirectory(directoryPath: string) {
 
     // Update preview state
     const newPreviewState = {
-      ...previewState,
+      ...getPreviewState(),
       previewedFile: directoryPath,
       previewedEditor: editor,
       isDirectory: true,
@@ -196,9 +204,10 @@ async function previewDirectory(directoryPath: string) {
     setPreviewState(newPreviewState);
 
     // Start listening for cursor movements if not already listening
-    if (!previewState.cursorListenerDisposable) {
+    if (!getPreviewState().cursorListenerDisposable) {
+      logger.trace("Starting cursor listener for preview updates...");
       const newState = {
-        ...previewState,
+        ...getPreviewState(),
         cursorListenerDisposable: vscode.window.onDidChangeTextEditorSelection(
           updatePreviewBasedOnCursorPosition
         ),
@@ -212,20 +221,21 @@ async function previewDirectory(directoryPath: string) {
 
 export async function closePreview() {
   // Stop listening for cursor movements
-  if (previewState.cursorListenerDisposable) {
-    previewState.cursorListenerDisposable.dispose();
-    const newState = { ...previewState, cursorListenerDisposable: null };
+  if (getPreviewState().cursorListenerDisposable) {
+    getPreviewState().cursorListenerDisposable?.dispose();
+    const newState = { ...getPreviewState(), cursorListenerDisposable: null };
     setPreviewState(newState);
   }
 
   // Close the preview if it's open
-  if (previewState.previewedFile && previewState.previewUri) {
+  const currentPreviewState = getPreviewState();
+  if (currentPreviewState.previewedFile && currentPreviewState.previewUri) {
     // For both file and directory previews using OilPreviewFileSystemProvider
-    const previewUri = previewState.previewUri;
+    const previewUri = currentPreviewState.previewUri;
 
     // Reset state
     const newPreviewState = {
-      ...previewState,
+      ...currentPreviewState,
       previewedFile: null,
       previewedEditor: null,
       isDirectory: false,
@@ -263,10 +273,14 @@ async function updatePreviewBasedOnCursorPosition(
   if (
     !event.textEditor ||
     event.textEditor.document.uri.scheme !== OIL_SCHEME ||
-    disableUpdatePreview
+    isUpdatePreviewDisabled()
   ) {
     return;
   }
+  logger.trace(
+    "updatePreviewBasedOnCursorPosition: Updating preview based on cursor position...",
+    event.textEditor.document.uri.toString()
+  );
 
   const document = event.textEditor.document;
   const cursorPosition = event.selections[0].active;
@@ -275,6 +289,11 @@ async function updatePreviewBasedOnCursorPosition(
   if (cursorPosition.line >= document.lineCount) {
     return;
   }
+  logger.trace(
+    "updatePreviewBasedOnCursorPosition: Cursor position:",
+    cursorPosition.line,
+    cursorPosition.character
+  );
 
   const lineText = document.lineAt(cursorPosition.line).text;
   const fileName = lineText.replace(/^\/\d{3} /, "").trim();
@@ -283,6 +302,7 @@ async function updatePreviewBasedOnCursorPosition(
   if (!fileName) {
     return;
   }
+  logger.trace("updatePreviewBasedOnCursorPosition: fileName:", fileName);
 
   const oilState = getOilState();
   if (!oilState) {
@@ -294,7 +314,7 @@ async function updatePreviewBasedOnCursorPosition(
     vscode.window.showErrorMessage("No current folder path found.");
     return;
   }
-  const previousPreviewedUri = previewState.previewUri;
+  const previousPreviewedUri = getPreviewState().previewUri;
 
   let targetPath: string;
 
@@ -306,7 +326,7 @@ async function updatePreviewBasedOnCursorPosition(
   }
 
   // Skip if same file/directory is already being previewed
-  if (previewState.previewedFile === targetPath) {
+  if (getPreviewState().previewedFile === targetPath) {
     return;
   }
 

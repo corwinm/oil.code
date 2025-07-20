@@ -3,11 +3,11 @@ import * as vscode from "vscode";
 import { oilFileProvider } from "../providers/providers";
 import { initOilStateWithPath, initOilState } from "../state/initState";
 import { setOilState } from "../state/oilState";
-import { getDirectoryListing } from "../utils/fileUtils";
 import { checkAndDisableAutoSave } from "../utils/settings";
 import { logger } from "../logger";
 import { openParent } from "./openParent";
 import { positionCursorOnFile } from "../utils/oilUtils";
+import { resetPreviewState } from "../state/previewState";
 
 export async function openOil(atPath?: string | undefined) {
   logger.trace("Opening oil file...");
@@ -20,6 +20,7 @@ export async function openOil(atPath?: string | undefined) {
 
   const oilState = atPath ? initOilStateWithPath(atPath) : initOilState();
   setOilState(oilState);
+  resetPreviewState();
 
   const activeFile = path.basename(activeEditor?.document.uri.fsPath || "");
 
@@ -27,14 +28,7 @@ export async function openOil(atPath?: string | undefined) {
 
   if (folderPath) {
     try {
-      const directoryContent = await getDirectoryListing(folderPath, oilState);
-
-      // Create an in-memory file
-      oilFileProvider.writeFile(
-        oilState.tempFileUri,
-        Buffer.from(directoryContent)
-      );
-
+      oilFileProvider.delete(oilState.tempFileUri);
       // Open the in-memory document
       const doc = await vscode.workspace.openTextDocument(oilState.tempFileUri);
       await vscode.languages.setTextDocumentLanguage(doc, "oil");

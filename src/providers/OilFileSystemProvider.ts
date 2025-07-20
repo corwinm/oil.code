@@ -1,4 +1,9 @@
 import * as vscode from "vscode";
+import { getDirectoryListing } from "../utils/fileUtils";
+import { getOilState, setOilState } from "../state/oilState";
+import { oilUriToDiskPath } from "../utils/pathUtils";
+import { initOilState } from "../state/initState";
+import { logger } from "../logger";
 
 export class OilFileSystemProvider implements vscode.FileSystemProvider {
   private readonly _onDidChangeFile = new vscode.EventEmitter<
@@ -9,18 +14,30 @@ export class OilFileSystemProvider implements vscode.FileSystemProvider {
   private _documents = new Map<string, Uint8Array>();
 
   // Create or update an in-memory document
-  writeFile(uri: vscode.Uri, content: Uint8Array): void {
-    this._documents.set(uri.toString(), content);
-    this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri }]);
-  }
+  writeFile(_uri: vscode.Uri, _content: Uint8Array): void {}
 
   // Read an in-memory document
-  readFile(uri: vscode.Uri): Uint8Array {
+  async readFile(uri: vscode.Uri): Promise<Uint8Array> {
+    logger.trace("Reading file from OilFileSystemProvider:", uri.toString());
+    let oilState = getOilState();
+    if (!oilState) {
+      const newOilState = initOilState();
+      setOilState(newOilState);
+      oilState = newOilState;
+      this._documents.clear(); // Clear cache on new state
+    }
     const content = this._documents.get(uri.toString());
     if (content) {
       return content;
     }
-    throw vscode.FileSystemError.FileNotFound(uri);
+    const folderPath = oilUriToDiskPath(uri);
+    const directoryContent = await getDirectoryListing(folderPath, oilState);
+    if (!directoryContent) {
+      throw vscode.FileSystemError.FileNotFound(uri);
+    }
+    const buffer = Buffer.from(directoryContent);
+    this._documents.set(uri.toString(), buffer);
+    return buffer;
   }
 
   // Delete an in-memory document
@@ -39,7 +56,7 @@ export class OilFileSystemProvider implements vscode.FileSystemProvider {
       type: vscode.FileType.File,
       ctime: Date.now(),
       mtime: Date.now(),
-      size: this._documents.get(_uri.toString())?.length || 0,
+      size: 0,
     };
   }
 

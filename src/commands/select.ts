@@ -8,15 +8,15 @@ import {
   removeTrailingSlash,
   updateOilUri,
 } from "../utils/pathUtils";
-import { getDirectoryListing } from "../utils/fileUtils";
 import { checkForVisitedCleanup, hasPendingChanges } from "../utils/oilUtils";
 import { newline } from "../newline";
 import { updateDisableUpdatePreview } from "./disableUpdatePreview";
 import { logger } from "../logger";
-import { oilFileProvider } from "../providers/providers";
-import { previewState } from "../state/previewState";
-import { preview } from "./preview";
 import { onDidSaveTextDocument } from "../handlers/onDidSaveTextDocument";
+import { getPreviewState } from "../state/previewState";
+import { preview } from "./preview";
+
+const cursorInitChar = 5; // 5 characters for "/000 "
 
 export async function select({
   overRideLineText,
@@ -100,11 +100,6 @@ export async function select({
       // Update the URI to reflect the new directory
       const newUri = updateOilUri(oilState, targetPath);
 
-      const directoryContent = await getDirectoryListing(targetPath, oilState);
-
-      // Transfer the content to the new URI
-      oilFileProvider.writeFile(newUri, Buffer.from(directoryContent));
-
       // Open the document with the new URI
       const newDoc = await vscode.workspace.openTextDocument(newUri);
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
@@ -150,14 +145,13 @@ export async function select({
               }
             }
 
-            updateDisableUpdatePreview(false);
             if (foundIndex >= 0) {
               // Position cursor at the found line
               editorForSelection.selection = new vscode.Selection(
                 foundIndex,
-                0,
+                cursorInitChar,
                 foundIndex,
-                0
+                cursorInitChar
               );
               editorForSelection.revealRange(
                 new vscode.Range(foundIndex, 0, foundIndex, 0)
@@ -166,18 +160,19 @@ export async function select({
               // Default to first line if not found
               editorForSelection.selection = new vscode.Selection(0, 0, 0, 0);
             }
-            if (previewState.previewEnabled) {
+            updateDisableUpdatePreview(false);
+            if (getPreviewState().previewEnabled) {
               preview(true);
             }
           }
         }, 100);
       } else {
         setTimeout(() => {
-          updateDisableUpdatePreview(false);
           // When going into a directory, position at first line
           editor.selection = new vscode.Selection(0, 0, 0, 0);
+          updateDisableUpdatePreview(false);
           // Manually update preview if enabled
-          if (previewState.previewEnabled) {
+          if (getPreviewState().previewEnabled) {
             preview(true);
           }
         }, 100);
@@ -196,6 +191,7 @@ export async function select({
       return;
     }
   } else if (!fs.existsSync(targetPath)) {
+    updateDisableUpdatePreview(false);
     // If the file doesn't exist, ask if the user wants to save changes
     const saveChanges = await vscode.window.showWarningMessage(
       `Save Changes?`,
@@ -234,6 +230,7 @@ export async function select({
       viewColumn: viewColumnToUse,
       preview: false,
     });
+    updateDisableUpdatePreview(false);
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
   }

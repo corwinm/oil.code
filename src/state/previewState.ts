@@ -1,6 +1,6 @@
 import { PreviewState } from "../constants";
 
-export let previewState: PreviewState = {
+let previewState: PreviewState = {
   previewedFile: null,
   previewedEditor: null,
   cursorListenerDisposable: null,
@@ -9,11 +9,16 @@ export let previewState: PreviewState = {
   previewEnabled: false,
 };
 
+export function getPreviewState(): PreviewState {
+  return previewState;
+}
+
 export function setPreviewState(state: PreviewState) {
   previewState = state;
 }
 
 export function resetPreviewState() {
+  previewState.cursorListenerDisposable?.dispose();
   previewState = {
     previewedFile: null,
     previewedEditor: null,
