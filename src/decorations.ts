@@ -4,11 +4,7 @@ import { getNerdFontFileIcon } from "./nerd-fonts";
 
 // Create decoration type for hidden prefix
 const hiddenPrefixDecoration = vscode.window.createTextEditorDecorationType({
-  textDecoration: "none; display: none",
-  opacity: "0",
-  letterSpacing: "-100em",
-  fontWeight: "normal",
-  fontStyle: "normal",
+  textDecoration: "none; font-size: 0pt",
   rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
 });
 

@@ -104,18 +104,44 @@ export async function select({
       const newDoc = await vscode.workspace.openTextDocument(newUri);
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
-      // Show the new document in the same editor
-      const editor = await vscode.window.showTextDocument(newDoc, {
-        viewColumn: viewColumn || activeEditor.viewColumn,
-        preview: false,
-      });
-
+      let editor: vscode.TextEditor;
       if (!viewColumn) {
-        // Close the old document
-        await vscode.window.showTextDocument(oldUri);
-        await vscode.commands.executeCommand(
-          "workbench.action.revertAndCloseActiveEditor"
-        );
+        // For same column, show new document first, then close old one to minimize flash
+        editor = await vscode.window.showTextDocument(newDoc, {
+          viewColumn: activeEditor.viewColumn,
+          preview: false,
+        });
+
+        // Close the old document after the new one is shown
+        // Use a small delay to ensure smooth transition
+        setTimeout(async () => {
+          try {
+            // Find and close the old document tab
+            const tabs = vscode.window.tabGroups.all.flatMap(
+              (group) => group.tabs
+            );
+            const oldTab = tabs.find(
+              (tab) =>
+                tab.input instanceof vscode.TabInputText &&
+                tab.input.uri.toString() === oldUri.toString()
+            );
+            if (oldTab) {
+              await vscode.window.tabGroups.close(oldTab);
+            }
+          } catch (error) {
+            // Fallback method if tab API fails
+            await vscode.window.showTextDocument(oldUri);
+            await vscode.commands.executeCommand(
+              "workbench.action.revertAndCloseActiveEditor"
+            );
+          }
+        }, 50);
+      } else {
+        // For different column, show new document (old one stays open)
+        editor = await vscode.window.showTextDocument(newDoc, {
+          viewColumn: viewColumn,
+          preview: false,
+        });
       }
 
       // Position cursor appropriately
@@ -220,16 +246,44 @@ export async function select({
     const fileUri = vscode.Uri.file(targetPath);
     const fileDoc = await vscode.workspace.openTextDocument(fileUri);
     const viewColumnToUse = viewColumn || activeEditor.viewColumn;
+
     if (!viewColumn) {
-      await vscode.window.showTextDocument(activeEditor.document.uri);
-      await vscode.commands.executeCommand(
-        "workbench.action.revertAndCloseActiveEditor"
-      );
+      // For same column, show new document then close old one
+      await vscode.window.showTextDocument(fileDoc, {
+        viewColumn: viewColumnToUse,
+        preview: false,
+      });
+
+      // Close the old oil document after opening the new file
+      setTimeout(async () => {
+        try {
+          // Find and close the old document tab
+          const tabs = vscode.window.tabGroups.all.flatMap(
+            (group) => group.tabs
+          );
+          const oldTab = tabs.find(
+            (tab) =>
+              tab.input instanceof vscode.TabInputText &&
+              tab.input.uri.toString() === activeEditor.document.uri.toString()
+          );
+          if (oldTab) {
+            await vscode.window.tabGroups.close(oldTab);
+          }
+        } catch (error) {
+          // Fallback method if tab API fails
+          await vscode.window.showTextDocument(activeEditor.document.uri);
+          await vscode.commands.executeCommand(
+            "workbench.action.revertAndCloseActiveEditor"
+          );
+        }
+      }, 50);
+    } else {
+      // For different column, show in new column (old one stays open)
+      await vscode.window.showTextDocument(fileDoc, {
+        viewColumn: viewColumnToUse,
+        preview: false,
+      });
     }
-    await vscode.window.showTextDocument(fileDoc, {
-      viewColumn: viewColumnToUse,
-      preview: false,
-    });
     updateDisableUpdatePreview(false);
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
