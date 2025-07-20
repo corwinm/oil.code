@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 export interface OilEntry {
   identifier: string;
@@ -33,3 +33,5 @@ export const OIL_PREVIEW_SCHEME = "oil-preview";
 
 export const MAX_EXTENSION_DETECTION_RETRIES = 6;
 export const EXTENSION_DETECTION_DELAY = 500; // ms
+
+export const GO_UP_IDENTIFIER = "/000";

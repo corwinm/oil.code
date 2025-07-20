@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { OIL_PREVIEW_SCHEME, OIL_SCHEME } from "../constants";
 
 export function normalizePathToUri(path: string | undefined = ""): string {
   if (path.startsWith("/")) {
@@ -27,7 +28,7 @@ export function updateOilUri(
   newPath: string
 ): vscode.Uri {
   const normalizedPath = removeTrailingSlash(normalizePathToUri(newPath));
-  const newUri = vscode.Uri.parse(`oil://oil${normalizedPath}`);
+  const newUri = vscode.Uri.parse(`${OIL_SCHEME}://oil${normalizedPath}`);
 
   // Update the state with the new URI
   oilState.tempFileUri = newUri;
@@ -41,10 +42,10 @@ export function formatPath(path: string): string {
 
 export function oilUriToDiskPath(uri: vscode.Uri): string {
   // Convert an Oil URI to a file system path
-  if (!(uri.scheme === "oil" || uri.scheme === "oil-preview")) {
+  if (!(uri.scheme === OIL_SCHEME || uri.scheme === OIL_PREVIEW_SCHEME)) {
     throw new Error("Invalid Oil URI");
   }
   return `${uri.path
-    .replace("oil://oil", "")
-    .replace("oil-preview://oil-preview", "")}/`;
+    .replace(`${OIL_SCHEME}://oil`, "")
+    .replace(`${OIL_PREVIEW_SCHEME}://oil-preview`, "")}/`;
 }

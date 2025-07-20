@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { OIL_SCHEME, OIL_PREVIEW_SCHEME } from "../constants";
 import { getOilState } from "../state/oilState";
-import { closePreview, preview } from "../commands/preview";
+import { closePreview } from "../commands/preview";
 import { checkAndEnableAutoSave } from "../utils/settings";
 import { getPreviewState } from "../state/previewState";
 

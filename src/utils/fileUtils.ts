@@ -1,11 +1,8 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-import { OilState } from "../constants";
-import {
-  removeTrailingSlash,
-  normalizePathToUri,
-} from "./pathUtils";
+import { GO_UP_IDENTIFIER, OilState } from "../constants";
+import { removeTrailingSlash, normalizePathToUri } from "./pathUtils";
 import { newline } from "../newline";
 
 export async function getDirectoryListing(
@@ -64,7 +61,7 @@ export async function getDirectoryListing(
   // Generate listings with hidden identifiers using global counter
   let listingsWithIds = listings.map((name) => {
     if (name === "../") {
-      return `/000 ${name}`;
+      return `${GO_UP_IDENTIFIER} ${name}`;
     }
     if (existingFiles.has(name)) {
       return existingFiles.get(name)!;
@@ -72,7 +69,7 @@ export async function getDirectoryListing(
 
     // Use and increment the global counter for each file/directory
     const identifier = preview
-      ? "/000"
+      ? GO_UP_IDENTIFIER
       : `/${oilState.identifierCounter.toString().padStart(3, "0")}`;
 
     if (!preview) {

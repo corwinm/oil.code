@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { OilEntry, OilState } from "../constants";
+import { GO_UP_IDENTIFIER, OilEntry, OilState } from "../constants";
 import { newline } from "../newline";
 
 export function oilLineToOilEntry(line: string, path: string): OilEntry {
@@ -31,7 +31,7 @@ export function oilLinesToOilEntries(
   const map = new Array<[string, OilEntry]>();
   for (const line of lines) {
     const entry = oilLineToOilEntry(line, path);
-    if (entry.identifier === "/000") {
+    if (entry.identifier === GO_UP_IDENTIFIER) {
       continue;
     }
     if (!entry.value) {
@@ -49,7 +49,7 @@ export function oilLinesToOilMap(
   const map = new Map<string, OilEntry>();
   for (const line of lines) {
     const entry = oilLineToOilEntry(line, path);
-    if (entry.identifier === "/000") {
+    if (entry.identifier === GO_UP_IDENTIFIER) {
       continue;
     }
     map.set(entry.identifier, entry);
