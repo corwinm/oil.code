@@ -12,6 +12,7 @@ import {
 import { select } from "../commands/select";
 import { newline } from "../newline";
 import { logger } from "../logger";
+import { getEnableWorkspaceEditSetting } from "../utils/settings";
 
 export async function onDidSaveTextDocument(document: vscode.TextDocument) {
   // Check if the saved document is our oil file
@@ -165,6 +166,10 @@ export async function onDidSaveTextDocument(document: vscode.TextDocument) {
         return;
       }
       logger.debug("Processing changes...");
+      // Get the workspace edit setting
+      const useWorkspaceEdit = getEnableWorkspaceEditSetting();
+
+      const moveEdits = new vscode.WorkspaceEdit();
       // Process the changes
       // Move files
       for (const [oldPath, newPath] of movedLines) {
@@ -174,8 +179,21 @@ export async function onDidSaveTextDocument(document: vscode.TextDocument) {
           if (!fs.existsSync(dirPath)) {
             fs.mkdirSync(dirPath, { recursive: true });
           }
-          // Move the file to the new location
-          fs.renameSync(oldPath, newPath);
+
+          if (useWorkspaceEdit) {
+            // Use workspace edit for better VS Code integration
+            // Removing tailing slashes triggers lsp update references correctly
+            moveEdits.renameFile(
+              vscode.Uri.file(oldPath.replace(/\/$/, "")),
+              vscode.Uri.file(newPath.replace(/\/$/, "")),
+              {
+                overwrite: false,
+              }
+            );
+          } else {
+            // Use file system rename directly
+            fs.renameSync(oldPath, newPath);
+          }
         } catch (error) {
           vscode.window.showErrorMessage(
             `Failed to move file: ${formatPath(oldPath)} to ${newPath.replace(
@@ -184,6 +202,13 @@ export async function onDidSaveTextDocument(document: vscode.TextDocument) {
             )} - ${error}`
           );
         }
+      }
+      try {
+        await vscode.workspace.applyEdit(moveEdits);
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to apply workspace edit: ${error}`
+        );
       }
       // Copy files
       for (const [oldPath, newPath] of copiedLines) {
