@@ -10,6 +10,11 @@ export function getDisableOpenCwdNothingOpenSetting(): boolean {
   return config.get<boolean>("disableOpenCwdNothingOpen") || false;
 }
 
+export function getEnableWorkspaceEditSetting(): boolean {
+  const config = vscode.workspace.getConfiguration("oil-code");
+  return config.get<boolean>("enableWorkspaceEdit") || false;
+}
+
 let restoreAutoSave = false;
 
 export async function checkAndDisableAutoSave() {

@@ -154,6 +154,11 @@
           "type": "boolean",
           "default": false,
           "description": "Set this to true if you have nerd font installed. Default is false. Set this to true if you want to use nerd font icons."
+        },
+        "oil-code.enableWorkspaceEdit": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable workspace edit for file move/rename operations. When enabled, VS Code will ask to update references when a file is moved or renamed. Default is false."
         }
       }
     }
