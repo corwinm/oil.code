@@ -377,7 +377,7 @@ suite("oil.code", () => {
 
     await saveFile();
 
-    await sleep(100);
+    await sleep(200);
 
     await waitForDocumentText(["/000 ../", "/003 oil-file.md"]);
 
