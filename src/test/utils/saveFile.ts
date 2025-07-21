@@ -7,5 +7,5 @@ export async function saveFile() {
   await vscode.commands.executeCommand("workbench.action.files.save");
 
   // Give the file save operation time to complete
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  await sleep(300);
 }

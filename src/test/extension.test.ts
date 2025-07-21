@@ -340,6 +340,7 @@ suite("oil.code", () => {
     const filePosition = new vscode.Position(2, 0);
     editor.selection = new vscode.Selection(filePosition, filePosition);
     await vscode.commands.executeCommand("oil-code.select");
+    await sleep(200);
 
     const mockFileContent = `mock file content`;
     await vscode.window.activeTextEditor?.edit((editBuilder) => {
@@ -352,7 +353,9 @@ suite("oil.code", () => {
 
     // Move cursor to the file name
     const position = new vscode.Position(2, 0);
-    editor.selection = new vscode.Selection(position, position);
+    const editor2 = vscode.window.activeTextEditor;
+    assert.ok(editor2, "No active editor2");
+    editor2.selection = new vscode.Selection(position, position);
 
     // Cut selection
     await vscode.commands.executeCommand("editor.action.deleteLines");
@@ -364,9 +367,9 @@ suite("oil.code", () => {
     await vscode.commands.executeCommand("oil-code.select");
     await sleep(200);
 
-    const editor2 = vscode.window.activeTextEditor;
-    assert.ok(editor2, "No active editor");
-    editor2.edit((editBuilder) => {
+    const editor3 = vscode.window.activeTextEditor;
+    assert.ok(editor3, "No active editor3");
+    editor3.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(0, 8), newline);
       editBuilder.insert(new vscode.Position(1, 0), `/002 oil-file.md`);
     });
