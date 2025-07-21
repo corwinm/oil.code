@@ -30,7 +30,16 @@ function closeOldDocument(oldUri: vscode.Uri) {
           tab.input.uri.toString() === oldUri.toString()
       );
       if (oldTab) {
-        await vscode.window.tabGroups.close(oldTab);
+        if (oldTab.isDirty) {
+          // Use the revert and close command to avoid save prompts for dirty tabs
+          await vscode.window.showTextDocument(oldUri);
+          await vscode.commands.executeCommand(
+            "workbench.action.revertAndCloseActiveEditor"
+          );
+        } else {
+          // For clean tabs, just close normally
+          await vscode.window.tabGroups.close(oldTab);
+        }
       }
     } catch (error) {
       // Fallback method if tab API fails
