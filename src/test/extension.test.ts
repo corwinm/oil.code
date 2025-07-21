@@ -373,6 +373,8 @@ suite("oil.code", () => {
 
     await saveFile();
 
+    await sleep(100);
+
     await waitForDocumentText(["/000 ../", "/003 oil-file.md"]);
 
     await assertProjectFileStructure(["sub-dir/", "  oil-file.md"]);
