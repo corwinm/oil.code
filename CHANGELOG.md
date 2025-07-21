@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.25](https://github.com/corwinm/oil.code/compare/v0.0.24...v0.0.25)
+
+- fix: Prevent unsaved changes popup when moving files by @corwinm in https://github.com/corwinm/oil.code/pull/38
+
 ## [0.0.24](https://github.com/corwinm/oil.code/compare/v0.0.23...v0.0.24)
 
 - refactor: Refactor codebase into individual files by @corwinm in https://github.com/corwinm/oil.code/pull/32
