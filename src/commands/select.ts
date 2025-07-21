@@ -184,7 +184,7 @@ export async function select({
               preview(true);
             }
           }
-        }, 100);
+        }, 50);
       } else {
         setTimeout(() => {
           // When going into a directory, position at first line
@@ -194,7 +194,7 @@ export async function select({
           if (getPreviewState().previewEnabled) {
             preview(true);
           }
-        }, 100);
+        }, 50);
       }
 
       // Mark the file as modified if there are pending changes

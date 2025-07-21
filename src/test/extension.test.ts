@@ -350,6 +350,7 @@ suite("oil.code", () => {
     await saveFile();
 
     await vscode.commands.executeCommand("oil-code.open");
+    await sleep(100);
 
     // Move cursor to the file name
     const position = new vscode.Position(2, 0);
@@ -418,24 +419,27 @@ suite("oil.code", () => {
     await saveFile();
 
     await vscode.commands.executeCommand("oil-code.open");
+    await sleep(100);
 
+    const editor2 = vscode.window.activeTextEditor;
+    assert.ok(editor2, "No active editor2");
     // Move cursor to the file name
     const position = new vscode.Position(2, 0);
-    editor.selection = new vscode.Selection(position, position);
+    editor2.selection = new vscode.Selection(position, position);
 
     await vscode.commands.executeCommand("editor.action.deleteLines");
     await sleep(100);
 
     // Move cursor to the new directory
     const position3 = new vscode.Position(1, 0);
-    editor.selection = new vscode.Selection(position3, position3);
+    editor2.selection = new vscode.Selection(position3, position3);
 
     await vscode.commands.executeCommand("oil-code.select");
     await sleep(200);
 
-    const editor2 = vscode.window.activeTextEditor;
-    assert.ok(editor2, "No active editor");
-    editor2.edit((editBuilder) => {
+    const editor3 = vscode.window.activeTextEditor;
+    assert.ok(editor3, "No active editor3");
+    editor3.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(0, 8), newline);
       editBuilder.insert(new vscode.Position(1, 0), `/002 oil-file-rename.md`);
     });
@@ -523,16 +527,10 @@ suite("oil.code", () => {
       "/002 oil-dir-parent/",
     ]);
 
-    editor.selection = new vscode.Selection(
-      new vscode.Position(1, 0),
-      new vscode.Position(1, 0)
-    );
+    editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("editor.action.deleteLines");
-    await sleep(100);
-    editor.selection = new vscode.Selection(
-      new vscode.Position(1, 0),
-      new vscode.Position(1, 0)
-    );
+    await sleep(200);
+    editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("oil-code.select");
     await sleep(200);
 
@@ -546,6 +544,8 @@ suite("oil.code", () => {
     });
 
     await saveFile();
+
+    await sleep(100);
 
     await waitForDocumentText(["/000 ../", "/003 oil-dir-child-renamed/"]);
     await assertProjectFileStructure([
