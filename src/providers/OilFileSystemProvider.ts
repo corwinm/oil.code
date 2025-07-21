@@ -11,8 +11,6 @@ export class OilFileSystemProvider implements vscode.FileSystemProvider {
   >();
   readonly onDidChangeFile = this._onDidChangeFile.event;
 
-  private _documents = new Map<string, Uint8Array>();
-
   // Create or update an in-memory document
   writeFile(_uri: vscode.Uri, _content: Uint8Array): void {}
 
@@ -24,11 +22,6 @@ export class OilFileSystemProvider implements vscode.FileSystemProvider {
       const newOilState = initOilState();
       setOilState(newOilState);
       oilState = newOilState;
-      this._documents.clear(); // Clear cache on new state
-    }
-    const content = this._documents.get(uri.toString());
-    if (content) {
-      return content;
     }
     const folderPath = oilUriToDiskPath(uri);
     const directoryContent = await getDirectoryListing(folderPath, oilState);
@@ -36,13 +29,11 @@ export class OilFileSystemProvider implements vscode.FileSystemProvider {
       throw vscode.FileSystemError.FileNotFound(uri);
     }
     const buffer = Buffer.from(directoryContent);
-    this._documents.set(uri.toString(), buffer);
     return buffer;
   }
 
   // Delete an in-memory document
   delete(uri: vscode.Uri): void {
-    this._documents.delete(uri.toString());
     this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri }]);
   }
 
