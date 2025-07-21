@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
+import { sleep } from "./sleep";
 
 export async function saveFile() {
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await sleep(200);
 
   await vscode.commands.executeCommand("workbench.action.files.save");
 
