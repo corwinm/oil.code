@@ -2,6 +2,11 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.26](https://github.com/corwinm/oil.code/compare/v0.0.25...v0.0.26)
+
+- fix: Update cache handling by @corwinm in https://github.com/corwinm/oil.code/pull/39
+- deps: Update form-data to 4.0.4 by @corwinm in https://github.com/corwinm/oil.code/pull/40
+
 ## [0.0.25](https://github.com/corwinm/oil.code/compare/v0.0.24...v0.0.25)
 
 - fix: Prevent unsaved changes popup when moving files by @corwinm in https://github.com/corwinm/oil.code/pull/38
