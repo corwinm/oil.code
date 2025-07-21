@@ -410,6 +410,7 @@ suite("oil.code", () => {
     const filePosition = new vscode.Position(2, 0);
     editor.selection = new vscode.Selection(filePosition, filePosition);
     await vscode.commands.executeCommand("oil-code.select");
+    await sleep(200);
 
     const mockFileContent = `mock file content`;
     await vscode.window.activeTextEditor?.edit((editBuilder) => {
