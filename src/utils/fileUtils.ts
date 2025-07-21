@@ -51,7 +51,7 @@ export async function getDirectoryListing(
   if (oilState.visitedPaths.has(folderPathUri)) {
     const previousListings = oilState.visitedPaths.get(folderPathUri)!;
     for (const file of previousListings) {
-      const fileName = file.slice(4);
+      const fileName = file.slice(5);
       if (listings.includes(fileName)) {
         existingFiles.set(fileName, file);
       }
@@ -68,13 +68,11 @@ export async function getDirectoryListing(
     }
 
     // Use and increment the global counter for each file/directory
-    const identifier = preview
-      ? GO_UP_IDENTIFIER
-      : `/${oilState.identifierCounter.toString().padStart(3, "0")}`;
+    const identifier = `/${oilState.identifierCounter
+      .toString()
+      .padStart(3, "0")}`;
 
-    if (!preview) {
-      oilState.identifierCounter++;
-    }
+    oilState.identifierCounter++;
 
     return `${identifier} ${name}`;
   });

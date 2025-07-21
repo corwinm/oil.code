@@ -703,7 +703,7 @@ suite("oil.code", () => {
       assert.ok(previewEditor, "No editor found for the preview tab");
       assert.strictEqual(
         previewEditor.document.getText(),
-        ["/000 ../", "/000 oil-file1.md", "/000 oil-file2.md"].join(newline),
+        ["/000 ../", "/002 oil-file1.md", "/003 oil-file2.md"].join(newline),
         "Preview content does not match expected content"
       );
     });
@@ -735,7 +735,7 @@ suite("oil.code", () => {
       assert.ok(previewEditor, "No editor found for the preview tab");
       assert.strictEqual(
         previewEditor.document.getText(),
-        ["/000 ../", "/000 oil-dir/"].join(newline),
+        ["/000 ../", "/001 oil-dir/"].join(newline),
         "Preview content does not match expected content"
       );
     });
