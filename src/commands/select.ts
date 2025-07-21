@@ -104,14 +104,11 @@ export async function select({
       const newDoc = await vscode.workspace.openTextDocument(newUri);
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
-      let editor: vscode.TextEditor;
+      const editor = await vscode.window.showTextDocument(newDoc, {
+        viewColumn: viewColumn || activeEditor.viewColumn,
+        preview: false,
+      });
       if (!viewColumn) {
-        // For same column, show new document first, then close old one to minimize flash
-        editor = await vscode.window.showTextDocument(newDoc, {
-          viewColumn: activeEditor.viewColumn,
-          preview: false,
-        });
-
         // Close the old document after the new one is shown
         // Use a small delay to ensure smooth transition
         setTimeout(async () => {
@@ -136,12 +133,6 @@ export async function select({
             );
           }
         }, 50);
-      } else {
-        // For different column, show new document (old one stays open)
-        editor = await vscode.window.showTextDocument(newDoc, {
-          viewColumn: viewColumn,
-          preview: false,
-        });
       }
 
       // Position cursor appropriately
@@ -248,12 +239,6 @@ export async function select({
     const viewColumnToUse = viewColumn || activeEditor.viewColumn;
 
     if (!viewColumn) {
-      // For same column, show new document then close old one
-      await vscode.window.showTextDocument(fileDoc, {
-        viewColumn: viewColumnToUse,
-        preview: false,
-      });
-
       // Close the old oil document after opening the new file
       setTimeout(async () => {
         try {
@@ -277,13 +262,12 @@ export async function select({
           );
         }
       }, 50);
-    } else {
-      // For different column, show in new column (old one stays open)
-      await vscode.window.showTextDocument(fileDoc, {
-        viewColumn: viewColumnToUse,
-        preview: false,
-      });
     }
+    // For different column, show in new column (old one stays open)
+    await vscode.window.showTextDocument(fileDoc, {
+      viewColumn: viewColumnToUse,
+      preview: false,
+    });
     updateDisableUpdatePreview(false);
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
