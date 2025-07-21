@@ -472,18 +472,12 @@ suite("oil.code", () => {
       "/002 oil-dir-parent/",
     ]);
 
-    editor.selection = new vscode.Selection(
-      new vscode.Position(1, 0),
-      new vscode.Position(1, 0)
-    );
+    editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("editor.action.deleteLines");
     await sleep(100);
-    editor.selection = new vscode.Selection(
-      new vscode.Position(1, 0),
-      new vscode.Position(1, 0)
-    );
+    editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(200);
+    await sleep(300);
 
     const editor2 = vscode.window.activeTextEditor;
     assert.ok(editor2, "No active editor");
