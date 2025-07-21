@@ -350,6 +350,7 @@ suite("oil.code", () => {
     await saveFile();
 
     await vscode.commands.executeCommand("oil-code.open");
+    await sleep(100);
 
     // Move cursor to the file name
     const position = new vscode.Position(2, 0);
