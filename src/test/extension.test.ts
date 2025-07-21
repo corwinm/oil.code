@@ -374,6 +374,7 @@ suite("oil.code", () => {
       editBuilder.insert(new vscode.Position(0, 8), newline);
       editBuilder.insert(new vscode.Position(1, 0), `/002 oil-file.md`);
     });
+    await waitForDocumentText(["/000 ../", "/002 oil-file.md"]);
 
     await saveFile();
 
@@ -477,7 +478,7 @@ suite("oil.code", () => {
     await sleep(100);
     editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(300);
+    await sleep(500);
 
     const editor2 = vscode.window.activeTextEditor;
     assert.ok(editor2, "No active editor");
