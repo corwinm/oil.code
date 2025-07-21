@@ -523,10 +523,10 @@ suite("oil.code", () => {
       "/002 oil-dir-parent/",
     ]);
 
-    editor.selection = new vscode.Selection(1, 0, 1, 0);
+    editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("editor.action.deleteLines");
-    await sleep(100);
-    editor.selection = new vscode.Selection(1, 0, 1, 0);
+    await sleep(200);
+    editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("oil-code.select");
     await sleep(200);
 
