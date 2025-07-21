@@ -2,6 +2,14 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.24](https://github.com/corwinm/oil.code/compare/v0.0.23...v0.0.24)
+
+- refactor: Refactor codebase into individual files by @corwinm in https://github.com/corwinm/oil.code/pull/32
+- chore: Dependency updates (@eslint/plugin-kit@0.3.3 and related updates) by @corwinm in https://github.com/corwinm/oil.code/pull/34
+- feat: Add setting to triger Workspace Edits when moving files (import updates) by @corwinm in https://github.com/corwinm/oil.code/pull/33
+- fix: Navigation flash and decorator perf improvements by @corwinm in https://github.com/corwinm/oil.code/pull/35
+- test: Update inconsistent tests by @corwinm in https://github.com/corwinm/oil.code/pull/36
+
 ## [0.0.23](https://github.com/corwinm/oil.code/compare/v0.0.22...v0.0.23)
 
 - ci: Update build to wait for all tests to publish and upload build to release
