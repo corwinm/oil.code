@@ -424,18 +424,16 @@ suite("oil.code", () => {
     const editor2 = vscode.window.activeTextEditor;
     assert.ok(editor2, "No active editor2");
     // Move cursor to the file name
-    const position = new vscode.Position(2, 0);
-    editor2.selection = new vscode.Selection(position, position);
+    editor2.selection = new vscode.Selection(2, 5, 2, 5);
 
     await vscode.commands.executeCommand("editor.action.deleteLines");
-    await sleep(100);
+    await sleep(200);
 
     // Move cursor to the new directory
-    const position3 = new vscode.Position(1, 0);
-    editor2.selection = new vscode.Selection(position3, position3);
+    editor2.selection = new vscode.Selection(1, 5, 1, 5);
 
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(200);
+    await sleep(300);
 
     const editor3 = vscode.window.activeTextEditor;
     assert.ok(editor3, "No active editor3");
