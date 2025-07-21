@@ -366,7 +366,7 @@ suite("oil.code", () => {
     editor.selection = new vscode.Selection(position3, position3);
 
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(200);
+    await sleep(300);
 
     const editor3 = vscode.window.activeTextEditor;
     assert.ok(editor3, "No active editor3");

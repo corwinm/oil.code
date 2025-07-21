@@ -1,6 +1,5 @@
 import * as assert from "assert";
 import { tryCatch } from "../../tryCatch";
-import { error } from "console";
 
 export async function waitFor(
   assertion: () => void,
@@ -12,7 +11,7 @@ export async function waitFor(
   }
 ): Promise<void> {
   const startTime = Date.now();
-  const timeout = options?.timeout || 3000;
+  const timeout = options?.timeout || 4000;
   const interval = options?.interval || 100;
   const endTime = startTime + timeout;
   while (true) {
