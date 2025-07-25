@@ -93,6 +93,15 @@ export async function onDidSaveTextDocument(document: vscode.TextDocument) {
         allDestinations.add(path);
       });
 
+      const replacedDeletedLines = new Set<string>();
+      // Check existing files that would be deleted and remove from existingFileConflicts
+      deletedLines.forEach((path) => {
+        if (existingFileConflicts.has(path)) {
+          existingFileConflicts.delete(path);
+          replacedDeletedLines.add(path);
+        }
+      });
+
       // Check for duplicate destinations or existing file conflicts
       if (duplicateDestinations.size > 0 || existingFileConflicts.size > 0) {
         logger.debug(
@@ -166,6 +175,79 @@ export async function onDidSaveTextDocument(document: vscode.TextDocument) {
         return;
       }
       logger.debug("Processing changes...");
+
+      // Delete files/directories
+      for (const line of replacedDeletedLines) {
+        const filePath = line;
+        try {
+          if (line.endsWith(path.sep)) {
+            // This is a directory - remove recursively
+            await removeDirectoryRecursively(filePath);
+          } else {
+            // This is a file
+            fs.unlinkSync(filePath);
+          }
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to delete: ${line} - ${error}`
+          );
+        }
+      }
+
+      // Create new files/directories
+      for (const line of addedLines) {
+        const newFilePath = line;
+        if (line.endsWith(path.sep)) {
+          // Create directory
+          try {
+            fs.mkdirSync(newFilePath, { recursive: true });
+          } catch (error) {
+            vscode.window.showErrorMessage(
+              `Failed to create directory: ${line} - ${error}`
+            );
+          }
+        } else {
+          // Create empty file
+          try {
+            // If it's a file in subfolders, ensure the folders exist
+            if (line.includes(path.sep)) {
+              const dirPath = path.dirname(newFilePath);
+              if (!fs.existsSync(dirPath)) {
+                fs.mkdirSync(dirPath, { recursive: true });
+              }
+            }
+            fs.writeFileSync(newFilePath, "");
+          } catch (error) {
+            vscode.window.showErrorMessage(
+              `Failed to create file: ${line} - ${error}`
+            );
+          }
+        }
+      }
+
+      // Copy files
+      for (const [oldPath, newPath] of copiedLines) {
+        try {
+          // Create directory structure if needed
+          const isDir = newPath.endsWith(path.sep);
+          const dirPath = isDir ? newPath : path.dirname(newPath);
+          if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+          }
+          if (!isDir) {
+            // Copy the file to the new location
+            fs.copyFileSync(oldPath, newPath);
+          }
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to copy file: ${formatPath(oldPath)} to ${newPath.replace(
+              currentPath + path.sep,
+              ""
+            )} - ${error}`
+          );
+        }
+      }
+
       // Get the workspace edit setting
       const useWorkspaceEdit = getEnableWorkspaceEditSetting();
 
@@ -210,61 +292,14 @@ export async function onDidSaveTextDocument(document: vscode.TextDocument) {
           `Failed to apply workspace edit: ${error}`
         );
       }
-      // Copy files
-      for (const [oldPath, newPath] of copiedLines) {
-        try {
-          // Create directory structure if needed
-          const isDir = newPath.endsWith(path.sep);
-          const dirPath = isDir ? newPath : path.dirname(newPath);
-          if (!fs.existsSync(dirPath)) {
-            fs.mkdirSync(dirPath, { recursive: true });
-          }
-          if (!isDir) {
-            // Copy the file to the new location
-            fs.copyFileSync(oldPath, newPath);
-          }
-        } catch (error) {
-          vscode.window.showErrorMessage(
-            `Failed to copy file: ${formatPath(oldPath)} to ${newPath.replace(
-              currentPath + path.sep,
-              ""
-            )} - ${error}`
-          );
-        }
-      }
 
-      // Create new files/directories
-      for (const line of addedLines) {
-        const newFilePath = line;
-        if (line.endsWith(path.sep)) {
-          // Create directory
-          try {
-            fs.mkdirSync(newFilePath, { recursive: true });
-          } catch (error) {
-            vscode.window.showErrorMessage(
-              `Failed to create directory: ${line} - ${error}`
-            );
-          }
-        } else {
-          // Create empty file
-          try {
-            // If it's a file in subfolders, ensure the folders exist
-            if (line.includes(path.sep)) {
-              const dirPath = path.dirname(newFilePath);
-              if (!fs.existsSync(dirPath)) {
-                fs.mkdirSync(dirPath, { recursive: true });
-              }
-            }
-            fs.writeFileSync(newFilePath, "");
-          } catch (error) {
-            vscode.window.showErrorMessage(
-              `Failed to create file: ${line} - ${error}`
-            );
-          }
-        }
-      }
       // Delete files/directories
       for (const line of deletedLines) {
+        if (replacedDeletedLines.has(line)) {
+          // Skip lines that were already processed
+          continue;
+        }
+        // If the line is not in replacedDeletedLines, proceed with deletion
         const filePath = line;
         try {
           if (line.endsWith(path.sep)) {
