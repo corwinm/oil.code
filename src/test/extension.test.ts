@@ -767,4 +767,117 @@ suite("oil.code", () => {
       );
     });
   });
+
+  test("Copy and move file in one action", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText("/000 ../");
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    // Create a target directory and source file
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(
+        new vscode.Position(1, 0),
+        `${newline}target-dir/${newline}source-file.md`
+      );
+    });
+
+    await saveFile();
+
+    // Wait for file content to update
+    await waitForDocumentText([
+      "/000 ../",
+      "/001 target-dir/",
+      "/002 source-file.md",
+    ]);
+
+    // Add content to the source file
+    const filePosition = new vscode.Position(2, 0);
+    editor.selection = new vscode.Selection(filePosition, filePosition);
+    await vscode.commands.executeCommand("oil-code.select");
+    await sleep(200);
+
+    const testContent =
+      "# Test File\nThis is test content for copy/move operation.";
+    await vscode.window.activeTextEditor?.edit((editBuilder) => {
+      editBuilder.insert(new vscode.Position(0, 0), testContent);
+    });
+
+    await saveFile();
+
+    // Return to oil view
+    await vscode.commands.executeCommand("oil-code.open");
+    await sleep(100);
+
+    const editor2 = vscode.window.activeTextEditor;
+    assert.ok(editor2, "No active editor2");
+
+    // Edit the oil view to copy and move the file in one action
+    await editor2.edit((editBuilder) => {
+      // Remove the original file line
+      editBuilder.delete(
+        new vscode.Range(new vscode.Position(2, 0), new vscode.Position(3, 0))
+      );
+    });
+
+    // Select the target directory
+    const targetPosition = new vscode.Position(1, 0);
+    editor2.selection = new vscode.Selection(targetPosition, targetPosition);
+    await vscode.commands.executeCommand("oil-code.select");
+    await sleep(300);
+
+    const editor3 = vscode.window.activeTextEditor;
+    assert.ok(editor3, "No active editor3");
+    // Insert the copied file line
+    await editor3.edit((editBuilder) => {
+      editBuilder.insert(
+        new vscode.Position(1, 0),
+        `${newline}/001 source-file-rename.md`
+      );
+      editBuilder.insert(
+        new vscode.Position(2, 0),
+        `${newline}/001 source-file.md`
+      );
+    });
+
+    await saveFile();
+
+    await waitForDocumentText([
+      "/000 ../",
+      "/003 source-file-rename.md",
+      "/004 source-file.md",
+    ]);
+
+    await assertProjectFileStructure([
+      "target-dir/",
+      "  source-file.md",
+      "  source-file-rename.md",
+    ]);
+
+    // Check content of copied file
+    const copiedFileUri = vscode.Uri.joinPath(
+      vscode.workspace.workspaceFolders![0].uri,
+      "target-dir",
+      "source-file-rename.md"
+    );
+    const copiedFileContent = await vscode.workspace.fs.readFile(copiedFileUri);
+    assert.strictEqual(
+      copiedFileContent.toString(),
+      testContent,
+      "Content of copied file does not match expected content"
+    );
+    // Check content of moved file
+    const movedFileUri = vscode.Uri.joinPath(
+      vscode.workspace.workspaceFolders![0].uri,
+      "target-dir",
+      "source-file.md"
+    );
+    const movedFileContent = await vscode.workspace.fs.readFile(movedFileUri);
+    assert.strictEqual(
+      movedFileContent.toString(),
+      testContent,
+      "Content of moved file does not match expected content"
+    );
+  });
 });
