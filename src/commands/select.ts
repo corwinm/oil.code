@@ -133,16 +133,19 @@ export async function select({
       // Update the URI to reflect the new directory
       const newUri = updateOilUri(oilState, targetPath);
 
-      // Open the document with the new URI
+      // Create the new document with the updated URI
       const newDoc = await vscode.workspace.openTextDocument(newUri);
       await vscode.languages.setTextDocumentLanguage(newDoc, "oil");
 
+      // Show the new document in the same editor tab position
       const editor = await vscode.window.showTextDocument(newDoc, {
         viewColumn: viewColumn || activeEditor.viewColumn,
         preview: false,
+        preserveFocus: activeEditor.document.isDirty,
       });
+
+      // Close the old document after the new one is shown (only if same column)
       if (!viewColumn) {
-        // Close the old document after the new one is shown
         closeOldDocument(oldUri);
       }
 
@@ -246,18 +249,20 @@ export async function select({
     checkForVisitedCleanup(oilState);
 
     const fileUri = vscode.Uri.file(targetPath);
-    const fileDoc = await vscode.workspace.openTextDocument(fileUri);
     const viewColumnToUse = viewColumn || activeEditor.viewColumn;
 
-    if (!viewColumn) {
-      // Close the old oil document after opening the new file
-      closeOldDocument(activeEditor.document.uri);
-    }
-    // For different column, show in new column (old one stays open)
+    // Open the file document
+    const fileDoc = await vscode.workspace.openTextDocument(fileUri);
     await vscode.window.showTextDocument(fileDoc, {
       viewColumn: viewColumnToUse,
       preview: false,
     });
+
+    // Close the old oil document only if we're not using a different view column
+    if (!viewColumn) {
+      closeOldDocument(activeEditor.document.uri);
+    }
+
     updateDisableUpdatePreview(false);
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open file.`);
