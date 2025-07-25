@@ -879,4 +879,66 @@ suite("oil.code", () => {
       "Content of moved file does not match expected content"
     );
   });
+
+  test("View updates after moving file", async () => {
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText("/000 ../");
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    // Create a target directory and source file
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(
+        new vscode.Position(1, 0),
+        `${newline}target-dir/${newline}source-file.md`
+      );
+    });
+
+    await saveFile();
+
+    // Wait for file content to update
+    await waitForDocumentText([
+      "/000 ../",
+      "/001 target-dir/",
+      "/002 source-file.md",
+    ]);
+
+    const editor2 = vscode.window.activeTextEditor;
+    assert.ok(editor2, "No active editor2");
+
+    // Edit the oil view to copy and move the file in one action
+    await editor2.edit((editBuilder) => {
+      // Remove the original file line
+      editBuilder.delete(
+        new vscode.Range(new vscode.Position(2, 0), new vscode.Position(3, 0))
+      );
+    });
+
+    // Select the target directory
+    const targetPosition = new vscode.Position(1, 0);
+    editor2.selection = new vscode.Selection(targetPosition, targetPosition);
+    await vscode.commands.executeCommand("oil-code.select");
+    await sleep(300);
+
+    const editor3 = vscode.window.activeTextEditor;
+    assert.ok(editor3, "No active editor3");
+    // Insert the copied file line
+    await editor3.edit((editBuilder) => {
+      editBuilder.insert(
+        new vscode.Position(2, 0),
+        `${newline}/002 source-file.md`
+      );
+    });
+
+    await saveFile();
+
+    await waitForDocumentText(["/000 ../", "/003 source-file.md"]);
+
+    await assertProjectFileStructure(["target-dir/", "  source-file.md"]);
+
+    await vscode.commands.executeCommand("oil-code.openParent");
+
+    await waitForDocumentText(["/000 ../", "/001 target-dir/"]);
+  });
 });
