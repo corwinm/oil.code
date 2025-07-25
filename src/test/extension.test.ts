@@ -833,11 +833,11 @@ suite("oil.code", () => {
     await editor3.edit((editBuilder) => {
       editBuilder.insert(
         new vscode.Position(1, 0),
-        `${newline}/001 source-file-rename.md`
+        `${newline}/002 source-file-rename.md`
       );
       editBuilder.insert(
         new vscode.Position(2, 0),
-        `${newline}/001 source-file.md`
+        `${newline}/002 source-file.md`
       );
     });
 
@@ -851,8 +851,8 @@ suite("oil.code", () => {
 
     await assertProjectFileStructure([
       "target-dir/",
-      "  source-file.md",
       "  source-file-rename.md",
+      "  source-file.md",
     ]);
 
     // Check content of copied file
