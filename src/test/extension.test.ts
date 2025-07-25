@@ -798,8 +798,7 @@ suite("oil.code", () => {
     await vscode.commands.executeCommand("oil-code.select");
     await sleep(200);
 
-    const testContent =
-      "# Test File\nThis is test content for copy/move operation.";
+    const testContent = `# Test File${newline}This is test content for copy/move operation.`;
     await vscode.window.activeTextEditor?.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(0, 0), testContent);
     });
