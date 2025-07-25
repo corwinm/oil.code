@@ -2,6 +2,11 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.27](https://github.com/corwinm/oil.code/compare/v0.0.26...v0.0.27)
+
+- fix: Improve transition when moving files by @corwinm in https://github.com/corwinm/oil.code/pull/41
+- fix: Allow move and copy same file by @corwinm in https://github.com/corwinm/oil.code/pull/42
+
 ## [0.0.26](https://github.com/corwinm/oil.code/compare/v0.0.25...v0.0.26)
 
 - fix: Update cache handling by @corwinm in https://github.com/corwinm/oil.code/pull/39
