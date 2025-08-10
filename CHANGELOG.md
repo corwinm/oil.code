@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.28](https://github.com/corwinm/oil.code/compare/v0.0.27...v0.0.28)
+
+- docs: Add logo by @corwinm in https://github.com/corwinm/oil.code/pull/43
+
 ## [0.0.27](https://github.com/corwinm/oil.code/compare/v0.0.26...v0.0.27)
 
 - fix: Improve transition when moving files by @corwinm in https://github.com/corwinm/oil.code/pull/41
