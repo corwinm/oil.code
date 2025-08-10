@@ -2,6 +2,7 @@
   "name": "oil-code",
   "displayName": "oil.code",
   "description": "Provides an Oil.nvim like experience for VSCode.",
+  "icon": "images/oil.code.logo.png",
   "repository": "https://github.com/corwinm/oil.code",
   "publisher": "haphazarddev",
   "version": "0.0.27",
