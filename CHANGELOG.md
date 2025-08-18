@@ -2,6 +2,11 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.29](https://github.com/corwinm/oil.code/compare/v0.0.28...v0.0.29)
+
+- fix: Update tmp and @eslint/plugin-kit by @corwinm in https://github.com/corwinm/oil.code/pull/45
+- docs: Minor logo update by @corwinm in https://github.com/corwinm/oil.code/pull/44
+
 ## [0.0.28](https://github.com/corwinm/oil.code/compare/v0.0.27...v0.0.28)
 
 - docs: Add logo by @corwinm in https://github.com/corwinm/oil.code/pull/43
