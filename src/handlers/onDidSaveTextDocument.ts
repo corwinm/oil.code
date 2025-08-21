@@ -12,7 +12,11 @@ import {
 import { select } from "../commands/select";
 import { newline } from "../newline";
 import { logger } from "../logger";
-import { getEnableWorkspaceEditSetting } from "../utils/settings";
+import {
+  getEnableWorkspaceEditSetting,
+  getEnableAlternateConfirmationSetting,
+} from "../utils/settings";
+import { confirmChanges, type Change } from "../ui/confirmChanges";
 
 export async function onDidSaveTextDocument(document: vscode.TextDocument) {
   // Check if the saved document is our oil file
@@ -134,46 +138,78 @@ export async function onDidSaveTextDocument(document: vscode.TextDocument) {
         oilState.openAfterSave = undefined;
         return;
       }
+      // Get the alternate confirmation dialog setting
+      const useAlternateConfirmation = getEnableAlternateConfirmationSetting();
 
-      // Show confirmation dialog
-      let message = "The following changes will be applied:\n\n";
-      if (movedLines.length > 0) {
-        movedLines.forEach((item) => {
-          const [originalPath, newPath] = item;
-          message += `MOVE ${formatPath(originalPath)} → ${formatPath(
-            newPath
-          )}\n`;
-        });
+      if (useAlternateConfirmation) {
+        // Build change list and confirm using Quick Pick
+        const uiChanges: Change[] = [];
+        for (const [from, to] of movedLines) {
+          uiChanges.push({ kind: "move", from, to });
+        }
+        for (const [from, to] of copiedLines) {
+          uiChanges.push({ kind: "copy", from, to });
+        }
+        for (const p of addedLines) {
+          uiChanges.push({ kind: "create", to: p });
+        }
+        for (const p of deletedLines) {
+          uiChanges.push({ kind: "delete", from: p });
+        }
+        const ok = await confirmChanges(
+          uiChanges.map((c) => ({
+            // format paths to relative for nicer display (but still keep full for ops later)
+            ...(c as any),
+            from: "from" in c ? formatPath((c as any).from) : undefined,
+            to: "to" in c ? formatPath((c as any).to) : undefined,
+          })) as Change[]
+        );
+        if (!ok) {
+          oilState.openAfterSave = undefined;
+          return;
+        }
+      } else {
+        // Show confirmation dialog
+        let message = "The following changes will be applied:\n\n";
+        if (movedLines.length > 0) {
+          movedLines.forEach((item) => {
+            const [originalPath, newPath] = item;
+            message += `MOVE ${formatPath(originalPath)} → ${formatPath(
+              newPath
+            )}\n`;
+          });
+        }
+        if (copiedLines.length > 0) {
+          copiedLines.forEach((item) => {
+            const [originalPath, newPath] = item;
+            message += `COPY ${formatPath(originalPath)} → ${formatPath(
+              newPath
+            )}\n`;
+          });
+        }
+        if (addedLines.size > 0) {
+          addedLines.forEach((item) => {
+            message += `CREATE ${formatPath(item)}\n`;
+          });
+        }
+        if (deletedLines.size > 0) {
+          deletedLines.forEach((item) => {
+            message += `DELETE ${formatPath(item)}\n`;
+          });
+        }
+        // Show confirmation dialog
+        const response = await vscode.window.showWarningMessage(
+          message,
+          { modal: true },
+          "Yes",
+          "No"
+        );
+        if (response !== "Yes") {
+          oilState.openAfterSave = undefined;
+          return;
+        }
       }
-      if (copiedLines.length > 0) {
-        copiedLines.forEach((item) => {
-          const [originalPath, newPath] = item;
-          message += `COPY ${formatPath(originalPath)} → ${formatPath(
-            newPath
-          )}\n`;
-        });
-      }
-      if (addedLines.size > 0) {
-        addedLines.forEach((item) => {
-          message += `CREATE ${formatPath(item)}\n`;
-        });
-      }
-      if (deletedLines.size > 0) {
-        deletedLines.forEach((item) => {
-          message += `DELETE ${formatPath(item)}\n`;
-        });
-      }
-      // Show confirmation dialog
-      const response = await vscode.window.showWarningMessage(
-        message,
-        { modal: true },
-        "Yes",
-        "No"
-      );
-      if (response !== "Yes") {
-        oilState.openAfterSave = undefined;
-        return;
-      }
+
       logger.debug("Processing changes...");
 
       // Delete files/directories

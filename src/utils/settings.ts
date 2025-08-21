@@ -15,6 +15,11 @@ export function getEnableWorkspaceEditSetting(): boolean {
   return config.get<boolean>("enableWorkspaceEdit") || false;
 }
 
+export function getEnableAlternateConfirmationSetting(): boolean {
+  const config = vscode.workspace.getConfiguration("oil-code");
+  return config.get<boolean>("enableAlternateConfirmation") || false;
+}
+
 let restoreAutoSave = false;
 
 export async function checkAndDisableAutoSave() {

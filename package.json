@@ -160,6 +160,11 @@
           "type": "boolean",
           "default": false,
           "description": "Enable workspace edit for file move/rename operations. When enabled, VS Code will ask to update references when a file is moved or renamed. Default is false."
+        },
+        "oil-code.enableAlternateConfirmation": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable alternate confirmation dialog for file operations. When enabled, uses a QuickPick interface instead of the default modal confirmation dialog. Default is false."
         }
       }
     }

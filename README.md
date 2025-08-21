@@ -167,6 +167,16 @@ You can set the VSCode text editor to use an installed Nerd Font by setting `"ed
 
 Once you have a Nerd Font set for your editor font, to use these icons in your oil view, set `"oil-code.hasNerdFont": true`.
 
+## Confirmation Dialog
+
+By default, oil.code uses a modal confirmation dialog when you save file operations. You can enable an alternate confirmation interface by setting `"oil-code.enableAlternateConfirmation": true`.
+
+The alternate confirmation dialog provides a QuickPick interface where you can:
+
+- Type `Y` to confirm and apply changes
+- Type `N` to cancel and discard changes
+- Press `Esc` or click outside to cancel
+
 ## Other great extensions
 
 - [vsnetrw](https://github.com/danprince/vsnetrw): Another great option for a split file explorer.
