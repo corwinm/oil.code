@@ -43,18 +43,64 @@ suite("oil.code", () => {
   // Setup and teardown for Sinon stubs
   let showWarningMessageStub: sinon.SinonStub;
   let executeCommandSpy: sinon.SinonStub;
+  let createQuickPickStub: sinon.SinonStub;
 
-  setup(() => {
+  setup(async () => {
     // Stub vscode.window.showWarningMessage to automatically return a response
     // This avoids blocking dialogs during tests
     showWarningMessageStub = sinon.stub(vscode.window, "showWarningMessage");
     // Default to "Yes" response for dialogs
     showWarningMessageStub.resolves("Yes");
+
+    // Stub createQuickPick so confirmation UI immediately accepts
+    createQuickPickStub = sinon
+      .stub(vscode.window, "createQuickPick")
+      .callsFake(() => {
+        const acceptHandlers: Array<() => void> = [];
+        const hideHandlers: Array<() => void> = [];
+        const triggerButtonHandlers: Array<
+          (btn: vscode.QuickInputButton) => void
+        > = [];
+
+        const qp: any = {
+          title: "",
+          matchOnDetail: false,
+          ignoreFocusOut: false,
+          canSelectMany: false,
+          items: [],
+          buttons: [],
+          onDidTriggerButton: (cb: (btn: vscode.QuickInputButton) => void) => {
+            triggerButtonHandlers.push(cb);
+            return { dispose() {} } as vscode.Disposable;
+          },
+          onDidAccept: (cb: () => void) => {
+            acceptHandlers.push(cb);
+            return { dispose() {} } as vscode.Disposable;
+          },
+          onDidHide: (cb: () => void) => {
+            hideHandlers.push(cb);
+            return { dispose() {} } as vscode.Disposable;
+          },
+          show: () => {
+            // Simulate pressing Enter to accept immediately
+            setTimeout(() => {
+              acceptHandlers.forEach((cb) => cb());
+            }, 0);
+          },
+          hide: () => {
+            hideHandlers.forEach((cb) => cb());
+          },
+          dispose: () => {},
+        };
+
+        return qp as vscode.QuickPick<vscode.QuickPickItem>;
+      });
   });
 
   teardown(async () => {
     // Restore the original methods after each test
     showWarningMessageStub.restore();
+    createQuickPickStub.restore();
     executeCommandSpy?.restore();
 
     await vscode.commands.executeCommand("oil-code.close");
