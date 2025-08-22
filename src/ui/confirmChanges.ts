@@ -18,35 +18,65 @@ async function confirmChangesQuickPick(changes: Change[]): Promise<boolean> {
   const qp = vscode.window.createQuickPick<vscode.QuickPickItem>();
   qp.title = "oil.code — Confirm changes";
   qp.matchOnDetail = true;
-  qp.ignoreFocusOut = true;
-  qp.canSelectMany = false; // display-only list; Enter = Apply
 
-  const items = changes.map(toQuickPickItem);
-  qp.items = items;
+  // Outside click should cancel -> allow hide on blur
+  qp.ignoreFocusOut = false;
 
-  const APPLY_BUTTON: vscode.QuickInputButton = {
-    iconPath: new vscode.ThemeIcon("check"),
-    tooltip: "Apply changes",
-  };
-  const CANCEL_BUTTON: vscode.QuickInputButton = {
-    iconPath: new vscode.ThemeIcon("close"),
-    tooltip: "Cancel",
-  };
-  qp.buttons = [APPLY_BUTTON, CANCEL_BUTTON];
+  // Read-only list feel
+  qp.items = changes.map(toQuickPickItem);
+  qp.canSelectMany = false;
 
+  // "Hide" the input and instruct the user
+  qp.placeholder = "[Y]es  [N]o";
+  qp.value = "";
+
+  // We don't want buttons; Y/N only
+  qp.buttons = [];
+
+  const disposables: vscode.Disposable[] = [];
   const decision = await new Promise<boolean>((resolve) => {
-    qp.onDidTriggerButton((btn) => {
-      resolve(btn === APPLY_BUTTON);
-      qp.hide();
-    });
-    qp.onDidAccept(() => {
-      // Treat Enter as "Apply"
-      resolve(true);
-      qp.hide();
-    });
-    qp.onDidHide(() => resolve(false)); // clicks outside => cancel
+    let finished = false;
+    const finish = (ok: boolean) => {
+      if (finished) return;
+      finished = true;
+      try {
+        qp.hide();
+      } catch {}
+      resolve(ok);
+    };
+
+    // Make rows feel non-interactive
+    disposables.push(
+      qp.onDidChangeSelection(() => {
+        qp.selectedItems = [];
+      }),
+      qp.onDidChangeActive(() => {
+        qp.activeItems = [];
+      }),
+
+      // Ignore Enter entirely (only Y/N should close)
+      qp.onDidAccept(() => {
+        /* no-op */
+      }),
+
+      // Capture last typed char; accept only Y or N
+      qp.onDidChangeValue((val) => {
+        const ch = val.trim().slice(-1).toLowerCase();
+        qp.value = ""; // keep the field visually empty
+        if (ch === "y") return finish(true);
+        if (ch === "n") return finish(false);
+      }),
+
+      // Esc or outside click hides -> cancel
+      qp.onDidHide(() => {
+        if (!finished) resolve(false);
+      })
+    );
+
     qp.show();
   });
+
+  disposables.forEach((d) => d.dispose());
   qp.dispose();
   return decision;
 }
