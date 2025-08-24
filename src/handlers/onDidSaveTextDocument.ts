@@ -4,7 +4,7 @@ import * as path from "path";
 import { OIL_SCHEME } from "../constants";
 import { getOilState, getCurrentPath } from "../state/oilState";
 import { determineChanges, positionCursorOnFile } from "../utils/oilUtils";
-import { formatPath, uriPathToDiskPath } from "../utils/pathUtils";
+import { addNewlinesToLongLines, formatPath, uriPathToDiskPath } from "../utils/pathUtils";
 import {
   getDirectoryListing,
   removeDirectoryRecursively,
@@ -165,7 +165,7 @@ export async function onDidSaveTextDocument(document: vscode.TextDocument) {
       }
       // Show confirmation dialog
       const response = await vscode.window.showWarningMessage(
-        message,
+        addNewlinesToLongLines(message),
         { modal: true },
         "Yes",
         "No"
