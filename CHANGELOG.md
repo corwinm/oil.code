@@ -2,6 +2,14 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.30](https://github.com/corwinm/oil.code/compare/v0.0.29...v0.0.30)
+
+- feat: Add alternative confirmation dialog using QuickPick (Enable with enableAlternateConfirmation) by @alilaa in https://github.com/corwinm/oil.code/pull/46
+
+## New Contributors
+
+- @alilaa made their first contribution in https://github.com/corwinm/oil.code/pull/46
+
 ## [0.0.29](https://github.com/corwinm/oil.code/compare/v0.0.28...v0.0.29)
 
 - fix: Update tmp and @eslint/plugin-kit by @corwinm in https://github.com/corwinm/oil.code/pull/45
