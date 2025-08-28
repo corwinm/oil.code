@@ -10,9 +10,13 @@ export function normalizePathToUri(path: string | undefined = ""): string {
   return `/${normalizedPath}`;
 }
 
+export function isWindows(): boolean {
+  return process.platform === "win32";
+}
+
 export function uriPathToDiskPath(path: string): string {
   // If Windows, convert URI path to disk path
-  if (process.platform === "win32") {
+  if (isWindows()) {
     return path.replace(/^\//, "");
   }
   // For other platforms, return the path as is
@@ -43,7 +47,10 @@ export function formatPath(path: string): string {
 const MAX_LINE_LENGTH = 80;
 
 export function addNewlinesToLongLines(text: string): string {
-  const initialLines = text.split('\n');
+  if (!isWindows()) {
+    return text;
+  }
+  const initialLines = text.split("\n");
   const lines: string[] = [];
   for (const line of initialLines) {
     let currentLine = line;
@@ -58,7 +65,7 @@ export function addNewlinesToLongLines(text: string): string {
     }
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 export function oilUriToDiskPath(uri: vscode.Uri): string {
