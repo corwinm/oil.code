@@ -2,6 +2,10 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.31](https://github.com/corwinm/oil.code/compare/v0.0.30...v0.0.31)
+
+- fix: Manually add newlines for confirmation warning message for consistent display across platforms by @corwinm in https://github.com/corwinm/oil.code/pull/47
+
 ## [0.0.30](https://github.com/corwinm/oil.code/compare/v0.0.29...v0.0.30)
 
 - feat: Add alternative confirmation dialog using QuickPick (Enable with enableAlternateConfirmation) by @alilaa in https://github.com/corwinm/oil.code/pull/46
