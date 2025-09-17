@@ -10,9 +10,13 @@ export function normalizePathToUri(path: string | undefined = ""): string {
   return `/${normalizedPath}`;
 }
 
+export function isWindows(): boolean {
+  return process.platform === "win32";
+}
+
 export function uriPathToDiskPath(path: string): string {
   // If Windows, convert URI path to disk path
-  if (process.platform === "win32") {
+  if (isWindows()) {
     return path.replace(/^\//, "");
   }
   // For other platforms, return the path as is
@@ -38,6 +42,30 @@ export function updateOilUri(
 
 export function formatPath(path: string): string {
   return vscode.workspace.asRelativePath(path);
+}
+
+const MAX_LINE_LENGTH = 80;
+
+export function addNewlinesToLongLines(text: string): string {
+  if (!isWindows()) {
+    return text;
+  }
+  const initialLines = text.split("\n");
+  const lines: string[] = [];
+  for (const line of initialLines) {
+    let currentLine = line;
+
+    while (currentLine.length > MAX_LINE_LENGTH) {
+      lines.push(currentLine.substring(0, MAX_LINE_LENGTH));
+      currentLine = currentLine.substring(MAX_LINE_LENGTH);
+    }
+
+    if (currentLine.length > 0) {
+      lines.push(currentLine);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 export function oilUriToDiskPath(uri: vscode.Uri): string {
