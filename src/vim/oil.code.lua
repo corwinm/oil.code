@@ -12,7 +12,12 @@ vim.api.nvim_create_autocmd({'FileType'}, {
   pattern = {"oil"},
   callback = function()
     map("n", "-", function() vscode.action('oil-code.openParent') end)
-    map("n", "_", function() vscode.action('oil-code.openCwd') end)
+    
+    local disableUnderscoreOpenCwd = vscode.get_config('oil-code.disableUnderscoreOpenCwd')
+    if not disableUnderscoreOpenCwd then
+      map("n", "_", function() vscode.action('oil-code.openCwd') end)
+    end
+    
     map("n", "<CR>", function() vscode.action('oil-code.select') end)
     map("n", "<C-t>", function() vscode.action('oil-code.selectTab') end)
     map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
