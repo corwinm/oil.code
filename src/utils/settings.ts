@@ -10,6 +10,11 @@ export function getDisableOpenCwdNothingOpenSetting(): boolean {
   return config.get<boolean>("disableOpenCwdNothingOpen") || false;
 }
 
+export function getdisableUnderscoreOpenCwdSetting(): boolean {
+  const config = vscode.workspace.getConfiguration("oil-code");
+  return config.get<boolean>("disableUnderscoreOpenCwd") || false;
+}
+
 export function getEnableWorkspaceEditSetting(): boolean {
   const config = vscode.workspace.getConfiguration("oil-code");
   return config.get<boolean>("enableWorkspaceEdit") || false;

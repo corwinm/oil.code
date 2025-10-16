@@ -108,7 +108,7 @@
       {
         "command": "oil-code.openCwd",
         "key": "shift+-",
-        "when": "editorTextFocus && editorLangId == oil && vim.mode == 'Normal'"
+        "when": "editorTextFocus && editorLangId == oil && vim.mode == 'Normal' && !config.oil-code.disableUnderscoreOpenCwd"
       },
       {
         "command": "oil-code.preview",
@@ -145,6 +145,11 @@
           "type": "boolean",
           "default": false,
           "description": "Disable all Vim keymaps for oil.code. Default is false. Set this to true if you want to set your own keymaps. Reload after changing this setting."
+        },
+        "oil-code.disableUnderscoreOpenCwd": {
+          "type": "boolean",
+          "default": false,
+          "description": "Disable the '_' (underscore) keybind for opening the current working directory in oil buffers. When disabled, '_' will behave as normal Vim motion (first non-blank character of line). Default is false. Reload after changing this setting."
         },
         "oil-code.disableOpenCwdNothingOpen": {
           "type": "boolean",
