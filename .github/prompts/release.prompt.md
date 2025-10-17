@@ -10,10 +10,19 @@ Draft release notes and a CHANGELOG entry for oil.code {{VERSION}} comparing to 
   - Commit message: `chore: Release {{VERSION}}`
   - Tag: `git tag v{{VERSION}}`
   - Push: `git push && git push origin v{{VERSION}}`
-- Create a GitHub Release with the title `v{{VERSION}}` and content matching the below example where what's changed included the content from what has been updated in the CHANGELOG.md and the Full Changelog shows the difference between the new tag and the previous tag:
+- Create a GitHub Release using the GitHub CLI with the title `v{{VERSION}}` and content matching the below example where what's changed included the content from what has been updated in the CHANGELOG.md and the Full Changelog shows the difference between the new tag and the previous tag:
 
 ```
 ## What's Changed
+* docs: Add logo by @corwinm in https://github.com/corwinm/oil.code/pull/43
+
+
+**Full Changelog**: https://github.com/corwinm/oil.code/compare/v0.0.27...v0.0.28
+```
+
+Example gh release command:
+```sh
+gh release create v0.0.28 --title "v0.0.28" --notes "## What's Changed
 * docs: Add logo by @corwinm in https://github.com/corwinm/oil.code/pull/43
 
 
