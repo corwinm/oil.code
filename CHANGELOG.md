@@ -2,6 +2,11 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.32](https://github.com/corwinm/oil.code/compare/v0.0.31...v0.0.32)
+
+- feat: Add config to disable '_' keybind by @corwinm in https://github.com/corwinm/oil.code/pull/50
+- chore: Update tar-fs to 2.1.4 by @corwinm in https://github.com/corwinm/oil.code/pull/48
+
 ## [0.0.31](https://github.com/corwinm/oil.code/compare/v0.0.30...v0.0.31)
 
 - fix: Manually add newlines for confirmation warning message for consistent display across platforms by @corwinm in https://github.com/corwinm/oil.code/pull/47

@@ -5,7 +5,7 @@
   "icon": "images/oil.code.logo.png",
   "repository": "https://github.com/corwinm/oil.code",
   "publisher": "haphazarddev",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "engines": {
     "vscode": "^1.96.2"
   },
