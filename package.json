@@ -191,24 +191,25 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "~20.17.28",
-    "@types/sinon": "^17.0.4",
+    "@types/node": "~22.19.1",
+    "@types/sinon": "^21.0.0",
     "@types/vscode": "1.95.0",
-    "@typescript-eslint/eslint-plugin": "^8.28.0",
-    "@typescript-eslint/parser": "^8.28.0",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
     "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.4.1",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.7.0",
-    "esbuild": "^0.25.1",
-    "eslint": "^9.31.0",
+    "esbuild": "^0.27.0",
+    "eslint": "^9.39.1",
     "npm-run-all": "^4.1.5",
     "sinon": "^21.0.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.9.3"
   },
   "packageManager": "pnpm@10.23.0+sha512.21c4e5698002ade97e4efe8b8b4a89a8de3c85a37919f957e7a0f30f38fbc5bbdd05980ffe29179b2fb6e6e691242e098d945d1601772cad0fef5fb6411e2a4b",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@vscode/vsce-sign",
+      "esbuild",
       "keytar"
     ]
   }
