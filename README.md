@@ -16,6 +16,8 @@ Oil lets you navigate your file system, copy, move, and rename files and directo
 
 This plugin works best with [VSCodeVim](https://github.com/VSCodeVim/Vim) or [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim) but can still be used without a Vim plugin.
 
+![Demo](https://github.com/corwinm/oil.code/blob/main/images/demo.gif?raw=true)
+
 ## Shortcuts
 
 To open oil.code:
