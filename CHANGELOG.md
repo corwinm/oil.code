@@ -2,6 +2,12 @@
 
 All notable changes to the "oil.code" extension will be documented in this file.
 
+## [0.0.33](https://github.com/corwinm/oil.code/compare/v0.0.32...v0.0.33)
+
+- docs: Add demo gif by @corwinm in https://github.com/corwinm/oil.code/pull/52
+- chore: dep updates, glob fix, .nvmrc by @corwinm in https://github.com/corwinm/oil.code/pull/51
+- docs: Update release prompt by @corwinm
+
 ## [0.0.32](https://github.com/corwinm/oil.code/compare/v0.0.31...v0.0.32)
 
 - feat: Add config to disable '_' keybind by @corwinm in https://github.com/corwinm/oil.code/pull/50
