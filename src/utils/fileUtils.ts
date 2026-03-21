@@ -4,6 +4,8 @@ import * as path from "path";
 import { GO_UP_IDENTIFIER, OilState } from "../constants";
 import { removeTrailingSlash, normalizePathToUri } from "./pathUtils";
 import { newline } from "../newline";
+import { populateMetadataCache } from "./metadataUtils";
+import { getColumnsSettings } from "./settings";
 
 export async function getDirectoryListing(
   folderPath: string,
@@ -78,6 +80,11 @@ export async function getDirectoryListing(
   });
 
   oilState.visitedPaths.set(folderPathUri, listingsWithIds);
+
+  const activeColumns = getColumnsSettings();
+  if (activeColumns.some((c) => c !== "icon")) {
+    populateMetadataCache(folderPath, listings, oilState);
+  }
 
   return listingsWithIds.join(newline);
 }
