@@ -61,7 +61,7 @@ export function getFileMetadata(filePath: string, stat: fs.Stats): FileMetadata 
 
 // Column widths (monospace chars):
 //   permissions : exactly 10  (e.g. "-rw-r--r--")
-//   size        : right-aligned in 5  (e.g. "  12K", "1023B")
+//   size        : right-aligned in 4, padded left with non-breaking spaces (e.g. "\u00A012K", "999B")
 //   mtime       : exactly 12  (e.g. "Mar 14 14:23", "Mar 14  2024")
 // Separator between columns: 2 spaces.  Trailing 2 spaces before filename.
 // All rows in the same directory with the same column set are identical width.
@@ -76,7 +76,7 @@ export function formatMetadataColumns(
         parts.push(meta.permissions); // always 10 chars
         break;
       case "size":
-        parts.push(meta.size.padStart(5)); // right-aligned, always 5 chars
+        parts.push(meta.size.padStart(4, "\u00A0")); // right-aligned, always 4 chars, NBSP padding
         break;
       case "mtime":
         parts.push(meta.mtime); // always 12 chars
