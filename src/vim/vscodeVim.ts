@@ -112,7 +112,7 @@ export async function registerVSCodeVimKeymap(): Promise<boolean> {
       );
       if (!hasOilToggleDetailsBinding) {
         updatedKeymap.push({
-          before: ["<C-d>"],
+          before: ["g", "d"],
           commands: [{ command: "oil-code.toggleDetails" }],
         });
         keymapChanged = true;
