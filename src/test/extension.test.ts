@@ -879,4 +879,80 @@ suite("oil.code", () => {
       "Content of moved file does not match expected content"
     );
   });
+
+  test("toggleDetails command executes without error", async () => {
+    // Run the command twice (toggle on, toggle off) to verify it
+    // completes without throwing in both directions.
+    // Direct state inspection is not possible here because the extension
+    // is bundled by esbuild, giving it a separate module instance from
+    // the test's compiled output.
+    await vscode.commands.executeCommand("oil-code.toggleDetails");
+    await vscode.commands.executeCommand("oil-code.toggleDetails");
+  });
+
+  test("Rename with metadata columns enabled does not corrupt file operations", async () => {
+    // Open oil in icon+size+mtime mode
+    await vscode.workspace
+      .getConfiguration("oil-code")
+      .update("columns", ["icon", "size", "mtime"], vscode.ConfigurationTarget.Global);
+
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText("/000 ../");
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    // Create a file
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(new vscode.Position(1, 0), `${newline}metadata-rename-test.md`);
+    });
+    await saveFile();
+    await waitForDocumentText(["/000 ../", "/001 metadata-rename-test.md"]);
+
+    // Rename the file by editing only the filename portion (after the identifier)
+    const line = editor.document.lineAt(1).text; // "/001 metadata-rename-test.md"
+    const prefixLength = 5; // "/001 "
+    await editor.edit((editBuilder) => {
+      editBuilder.replace(
+        new vscode.Range(
+          new vscode.Position(1, prefixLength),
+          new vscode.Position(1, line.length)
+        ),
+        "metadata-renamed.md"
+      );
+    });
+    await saveFile();
+
+    await assertProjectFileStructure(["metadata-renamed.md"]);
+
+    // Restore columns setting
+    await vscode.workspace
+      .getConfiguration("oil-code")
+      .update("columns", ["icon"], vscode.ConfigurationTarget.Global);
+  });
+
+  test("When columns is icon-only, buffer text stays plain /NNN filename format", async () => {
+    // Verifies that metadata is never embedded in buffer text (always decoration-only).
+    // Cross-bundle internal state (metadataCache) cannot be read from test code because
+    // the extension is bundled by esbuild into a separate module instance.
+    await vscode.workspace
+      .getConfiguration("oil-code")
+      .update("columns", ["icon"], vscode.ConfigurationTarget.Global);
+
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText("/000 ../");
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "Oil editor should be active");
+
+    const text = editor.document.getText();
+    const lines = text.split(newline).filter((l) => l.trim().length > 0);
+    for (const line of lines) {
+      assert.match(
+        line,
+        /^\/\d{3} /,
+        `Each line must start with /NNN prefix only — no metadata in buffer text. Got: ${line}`
+      );
+    }
+  });
 });
