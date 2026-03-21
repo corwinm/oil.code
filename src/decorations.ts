@@ -124,7 +124,6 @@ function getMetadataDecorationType(): vscode.TextEditorDecorationType {
     metadataDecorationType = vscode.window.createTextEditorDecorationType({
       before: {
         color: new vscode.ThemeColor("editorInlayHint.foreground"),
-        fontStyle: "italic",
       },
     });
   }
