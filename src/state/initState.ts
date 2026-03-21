@@ -24,6 +24,7 @@ export function initOilState(): OilState {
     identifierCounter: 1,
     visitedPaths: new Map(),
     editedPaths: new Map(),
+    metadataCache: new Map(),
   };
 
   return newState;
@@ -39,6 +40,7 @@ export function initOilStateWithPath(path: string): OilState {
     identifierCounter: 1,
     visitedPaths: new Map(),
     editedPaths: new Map(),
+    metadataCache: new Map(),
   };
 
   return newState;
