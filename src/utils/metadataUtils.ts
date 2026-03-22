@@ -28,14 +28,14 @@ export function formatSize(bytes: number): string {
 
 export function formatMtime(mtime: Date): string {
   const month = MONTHS[mtime.getMonth()];
-  const day = String(mtime.getDate()).padStart(2, " ");
+  const day = String(mtime.getDate()).padStart(2, "0");
   const now = new Date();
   if (mtime.getFullYear() === now.getFullYear()) {
     const hours = String(mtime.getHours()).padStart(2, "0");
     const minutes = String(mtime.getMinutes()).padStart(2, "0");
-    return `${month} ${day} ${hours}:${minutes}`;
+    return `${month}\u00A0${day}\u00A0${hours}:${minutes}`;
   }
-  return `${month} ${day}  ${mtime.getFullYear()}`;
+  return `${month}\u00A0${day}\u00A0\u00A0${mtime.getFullYear()}`;
 }
 
 export function formatPermissions(stat: fs.Stats): string {
@@ -59,11 +59,11 @@ export function getFileMetadata(filePath: string, stat: fs.Stats): FileMetadata 
   };
 }
 
-// Column widths (monospace chars):
+// Column widths (monospace chars), all padding uses non-breaking spaces (\u00A0):
 //   permissions : exactly 10  (e.g. "-rw-r--r--")
-//   size        : right-aligned in 4, padded left with non-breaking spaces (e.g. "\u00A012K", "999B")
-//   mtime       : exactly 12  (e.g. "Mar 14 14:23", "Mar 14  2024")
-// Separator between columns: 2 spaces.  Trailing 2 spaces before filename.
+//   size        : right-aligned in 4, padded left with NBSP (e.g. "\u00A012K", "999B")
+//   mtime       : exactly 12  (e.g. "Mar\u00A014\u00A014:23", "Mar\u00A014\u00A0\u00A02024")
+// Separator between columns: 2 NBSP.  Leading 2 NBSP (gap from icon), trailing 2 NBSP before filename.
 // All rows in the same directory with the same column set are identical width.
 export function formatMetadataColumns(
   meta: FileMetadata,
@@ -84,8 +84,8 @@ export function formatMetadataColumns(
       // "icon" is not a metadata column — silently ignored
     }
   }
-  // Leading 2 spaces (gap from icon), 2 spaces between columns, 2 spaces before filename
-  return parts.length > 0 ? "  " + parts.join("  ") + "  " : "";
+  // Leading 2 NBSP (gap from icon), 2 NBSP between columns, 2 NBSP before filename
+  return parts.length > 0 ? "\u00A0\u00A0" + parts.join("\u00A0\u00A0") + "\u00A0\u00A0" : "";
 }
 
 export function populateMetadataCache(
@@ -98,6 +98,11 @@ export function populateMetadataCache(
 
   for (const name of listings) {
     if (name === "../") {
+      fileMap.set(name, {
+        permissions: "-".padStart(10, "\u00A0"),
+        size: "-",
+        mtime: "-".padStart(12, "\u00A0"),
+      });
       continue;
     }
     try {
