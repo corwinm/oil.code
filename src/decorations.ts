@@ -144,8 +144,10 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
     editor.setDecorations(decoration, []);
   });
 
-  // Clear previous metadata decorations
-  editor.setDecorations(getMetadataDecorationType(), []);
+  // Clear previous metadata decorations (avoid creating the decoration type too early)
+  if (metadataDecorationType) {
+    editor.setDecorations(metadataDecorationType, []);
+  }
 
   // Track icon decorations for this update
   const iconDecorations = new Map<string, vscode.Range[]>();
