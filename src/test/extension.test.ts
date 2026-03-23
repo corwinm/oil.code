@@ -44,7 +44,9 @@ suite("oil.code", () => {
   let showWarningMessageStub: sinon.SinonStub;
   let executeCommandSpy: sinon.SinonStub;
 
-  setup(() => {
+  setup(async () => {
+    await cleanupTestDir();
+
     // Stub vscode.window.showWarningMessage to automatically return a response
     // This avoids blocking dialogs during tests
     showWarningMessageStub = sinon.stub(vscode.window, "showWarningMessage");

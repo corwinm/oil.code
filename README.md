@@ -99,6 +99,20 @@ If you're using VSCodeVim and want to customize the keymaps for oil.code:
 ]
 ```
 
+## Development
+
+To run the extension test suite locally:
+
+```sh
+pnpm run test
+```
+
+The test runner prefers an installed local copy of VS Code to avoid downloading a test build on every run. If VS Code is installed in a non-standard location, set `VSCODE_EXECUTABLE_PATH` to the VS Code executable before running tests.
+
+```sh
+VSCODE_EXECUTABLE_PATH="/path/to/Visual Studio Code.app/Contents/MacOS/Electron" pnpm run test
+```
+
 ## Why oil.code?
 
 Oil.nvim is a favorite plugin of mine and I find myself going back and forth between Neovim and VSCode for various projects. Being able to quickly rename or move a file is an experience I want everywhere and I want to share with the great community of VSCode and Codium users.
