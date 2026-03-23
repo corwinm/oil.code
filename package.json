@@ -191,22 +191,26 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "~22.19.1",
+    "@types/node": "~22.19.15",
     "@types/sinon": "^21.0.0",
     "@types/vscode": "1.95.0",
-    "@typescript-eslint/eslint-plugin": "^8.47.0",
-    "@typescript-eslint/parser": "^8.47.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
-    "@vscode/vsce": "^3.7.0",
-    "esbuild": "^0.27.0",
-    "eslint": "^9.39.1",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.27.4",
+    "eslint": "^9.39.4",
     "npm-run-all": "^4.1.5",
-    "sinon": "^21.0.0",
+    "sinon": "^21.0.3",
     "typescript": "^5.9.3"
   },
   "packageManager": "pnpm@10.23.0+sha512.21c4e5698002ade97e4efe8b8b4a89a8de3c85a37919f957e7a0f30f38fbc5bbdd05980ffe29179b2fb6e6e691242e098d945d1601772cad0fef5fb6411e2a4b",
   "pnpm": {
+    "overrides": {
+      "mocha>diff": "8.0.3",
+      "mocha>serialize-javascript": "7.0.3"
+    },
     "onlyBuiltDependencies": [
       "@vscode/vsce-sign",
       "esbuild",
