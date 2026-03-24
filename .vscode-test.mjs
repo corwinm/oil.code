@@ -31,15 +31,31 @@ function resolveLocalVSCodeExecutablePath() {
 
   if (process.platform === "win32") {
     const localAppData = process.env.LOCALAPPDATA;
+    const programFiles = process.env.ProgramFiles;
+    const programFilesX86 = process.env["ProgramFiles(x86)"];
+
     if (localAppData) {
       candidates.push(
         path.join(localAppData, "Programs/Microsoft VS Code/Code.exe")
+      );
+    }
+
+    if (programFiles) {
+      candidates.push(
+        path.join(programFiles, "Microsoft VS Code/Code.exe")
+      );
+    }
+
+    if (programFilesX86) {
+      candidates.push(
+        path.join(programFilesX86, "Microsoft VS Code/Code.exe")
       );
     }
   }
 
   if (process.platform === "linux") {
     candidates.push(
+      "/usr/bin/code",
       "/usr/share/code/code",
       "/snap/code/current/usr/share/code/code"
     );
