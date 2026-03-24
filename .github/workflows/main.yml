@@ -27,17 +27,6 @@ jobs:
         with:
           version: 10
       - run: pnpm install
-      - name: Install VS Code
-        if: runner.os == 'Linux'
-        run: |
-          curl -L --fail -o /tmp/code.deb "https://update.code.visualstudio.com/1.105.0/linux-deb-x64/stable"
-          sudo apt-get update
-          sudo apt-get install -y /tmp/code.deb
-      - name: Configure VS Code path
-        if: runner.os == 'Linux'
-        run: |
-          echo "VSCODE_EXECUTABLE_PATH=/usr/bin/code" >> "$GITHUB_ENV"
-          /usr/bin/code --version
       - run: xvfb-run -a pnpm test
         if: runner.os == 'Linux'
       - run: pnpm test
