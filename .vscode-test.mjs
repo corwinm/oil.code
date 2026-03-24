@@ -5,7 +5,7 @@ import fs from "fs";
 
 const dirName = path.dirname(fileURLToPath(import.meta.url));
 const testTempDir = path.join(dirName, "test-temp");
-const fallbackVersion = "1.96.2";
+const fallbackVersion = "1.105.0";
 
 // Ensure the test temp directory is created
 if (!fs.existsSync(testTempDir)) {
