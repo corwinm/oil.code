@@ -2,29 +2,27 @@
 agent: agent
 ---
 
-Draft release notes and a CHANGELOG entry for oil.code {{VERSION}} comparing to {{PREV_TAG}}. Use repo context and commit messages. Requirements:
+Use the GitHub Actions Release workflow for automated releases instead of editing files and tagging manually.
 
-- Update CHANGELOG.md with the new version. Add a line for each commit since the last release.
-- Update package.json with the new version.
-- Commit and tag
-  - Commit message: `chore: Release {{VERSION}}`
-  - Tag: `git tag v{{VERSION}}`
-  - Push: `git push && git push origin v{{VERSION}}`
-- Create a GitHub Release using the GitHub CLI with the title `v{{VERSION}}` and content matching the below example where what's changed included the content from what has been updated in the CHANGELOG.md and the Full Changelog shows the difference between the new tag and the previous tag:
+Release workflow:
 
-```
-## What's Changed
-* docs: Add logo by @corwinm in https://github.com/corwinm/oil.code/pull/43
+1. Ensure the commits on `main` follow conventional commit prefixes such as `feat:`, `fix:`, `refactor:`, `perf:`, or `BREAKING CHANGE`.
+2. Open GitHub Actions and run the `Release` workflow.
+3. Optionally set `dry_run` to `true` to preview the next version without publishing.
+4. On a normal run, the workflow will:
+   - determine the next semantic version from commits on `main`
+   - update `package.json`
+   - update `CHANGELOG.md`
+   - create the release commit and tag
+   - create the GitHub Release with notes
+   - attach the packaged `.vsix`
+   - publish to the VS Code Marketplace and Open VSX
 
+Release rules:
 
-**Full Changelog**: https://github.com/corwinm/oil.code/compare/v0.0.27...v0.0.28
-```
+- `feat` triggers a minor release.
+- `fix`, `perf`, `refactor`, and `revert` trigger a patch release.
+- `docs`, `style`, `chore`, `test`, `build`, and `ci` do not trigger a release.
+- Breaking changes trigger a major release.
 
-Example gh release command:
-```sh
-gh release create v0.0.28 --title "v0.0.28" --notes "## What's Changed
-* docs: Add logo by @corwinm in https://github.com/corwinm/oil.code/pull/43
-
-
-**Full Changelog**: https://github.com/corwinm/oil.code/compare/v0.0.27...v0.0.28
-```
+Do not manually edit `CHANGELOG.md`, bump `package.json`, create tags, or run `gh release create` for standard releases.

@@ -1,6 +1,8 @@
-# Change Log
+# Changelog
 
-All notable changes to the "oil.code" extension will be documented in this file.
+All notable changes to this project will be documented in this file.
+
+This file is automatically managed by semantic-release.
 
 ## [0.0.33](https://github.com/corwinm/oil.code/compare/v0.0.32...v0.0.33)
 
