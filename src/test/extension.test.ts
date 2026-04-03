@@ -39,23 +39,37 @@ async function cleanupTestDir() {
   }
 }
 
+async function setPreviewByDefault(enabled: boolean) {
+  await vscode.workspace
+    .getConfiguration("oil-code")
+    .update(
+      "previewByDefault",
+      enabled,
+      vscode.ConfigurationTarget.Global
+    );
+}
+
 suite("oil.code", () => {
   // Setup and teardown for Sinon stubs
   let showWarningMessageStub: sinon.SinonStub;
   let executeCommandSpy: sinon.SinonStub;
 
-  setup(() => {
+  setup(async () => {
+    await cleanupTestDir();
+
     // Stub vscode.window.showWarningMessage to automatically return a response
     // This avoids blocking dialogs during tests
     showWarningMessageStub = sinon.stub(vscode.window, "showWarningMessage");
     // Default to "Yes" response for dialogs
     showWarningMessageStub.resolves("Yes");
+    await setPreviewByDefault(false);
   });
 
   teardown(async () => {
     // Restore the original methods after each test
     showWarningMessageStub.restore();
     executeCommandSpy?.restore();
+    await setPreviewByDefault(false);
 
     await vscode.commands.executeCommand("oil-code.close");
     await sleep(100);
@@ -651,6 +665,142 @@ suite("oil.code", () => {
       assert.strictEqual(
         previewEditor.document.getText(),
         testContent,
+        "Preview content does not match expected content"
+      );
+    });
+  });
+
+  test("Preview does not open by default when disabled", async () => {
+    const fileUri = vscode.Uri.joinPath(
+      vscode.workspace.workspaceFolders![0].uri,
+      "oil-file.md"
+    );
+    await vscode.workspace.fs.writeFile(fileUri, Buffer.from("test", "utf-8"));
+
+    const fileDoc = await vscode.workspace.openTextDocument(fileUri);
+    await vscode.window.showTextDocument(fileDoc);
+
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText(["/000 ../", "/001 oil-file.md"]);
+    await sleep(200);
+
+    const previewEditor = vscode.window.visibleTextEditors.find(
+      (editor) => editor.document.uri.scheme === "oil-preview"
+    );
+
+    assert.ok(!previewEditor, "Preview editor unexpectedly opened");
+    assert.strictEqual(
+      vscode.window.tabGroups.all.at(1)?.tabs.length ?? 0,
+      0,
+      "Preview tab unexpectedly opened"
+    );
+  });
+
+  test("Preview opens by default when enabled", async () => {
+    const testContent = `# Oil FileThis${newline}is a test file for Oil Code extension.`;
+    const fileUri = vscode.Uri.joinPath(
+      vscode.workspace.workspaceFolders![0].uri,
+      "oil-file.md"
+    );
+    await setPreviewByDefault(true);
+    await vscode.workspace.fs.writeFile(fileUri, Buffer.from(testContent, "utf-8"));
+
+    const fileDoc = await vscode.workspace.openTextDocument(fileUri);
+    await vscode.window.showTextDocument(fileDoc);
+
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText(["/000 ../", "/001 oil-file.md"]);
+
+    await waitFor(() => {
+      const previewTab = vscode.window.tabGroups.all.at(1)?.tabs.at(0);
+      assert.ok(previewTab, "Preview tab not found");
+      assert.strictEqual(
+        (previewTab.input as vscode.TabInputText).uri.toString(),
+        "oil-preview://oil-preview/oil-file.md"
+      );
+      const previewEditor = vscode.window.visibleTextEditors.find(
+        (editor) =>
+          editor.document.uri.toString() ===
+          "oil-preview://oil-preview/oil-file.md"
+      );
+      assert.ok(previewEditor, "No editor found for the preview tab");
+      assert.strictEqual(
+        previewEditor.document.getText(),
+        testContent,
+        "Preview content does not match expected content"
+      );
+    });
+  });
+
+  test("Preview by default updates during directory navigation", async () => {
+    const testContent = `# Oil FileThis${newline}is a test file for Oil Code extension.`;
+    await setPreviewByDefault(true);
+    await vscode.workspace.fs.createDirectory(
+      vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, "oil-dir")
+    );
+
+    const fileUri = vscode.Uri.joinPath(
+      vscode.workspace.workspaceFolders![0].uri,
+      "oil-dir",
+      "oil-file1.md"
+    );
+    await vscode.workspace.fs.writeFile(fileUri, Buffer.from(testContent, "utf-8"));
+    await vscode.workspace.fs.writeFile(
+      vscode.Uri.joinPath(
+        vscode.workspace.workspaceFolders![0].uri,
+        "oil-dir",
+        "oil-file2.md"
+      ),
+      Buffer.from(testContent, "utf-8")
+    );
+
+    const fileDoc = await vscode.workspace.openTextDocument(fileUri);
+    await vscode.window.showTextDocument(fileDoc);
+
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText([
+      "/000 ../",
+      "/001 oil-file1.md",
+      "/002 oil-file2.md",
+    ]);
+
+    await waitFor(() => {
+      const previewEditor = vscode.window.visibleTextEditors.find(
+        (editor) =>
+          editor.document.uri.toString() ===
+          "oil-preview://oil-preview/oil-file1.md"
+      );
+      assert.ok(previewEditor, "No editor found for the preview tab");
+      assert.strictEqual(
+        previewEditor.document.getText(),
+        testContent,
+        "Preview content does not match expected content"
+      );
+    });
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+    editor.selection = new vscode.Selection(0, 0, 0, 0);
+
+    await vscode.commands.executeCommand("oil-code.select");
+
+    await waitForDocumentText(["/000 ../", "/003 oil-dir/"]);
+
+    await waitFor(() => {
+      const previewTab = vscode.window.tabGroups.all.at(1)?.tabs.at(0);
+      assert.ok(previewTab, "Preview tab not found");
+      assert.strictEqual(
+        (previewTab.input as vscode.TabInputText).uri.toString(),
+        "oil-preview://oil-preview/oil-dir"
+      );
+      const previewEditor = vscode.window.visibleTextEditors.find(
+        (editor) =>
+          editor.document.uri.toString() === "oil-preview://oil-preview/oil-dir"
+      );
+      assert.ok(previewEditor, "No editor found for the preview tab");
+      assert.strictEqual(
+        previewEditor.document.getText(),
+        ["/000 ../", "/001 oil-file1.md", "/002 oil-file2.md"].join(newline),
         "Preview content does not match expected content"
       );
     });

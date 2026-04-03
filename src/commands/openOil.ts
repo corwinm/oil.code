@@ -3,11 +3,15 @@ import * as vscode from "vscode";
 import { oilFileProvider } from "../providers/providers";
 import { initOilStateWithPath, initOilState } from "../state/initState";
 import { setOilState } from "../state/oilState";
-import { checkAndDisableAutoSave } from "../utils/settings";
+import {
+  checkAndDisableAutoSave,
+  getPreviewByDefaultSetting,
+} from "../utils/settings";
 import { logger } from "../logger";
 import { openParent } from "./openParent";
 import { positionCursorOnFile } from "../utils/oilUtils";
 import { resetPreviewState } from "../state/previewState";
+import { preview } from "./preview";
 
 export async function openOil(atPath?: string | undefined) {
   logger.trace("Opening oil file...");
@@ -39,6 +43,11 @@ export async function openOil(atPath?: string | undefined) {
 
       // Position cursor on the active file if it exists
       positionCursorOnFile(editor, activeFile);
+
+      if (getPreviewByDefaultSetting()) {
+        await preview(true);
+      }
+
       await checkAndDisableAutoSave();
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to open oil file: ${error}`);

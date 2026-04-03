@@ -179,6 +179,10 @@ The alternate confirmation dialog provides a QuickPick interface where you can:
 - Type `N` to cancel and discard changes
 - Press `Esc` or click outside to cancel
 
+## Default Preview
+
+You can enable preview automatically when opening oil by setting `"oil-code.previewByDefault": true`.
+
 ## Other great extensions
 
 - [vsnetrw](https://github.com/danprince/vsnetrw): Another great option for a split file explorer.
