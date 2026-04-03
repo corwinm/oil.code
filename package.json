@@ -214,7 +214,7 @@
   "pnpm": {
     "overrides": {
       "mocha>diff": "8.0.3",
-      "mocha>serialize-javascript": "7.0.3"
+      "mocha>serialize-javascript": "7.0.5"
     },
     "onlyBuiltDependencies": [
       "@vscode/vsce-sign",
