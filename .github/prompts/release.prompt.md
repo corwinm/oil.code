@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 ---
 
 Draft release notes and a CHANGELOG entry for oil.code {{VERSION}} comparing to {{PREV_TAG}}. Use repo context and commit messages. Requirements:
