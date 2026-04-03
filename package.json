@@ -58,6 +58,10 @@
         "command": "oil-code.cd",
         "title": "Oil: cd - Change directory to the currently opened directory",
         "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
+        "command": "oil-code.toggleDetails",
+        "title": "Oil: Toggle Detail Columns"
       }
     ],
     "languages": [
@@ -129,6 +133,11 @@
         "command": "oil-code.cd",
         "key": "alt+`",
         "when": "editorTextFocus && editorLangId == oil"
+      },
+      {
+        "command": "oil-code.toggleDetails",
+        "key": "alt+shift+d",
+        "when": "editorTextFocus && editorLangId == oil"
       }
     ],
     "grammars": [
@@ -170,6 +179,21 @@
           "type": "boolean",
           "default": false,
           "description": "Enable alternate confirmation dialog for file operations. When enabled, uses a QuickPick interface instead of the default modal confirmation dialog. Default is false."
+        },
+        "oil-code.columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["icon", "permissions", "size", "mtime"],
+            "enumDescriptions": [
+              "File type icon",
+              "Unix-style file permissions (e.g. -rw-r--r--)",
+              "File size in human-readable form (e.g. 12K)",
+              "Last modified time (e.g. Mar 14 14:23)"
+            ]
+          },
+          "default": ["icon"],
+          "description": "Columns to display in oil directory listings. 'icon' controls the file type icon. Reload the oil buffer after changing this setting."
         }
       }
     }
