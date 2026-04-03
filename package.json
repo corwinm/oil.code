@@ -170,6 +170,11 @@
           "type": "boolean",
           "default": false,
           "description": "Enable alternate confirmation dialog for file operations. When enabled, uses a QuickPick interface instead of the default modal confirmation dialog. Default is false."
+        },
+        "oil-code.previewByDefault": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable preview automatically when opening oil. Default is false."
         }
       }
     }

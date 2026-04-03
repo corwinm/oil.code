@@ -25,6 +25,11 @@ export function getEnableAlternateConfirmationSetting(): boolean {
   return config.get<boolean>("enableAlternateConfirmation") || false;
 }
 
+export function getPreviewByDefaultSetting(): boolean {
+  const config = vscode.workspace.getConfiguration("oil-code");
+  return config.get<boolean>("previewByDefault") || false;
+}
+
 let restoreAutoSave = false;
 
 export async function checkAndDisableAutoSave() {
