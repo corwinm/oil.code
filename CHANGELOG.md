@@ -1,3 +1,9 @@
+## [0.1.0](https://github.com/corwinm/oil.code/compare/v0.0.33...v0.1.0) (2026-04-04)
+
+### Features
+
+* add preview-by-default setting ([#59](https://github.com/corwinm/oil.code/issues/59)) ([780f268](https://github.com/corwinm/oil.code/commit/780f268c2e36912620a45e369b935e1f26f1ec85))
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
