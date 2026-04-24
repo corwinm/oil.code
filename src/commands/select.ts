@@ -14,7 +14,7 @@ import { updateDisableUpdatePreview } from "./disableUpdatePreview";
 import { logger } from "../logger";
 import { onDidSaveTextDocument } from "../handlers/onDidSaveTextDocument";
 import { getPreviewState } from "../state/previewState";
-import { preview } from "./preview";
+import { preview, previewTargetPath } from "./preview";
 
 const cursorInitChar = 5; // 5 characters for "/000 "
 
@@ -197,7 +197,7 @@ export async function select({
             }
             updateDisableUpdatePreview(false);
             if (getPreviewState().previewEnabled) {
-              preview(true, editorForSelection);
+              previewTargetPath(currentFileDiskPath, true);
             }
           }
         }, 50);

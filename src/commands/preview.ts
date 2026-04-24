@@ -61,8 +61,15 @@ export async function preview(
     targetPath = path.join(uriPathToDiskPath(currentFolderPath), fileName);
   }
 
+  await previewTargetPath(targetPath, overrideEnabled);
+}
+
+export async function previewTargetPath(
+  targetPath: string,
+  overrideEnabled: boolean = false
+) {
   if (!fs.existsSync(targetPath)) {
-    vscode.window.showErrorMessage(`"${fileName}" does not exist.`);
+    vscode.window.showErrorMessage(`"${path.basename(targetPath)}" does not exist.`);
     return;
   }
 
