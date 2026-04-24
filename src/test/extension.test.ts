@@ -58,6 +58,24 @@ async function waitForActiveTextEditor(message = "No active editor") {
   return activeEditor!;
 }
 
+async function insertIntoDocument(
+  document: vscode.TextDocument,
+  inserts: { position: vscode.Position; text: string }[]
+) {
+  const workspaceEdit = new vscode.WorkspaceEdit();
+  for (const { position, text } of inserts) {
+    workspaceEdit.insert(document.uri, position, text);
+  }
+  const applied = await vscode.workspace.applyEdit(workspaceEdit);
+  assert.ok(applied, "Workspace edit was not applied");
+}
+
+async function saveDocument(document: vscode.TextDocument) {
+  await sleep(200);
+  await document.save();
+  await sleep(400);
+}
+
 suite("oil.code", () => {
   // Setup and teardown for Sinon stubs
   let showWarningMessageStub: sinon.SinonStub;
@@ -397,13 +415,13 @@ suite("oil.code", () => {
     await waitForDocumentText("/000 ../");
 
     const editor3 = await waitForActiveTextEditor("No active editor3");
-    await editor3.edit((editBuilder) => {
-      editBuilder.insert(new vscode.Position(0, 8), newline);
-      editBuilder.insert(new vscode.Position(1, 0), `/002 oil-file.md`);
-    });
+    await insertIntoDocument(editor3.document, [
+      { position: new vscode.Position(0, 8), text: newline },
+      { position: new vscode.Position(1, 0), text: `/002 oil-file.md` },
+    ]);
     await waitForDocumentText(["/000 ../", "/002 oil-file.md"]);
 
-    await saveFile();
+    await saveDocument(editor3.document);
 
     await sleep(200);
 
@@ -469,12 +487,12 @@ suite("oil.code", () => {
     await waitForDocumentText("/000 ../");
 
     const editor3 = await waitForActiveTextEditor("No active editor3");
-    await editor3.edit((editBuilder) => {
-      editBuilder.insert(new vscode.Position(0, 8), newline);
-      editBuilder.insert(new vscode.Position(1, 0), `/002 oil-file-rename.md`);
-    });
+    await insertIntoDocument(editor3.document, [
+      { position: new vscode.Position(0, 8), text: newline },
+      { position: new vscode.Position(1, 0), text: `/002 oil-file-rename.md` },
+    ]);
 
-    await saveFile();
+    await saveDocument(editor3.document);
 
     await waitForDocumentText(["/000 ../", "/003 oil-file-rename.md"]);
 
@@ -511,14 +529,14 @@ suite("oil.code", () => {
     await waitForDocumentText("/000 ../");
 
     const editor2 = await waitForActiveTextEditor();
-    await editor2.edit((editBuilder) => {
-      editBuilder.insert(
-        new vscode.Position(1, 0),
-        ["", "/001 oil-dir-child/"].join(newline)
-      );
-    });
+    await insertIntoDocument(editor2.document, [
+      {
+        position: new vscode.Position(1, 0),
+        text: ["", "/001 oil-dir-child/"].join(newline),
+      },
+    ]);
 
-    await saveFile();
+    await saveDocument(editor2.document);
 
     await waitForDocumentText(["/000 ../", "/003 oil-dir-child/"]);
     await assertProjectFileStructure([
@@ -558,14 +576,14 @@ suite("oil.code", () => {
     await waitForDocumentText("/000 ../");
 
     const editor2 = await waitForActiveTextEditor();
-    await editor2.edit((editBuilder) => {
-      editBuilder.insert(
-        new vscode.Position(1, 0),
-        ["", "/001 oil-dir-child-renamed/"].join(newline)
-      );
-    });
+    await insertIntoDocument(editor2.document, [
+      {
+        position: new vscode.Position(1, 0),
+        text: ["", "/001 oil-dir-child-renamed/"].join(newline),
+      },
+    ]);
 
-    await saveFile();
+    await saveDocument(editor2.document);
 
     await sleep(100);
 
@@ -1006,10 +1024,10 @@ suite("oil.code", () => {
     const filePosition = new vscode.Position(2, 0);
     editor.selection = new vscode.Selection(filePosition, filePosition);
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(200);
 
     const testContent = `# Test File${newline}This is test content for copy/move operation.`;
-    await vscode.window.activeTextEditor?.edit((editBuilder) => {
+    const fileEditor = await waitForActiveTextEditor();
+    await fileEditor.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(0, 0), testContent);
     });
 
@@ -1017,7 +1035,11 @@ suite("oil.code", () => {
 
     // Return to oil view
     await vscode.commands.executeCommand("oil-code.open");
-    await sleep(100);
+    await waitForDocumentText([
+      "/000 ../",
+      "/001 target-dir/",
+      "/002 source-file.md",
+    ]);
 
     const editor2 = vscode.window.activeTextEditor;
     assert.ok(editor2, "No active editor2");
@@ -1029,28 +1051,28 @@ suite("oil.code", () => {
         new vscode.Range(new vscode.Position(2, 0), new vscode.Position(3, 0))
       );
     });
+    await waitForDocumentText(`/000 ../${newline}/001 target-dir/${newline}`);
 
     // Select the target directory
     const targetPosition = new vscode.Position(1, 0);
     editor2.selection = new vscode.Selection(targetPosition, targetPosition);
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(300);
+    await waitForDocumentText("/000 ../");
 
-    const editor3 = vscode.window.activeTextEditor;
-    assert.ok(editor3, "No active editor3");
+    const editor3 = await waitForActiveTextEditor("No active editor3");
     // Insert the copied file line
-    await editor3.edit((editBuilder) => {
-      editBuilder.insert(
-        new vscode.Position(1, 0),
-        `${newline}/002 source-file-rename.md`
-      );
-      editBuilder.insert(
-        new vscode.Position(2, 0),
-        `${newline}/002 source-file.md`
-      );
-    });
+    await insertIntoDocument(editor3.document, [
+      {
+        position: new vscode.Position(1, 0),
+        text: `${newline}/002 source-file-rename.md`,
+      },
+      {
+        position: new vscode.Position(2, 0),
+        text: `${newline}/002 source-file.md`,
+      },
+    ]);
 
-    await saveFile();
+    await saveDocument(editor3.document);
 
     await waitForDocumentText([
       "/000 ../",
