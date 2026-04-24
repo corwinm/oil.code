@@ -187,6 +187,7 @@ async function previewDirectory(directoryPath: string) {
     const previewUri = vscode.Uri.parse(
       `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
     );
+    const previousPreviewUri = getPreviewState().previewUri;
 
     // Write content to the virtual file
     oilPreviewProvider.writeFile(previewUri, Buffer.from(directoryContent));
@@ -212,6 +213,20 @@ async function previewDirectory(directoryPath: string) {
       previewUri: previewUri,
     };
     setPreviewState(newPreviewState);
+
+    if (previousPreviewUri && previousPreviewUri.toString() !== previewUri.toString()) {
+      const previousPreviewTab = vscode.window.tabGroups.all
+        .flatMap((group) => group.tabs)
+        .find(
+          (tab) =>
+            tab.input instanceof vscode.TabInputText &&
+            tab.input.uri.toString() === previousPreviewUri.toString()
+        );
+      if (previousPreviewTab) {
+        await vscode.window.tabGroups.close(previousPreviewTab);
+      }
+      oilPreviewProvider.delete(previousPreviewUri);
+    }
 
     // Start listening for cursor movements if not already listening
     if (!getPreviewState().cursorListenerDisposable) {

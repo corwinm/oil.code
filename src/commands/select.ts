@@ -195,9 +195,12 @@ export async function select({
               // Default to first line if not found
               editorForSelection.selection = new vscode.Selection(0, 0, 0, 0);
             }
-            updateDisableUpdatePreview(false);
             if (getPreviewState().previewEnabled) {
-              previewTargetPath(currentFileDiskPath, true);
+              previewTargetPath(currentFileDiskPath, true).finally(() =>
+                updateDisableUpdatePreview(false)
+              );
+            } else {
+              updateDisableUpdatePreview(false);
             }
           }
         }, 50);
