@@ -265,7 +265,7 @@ export async function onDidSaveTextDocument(document: vscode.TextDocument) {
         }
       }
 
-      // Copy files
+      // Copy files/directories
       for (const [oldPath, newPath] of copiedLines) {
         try {
           // Create directory structure if needed
@@ -274,13 +274,15 @@ export async function onDidSaveTextDocument(document: vscode.TextDocument) {
           if (!fs.existsSync(dirPath)) {
             fs.mkdirSync(dirPath, { recursive: true });
           }
-          if (!isDir) {
-            // Copy the file to the new location
+
+          if (isDir) {
+            fs.cpSync(oldPath, newPath, { recursive: true });
+          } else {
             fs.copyFileSync(oldPath, newPath);
           }
         } catch (error) {
           vscode.window.showErrorMessage(
-            `Failed to copy file: ${formatPath(oldPath)} to ${newPath.replace(
+            `Failed to copy: ${formatPath(oldPath)} to ${newPath.replace(
               currentPath + path.sep,
               ""
             )} - ${error}`
