@@ -49,6 +49,15 @@ async function setPreviewByDefault(enabled: boolean) {
     );
 }
 
+async function waitForActiveTextEditor(message = "No active editor") {
+  let activeEditor: vscode.TextEditor | undefined;
+  await waitFor(() => {
+    activeEditor = vscode.window.activeTextEditor;
+    assert.ok(activeEditor, message);
+  });
+  return activeEditor!;
+}
+
 suite("oil.code", () => {
   // Setup and teardown for Sinon stubs
   let showWarningMessageStub: sinon.SinonStub;
@@ -303,10 +312,9 @@ suite("oil.code", () => {
     editor.selection = new vscode.Selection(position, position);
     await vscode.commands.executeCommand("oil-code.select");
 
-    await sleep(300);
-
+    const fileEditor = await waitForActiveTextEditor();
     const mockFileContent = `mock file content`;
-    await vscode.window.activeTextEditor?.edit((editBuilder) => {
+    await fileEditor.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(0, 0), mockFileContent);
     });
 
@@ -316,7 +324,8 @@ suite("oil.code", () => {
 
     await waitForDocumentText(["/000 ../", "/001 oil-file.md"]);
 
-    vscode.window.activeTextEditor?.edit((editBuilder) => {
+    const editor2 = await waitForActiveTextEditor("No active editor2");
+    await editor2.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(1, 5), `new-`);
     });
 
@@ -354,17 +363,21 @@ suite("oil.code", () => {
     const filePosition = new vscode.Position(2, 0);
     editor.selection = new vscode.Selection(filePosition, filePosition);
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(200);
 
+    const fileEditor = await waitForActiveTextEditor();
     const mockFileContent = `mock file content`;
-    await vscode.window.activeTextEditor?.edit((editBuilder) => {
+    await fileEditor.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(0, 0), mockFileContent);
     });
 
     await saveFile();
 
     await vscode.commands.executeCommand("oil-code.open");
-    await sleep(100);
+    await waitForDocumentText([
+      "/000 ../",
+      "/001 sub-dir/",
+      "/002 oil-file.md",
+    ]);
 
     // Move cursor to the file name
     const position = new vscode.Position(2, 0);
@@ -374,17 +387,17 @@ suite("oil.code", () => {
 
     // Cut selection
     await vscode.commands.executeCommand("editor.action.deleteLines");
+    await waitForDocumentText(["/000 ../", "/001 sub-dir/"]);
 
     // Move cursor to the new directory
     const position3 = new vscode.Position(1, 0);
-    editor.selection = new vscode.Selection(position3, position3);
+    editor2.selection = new vscode.Selection(position3, position3);
 
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(300);
+    await waitForDocumentText("/000 ../");
 
-    const editor3 = vscode.window.activeTextEditor;
-    assert.ok(editor3, "No active editor3");
-    editor3.edit((editBuilder) => {
+    const editor3 = await waitForActiveTextEditor("No active editor3");
+    await editor3.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(0, 8), newline);
       editBuilder.insert(new vscode.Position(1, 0), `/002 oil-file.md`);
     });
@@ -425,17 +438,21 @@ suite("oil.code", () => {
     const filePosition = new vscode.Position(2, 0);
     editor.selection = new vscode.Selection(filePosition, filePosition);
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(200);
 
+    const fileEditor = await waitForActiveTextEditor();
     const mockFileContent = `mock file content`;
-    await vscode.window.activeTextEditor?.edit((editBuilder) => {
+    await fileEditor.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(0, 0), mockFileContent);
     });
 
     await saveFile();
 
     await vscode.commands.executeCommand("oil-code.open");
-    await sleep(100);
+    await waitForDocumentText([
+      "/000 ../",
+      "/001 sub-dir/",
+      "/002 oil-file.md",
+    ]);
 
     const editor2 = vscode.window.activeTextEditor;
     assert.ok(editor2, "No active editor2");
@@ -443,17 +460,16 @@ suite("oil.code", () => {
     editor2.selection = new vscode.Selection(2, 5, 2, 5);
 
     await vscode.commands.executeCommand("editor.action.deleteLines");
-    await sleep(200);
+    await waitForDocumentText(["/000 ../", "/001 sub-dir/"]);
 
     // Move cursor to the new directory
     editor2.selection = new vscode.Selection(1, 5, 1, 5);
 
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(300);
+    await waitForDocumentText("/000 ../");
 
-    const editor3 = vscode.window.activeTextEditor;
-    assert.ok(editor3, "No active editor3");
-    editor3.edit((editBuilder) => {
+    const editor3 = await waitForActiveTextEditor("No active editor3");
+    await editor3.edit((editBuilder) => {
       editBuilder.insert(new vscode.Position(0, 8), newline);
       editBuilder.insert(new vscode.Position(1, 0), `/002 oil-file-rename.md`);
     });
@@ -489,14 +505,13 @@ suite("oil.code", () => {
 
     editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("editor.action.deleteLines");
-    await sleep(100);
+    await waitForDocumentText(["/000 ../", "/002 oil-dir-parent/"]);
     editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(500);
+    await waitForDocumentText("/000 ../");
 
-    const editor2 = vscode.window.activeTextEditor;
-    assert.ok(editor2, "No active editor");
-    editor2.edit((editBuilder) => {
+    const editor2 = await waitForActiveTextEditor();
+    await editor2.edit((editBuilder) => {
       editBuilder.insert(
         new vscode.Position(1, 0),
         ["", "/001 oil-dir-child/"].join(newline)
@@ -537,14 +552,13 @@ suite("oil.code", () => {
 
     editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("editor.action.deleteLines");
-    await sleep(200);
+    await waitForDocumentText(["/000 ../", "/002 oil-dir-parent/"]);
     editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("oil-code.select");
-    await sleep(200);
+    await waitForDocumentText("/000 ../");
 
-    const editor2 = vscode.window.activeTextEditor;
-    assert.ok(editor2, "No active editor");
-    editor2.edit((editBuilder) => {
+    const editor2 = await waitForActiveTextEditor();
+    await editor2.edit((editBuilder) => {
       editBuilder.insert(
         new vscode.Position(1, 0),
         ["", "/001 oil-dir-child-renamed/"].join(newline)
