@@ -11,9 +11,12 @@ import { oilPreviewProvider } from "../providers/providers";
 import { logger } from "../logger";
 import { isUpdatePreviewDisabled } from "./disableUpdatePreview";
 
-export async function preview(overrideEnabled: boolean = false) {
+export async function preview(
+  overrideEnabled: boolean = false,
+  editorOverride?: vscode.TextEditor
+) {
   logger.trace("Previewing file or directory...");
-  const activeEditor = vscode.window.activeTextEditor;
+  const activeEditor = editorOverride ?? vscode.window.activeTextEditor;
 
   if (!activeEditor) {
     vscode.window.showErrorMessage("No active editor found.");
@@ -58,8 +61,15 @@ export async function preview(overrideEnabled: boolean = false) {
     targetPath = path.join(uriPathToDiskPath(currentFolderPath), fileName);
   }
 
+  await previewTargetPath(targetPath, overrideEnabled);
+}
+
+export async function previewTargetPath(
+  targetPath: string,
+  overrideEnabled: boolean = false
+) {
   if (!fs.existsSync(targetPath)) {
-    vscode.window.showErrorMessage(`"${fileName}" does not exist.`);
+    vscode.window.showErrorMessage(`"${path.basename(targetPath)}" does not exist.`);
     return;
   }
 
@@ -177,6 +187,7 @@ async function previewDirectory(directoryPath: string) {
     const previewUri = vscode.Uri.parse(
       `${OIL_PREVIEW_SCHEME}://oil-preview/${previewName}`
     );
+    const previousPreviewUri = getPreviewState().previewUri;
 
     // Write content to the virtual file
     oilPreviewProvider.writeFile(previewUri, Buffer.from(directoryContent));
@@ -202,6 +213,20 @@ async function previewDirectory(directoryPath: string) {
       previewUri: previewUri,
     };
     setPreviewState(newPreviewState);
+
+    if (previousPreviewUri && previousPreviewUri.toString() !== previewUri.toString()) {
+      const previousPreviewTab = vscode.window.tabGroups.all
+        .flatMap((group) => group.tabs)
+        .find(
+          (tab) =>
+            tab.input instanceof vscode.TabInputText &&
+            tab.input.uri.toString() === previousPreviewUri.toString()
+        );
+      if (previousPreviewTab) {
+        await vscode.window.tabGroups.close(previousPreviewTab);
+      }
+      oilPreviewProvider.delete(previousPreviewUri);
+    }
 
     // Start listening for cursor movements if not already listening
     if (!getPreviewState().cursorListenerDisposable) {
