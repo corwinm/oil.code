@@ -31,8 +31,8 @@ Provide a clear and concise description of what this PR does:
 
 ## 🔗 Related Issues
 
-<!-- Link any related issues using "Fixes #123", "Closes #123", or "Resolves #123" -->
-<!-- If no related issues, you can remove this section or write "N/A" -->
+<!-- Link any related issues using GitHub closing keywords and a real issue number. -->
+<!-- If no related issues, you can remove this section or write "N/A". -->
 
 -
 
