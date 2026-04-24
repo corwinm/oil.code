@@ -1,3 +1,9 @@
+## [0.1.1](https://github.com/corwinm/oil.code/compare/v0.1.0...v0.1.1) (2026-04-24)
+
+### Bug Fixes
+
+* Copy dir contents when copy and replace submitted ([#62](https://github.com/corwinm/oil.code/issues/62)) ([19341c3](https://github.com/corwinm/oil.code/commit/19341c3773cd6c2c4181330e84b084ed59faedc2))
+
 ## [0.1.0](https://github.com/corwinm/oil.code/compare/v0.0.33...v0.1.0) (2026-04-04)
 
 ### Features
