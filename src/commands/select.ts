@@ -156,7 +156,11 @@ export async function select({
 
         // Use setTimeout to ensure the editor content is updated
         setTimeout(() => {
-          const editorForSelection = vscode.window.activeTextEditor;
+          // Use the editor returned by showTextDocument instead of the global
+          // activeTextEditor. Opening/updating the side preview can briefly make
+          // another editor active, which makes the preview-by-default flow racey
+          // in CI and leaves the cursor on "../".
+          const editorForSelection = editor;
           if (editorForSelection) {
             // Find the line with the directory name (with trailing slash)
             const docText = editorForSelection.document.getText();
