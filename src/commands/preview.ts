@@ -11,9 +11,12 @@ import { oilPreviewProvider } from "../providers/providers";
 import { logger } from "../logger";
 import { isUpdatePreviewDisabled } from "./disableUpdatePreview";
 
-export async function preview(overrideEnabled: boolean = false) {
+export async function preview(
+  overrideEnabled: boolean = false,
+  editorOverride?: vscode.TextEditor
+) {
   logger.trace("Previewing file or directory...");
-  const activeEditor = vscode.window.activeTextEditor;
+  const activeEditor = editorOverride ?? vscode.window.activeTextEditor;
 
   if (!activeEditor) {
     vscode.window.showErrorMessage("No active editor found.");

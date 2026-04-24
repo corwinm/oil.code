@@ -197,7 +197,7 @@ export async function select({
             }
             updateDisableUpdatePreview(false);
             if (getPreviewState().previewEnabled) {
-              preview(true);
+              preview(true, editorForSelection);
             }
           }
         }, 50);
@@ -208,7 +208,7 @@ export async function select({
           updateDisableUpdatePreview(false);
           // Manually update preview if enabled
           if (getPreviewState().previewEnabled) {
-            preview(true);
+            preview(true, editor);
           }
         }, 50);
       }
