@@ -14,7 +14,7 @@ import { updateDisableUpdatePreview } from "./disableUpdatePreview";
 import { logger } from "../logger";
 import { onDidSaveTextDocument } from "../handlers/onDidSaveTextDocument";
 import { getPreviewState } from "../state/previewState";
-import { preview } from "./preview";
+import { preview, previewTargetPath } from "./preview";
 
 const cursorInitChar = 5; // 5 characters for "/000 "
 
@@ -141,7 +141,7 @@ export async function select({
       const editor = await vscode.window.showTextDocument(newDoc, {
         viewColumn: viewColumn || activeEditor.viewColumn,
         preview: false,
-        preserveFocus: activeEditor.document.isDirty,
+        preserveFocus: false,
       });
 
       // Close the old document after the new one is shown (only if same column)
@@ -156,7 +156,11 @@ export async function select({
 
         // Use setTimeout to ensure the editor content is updated
         setTimeout(() => {
-          const editorForSelection = vscode.window.activeTextEditor;
+          // Use the editor returned by showTextDocument instead of the global
+          // activeTextEditor. Opening/updating the side preview can briefly make
+          // another editor active, which makes the preview-by-default flow racey
+          // in CI and leaves the cursor on "../".
+          const editorForSelection = editor;
           if (editorForSelection) {
             // Find the line with the directory name (with trailing slash)
             const docText = editorForSelection.document.getText();
@@ -191,9 +195,17 @@ export async function select({
               // Default to first line if not found
               editorForSelection.selection = new vscode.Selection(0, 0, 0, 0);
             }
-            updateDisableUpdatePreview(false);
             if (getPreviewState().previewEnabled) {
-              preview(true);
+              void previewTargetPath(currentFileDiskPath, true)
+                .catch((error) => {
+                  logger.error(
+                    "Failed to update preview after navigating up:",
+                    error
+                  );
+                })
+                .finally(() => updateDisableUpdatePreview(false));
+            } else {
+              updateDisableUpdatePreview(false);
             }
           }
         }, 50);
@@ -204,7 +216,12 @@ export async function select({
           updateDisableUpdatePreview(false);
           // Manually update preview if enabled
           if (getPreviewState().previewEnabled) {
-            preview(true);
+            void preview(true, editor).catch((error) => {
+              logger.error(
+                "Failed to update preview after entering directory:",
+                error
+              );
+            });
           }
         }, 50);
       }
