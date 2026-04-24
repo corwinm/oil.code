@@ -70,7 +70,7 @@
       {
         "assets": [
           {
-            "path": "dist/oil-code-${nextRelease.version}.vsix",
+            "path": "dist/*.vsix",
             "label": "oil.code VS Code Extension (.vsix)"
           }
         ]
