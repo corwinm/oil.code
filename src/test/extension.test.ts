@@ -918,6 +918,52 @@ suite("oil.code", () => {
     });
   });
 
+  test("Copy non-empty directory and rename preserves nested files", async () => {
+    const workspaceUri = vscode.workspace.workspaceFolders![0].uri;
+    const sourceDirUri = vscode.Uri.joinPath(workspaceUri, "test");
+    const sourceFileUri = vscode.Uri.joinPath(sourceDirUri, "test.md");
+    const testContent = `# Test${newline}Nested file content.`;
+
+    await vscode.workspace.fs.createDirectory(sourceDirUri);
+    await vscode.workspace.fs.writeFile(
+      sourceFileUri,
+      Buffer.from(testContent, "utf-8")
+    );
+
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText(["/000 ../", "/001 test/"]);
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    // Copy and rename non-empty directory.
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(new vscode.Position(2, 0), `${newline}/001 test2/`);
+    });
+
+    await saveFile();
+
+    await waitForDocumentText(["/000 ../", "/001 test/", "/002 test2/"]);
+    await assertProjectFileStructure([
+      "test/",
+      "  test.md",
+      "test2/",
+      "  test.md",
+    ]);
+
+    const copiedFileUri = vscode.Uri.joinPath(workspaceUri, "test2", "test.md");
+    const copiedFileContent = await vscode.workspace.fs.readFile(copiedFileUri);
+    assert.strictEqual(
+      copiedFileContent.toString(),
+      testContent,
+      "Copied directory did not preserve nested file content"
+    );
+
+    editor.selection = new vscode.Selection(2, 0, 2, 0);
+    await vscode.commands.executeCommand("oil-code.select");
+    await waitForDocumentText(["/000 ../", "/003 test.md"]);
+  });
+
   test("Copy and move file in one action", async () => {
     await vscode.commands.executeCommand("oil-code.open");
     await waitForDocumentText("/000 ../");
