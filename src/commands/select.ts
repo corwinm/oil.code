@@ -141,7 +141,7 @@ export async function select({
       const editor = await vscode.window.showTextDocument(newDoc, {
         viewColumn: viewColumn || activeEditor.viewColumn,
         preview: false,
-        preserveFocus: activeEditor.document.isDirty,
+        preserveFocus: false,
       });
 
       // Close the old document after the new one is shown (only if same column)
