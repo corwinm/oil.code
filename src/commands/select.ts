@@ -196,9 +196,14 @@ export async function select({
               editorForSelection.selection = new vscode.Selection(0, 0, 0, 0);
             }
             if (getPreviewState().previewEnabled) {
-              previewTargetPath(currentFileDiskPath, true).finally(() =>
-                updateDisableUpdatePreview(false)
-              );
+              void previewTargetPath(currentFileDiskPath, true)
+                .catch((error) => {
+                  logger.error(
+                    "Failed to update preview after navigating up:",
+                    error
+                  );
+                })
+                .finally(() => updateDisableUpdatePreview(false));
             } else {
               updateDisableUpdatePreview(false);
             }
@@ -211,7 +216,12 @@ export async function select({
           updateDisableUpdatePreview(false);
           // Manually update preview if enabled
           if (getPreviewState().previewEnabled) {
-            preview(true, editor);
+            void preview(true, editor).catch((error) => {
+              logger.error(
+                "Failed to update preview after entering directory:",
+                error
+              );
+            });
           }
         }, 50);
       }
