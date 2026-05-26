@@ -42,7 +42,7 @@ To open oil.code:
 
 If you're using vscode-neovim and want to customize the keymaps for oil.code:
 
-1. Set `oil-code.disableDefaultKeymaps` to `true` in your VSCode settings
+1. Set `oil-code.disableVimKeymaps` to `true` in your VSCode settings
 2. Add the following to your `init.lua` and customize as you like:
 
 ```lua
@@ -75,7 +75,7 @@ end
 
 If you're using VSCodeVim and want to customize the keymaps for oil.code:
 
-1. Set `oil-code.disableDefaultKeymaps` to `true` in your VSCode settings
+1. Set `oil-code.disableVimKeymaps` to `true` in your VSCode settings
 2. Add the following to your `settings.json` and customize as you like:
 
 ```json

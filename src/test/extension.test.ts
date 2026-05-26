@@ -70,6 +70,19 @@ async function insertIntoDocument(
   assert.ok(applied, "Workspace edit was not applied");
 }
 
+async function deleteDocumentLine(document: vscode.TextDocument, line: number) {
+  const workspaceEdit = new vscode.WorkspaceEdit();
+  const range = line === document.lineCount - 1 && line > 0
+    ? new vscode.Range(
+      document.lineAt(line - 1).range.end,
+      document.lineAt(line).range.end
+    )
+    : document.lineAt(line).rangeIncludingLineBreak;
+  workspaceEdit.delete(document.uri, range);
+  const applied = await vscode.workspace.applyEdit(workspaceEdit);
+  assert.ok(applied, "Workspace edit was not applied");
+}
+
 async function saveDocument(document: vscode.TextDocument) {
   await sleep(200);
   await document.save();
@@ -403,8 +416,8 @@ suite("oil.code", () => {
     assert.ok(editor2, "No active editor2");
     editor2.selection = new vscode.Selection(position, position);
 
-    // Cut selection
-    await vscode.commands.executeCommand("editor.action.deleteLines");
+    // Remove the source entry before recreating it under the destination.
+    await deleteDocumentLine(editor2.document, 2);
     await waitForDocumentText(["/000 ../", "/001 sub-dir/"]);
 
     // Move cursor to the new directory
@@ -477,7 +490,7 @@ suite("oil.code", () => {
     // Move cursor to the file name
     editor2.selection = new vscode.Selection(2, 5, 2, 5);
 
-    await vscode.commands.executeCommand("editor.action.deleteLines");
+    await deleteDocumentLine(editor2.document, 2);
     await waitForDocumentText(["/000 ../", "/001 sub-dir/"]);
 
     // Move cursor to the new directory
@@ -522,7 +535,7 @@ suite("oil.code", () => {
     ]);
 
     editor.selection = new vscode.Selection(1, 5, 1, 5);
-    await vscode.commands.executeCommand("editor.action.deleteLines");
+    await deleteDocumentLine(editor.document, 1);
     await waitForDocumentText(["/000 ../", "/002 oil-dir-parent/"]);
     editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("oil-code.select");
@@ -569,7 +582,7 @@ suite("oil.code", () => {
     ]);
 
     editor.selection = new vscode.Selection(1, 5, 1, 5);
-    await vscode.commands.executeCommand("editor.action.deleteLines");
+    await deleteDocumentLine(editor.document, 1);
     await waitForDocumentText(["/000 ../", "/002 oil-dir-parent/"]);
     editor.selection = new vscode.Selection(1, 5, 1, 5);
     await vscode.commands.executeCommand("oil-code.select");
