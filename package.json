@@ -231,7 +231,8 @@
       "@azure/msal-node>uuid": "14.0.0",
       "brace-expansion@<1.1.13": "1.1.13",
       "brace-expansion@>=2.0.0 <2.0.3": "2.0.3",
-      "brace-expansion@>=5.0.0 <5.0.6": "5.0.6"
+      "brace-expansion@>=5.0.0 <5.0.6": "5.0.6",
+      "npm-run-all>shell-quote": "1.8.4"
     },
     "onlyBuiltDependencies": [
       "@vscode/vsce-sign",
