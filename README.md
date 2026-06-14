@@ -6,7 +6,7 @@
 <p align="center">Edit your filesystem like a normal file.</p>
 <p align=center>
 <a href="https://github.com/corwinm/oil.code/actions/workflows/main.yml"><img src="https://github.com/corwinm/oil.code/actions/workflows/main.yml/badge.svg"></a>
-<a href="https://github.com/corwinm/oil.code/blob/main/LICENSE"><img src="https://img.shields.io/github/license/corwinm/oil.code"></a>
+<a href="https://github.com/corwinm/oil.code/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 <a href="https://github.com/corwinm/oil.code/releases"><img src="https://img.shields.io/github/v/release/corwinm/oil.code?label=release"></a>
 
 </p>
