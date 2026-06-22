@@ -9,6 +9,7 @@ import { sleep } from "./utils/sleep";
 import { assertProjectFileStructure } from "./utils/assertProjectFileStructure";
 import { moveCursorToLine } from "./utils/moveCursorToLine";
 import { assertSelectionOnLine } from "./utils/assertSelectionOnLine";
+import { formatMetadataColumns, formatSize } from "../utils/metadataUtils";
 
 async function cleanupTestDir() {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -1122,6 +1123,118 @@ suite("oil.code", () => {
       movedFileContent.toString(),
       testContent,
       "Content of moved file does not match expected content"
+    );
+  });
+
+  test("toggleDetails command executes without error", async () => {
+    // Run the command twice (toggle on, toggle off) to verify it
+    // completes without throwing in both directions.
+    // Direct state inspection is not possible here because the extension
+    // is bundled by esbuild, giving it a separate module instance from
+    // the test's compiled output.
+    await vscode.commands.executeCommand("oil-code.toggleDetails");
+    await vscode.commands.executeCommand("oil-code.toggleDetails");
+  });
+
+  test("Rename with metadata columns enabled does not corrupt file operations", async () => {
+    // Open oil in icon+size+mtime mode
+    await vscode.workspace
+      .getConfiguration("oil-code")
+      .update("columns", ["icon", "size", "mtime"], vscode.ConfigurationTarget.Global);
+
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText("/000 ../");
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "No active editor");
+
+    // Create a file
+    await editor.edit((editBuilder) => {
+      editBuilder.insert(new vscode.Position(1, 0), `${newline}metadata-rename-test.md`);
+    });
+    await saveFile();
+    await waitForDocumentText(["/000 ../", "/001 metadata-rename-test.md"]);
+
+    // Rename the file by editing only the filename portion (after the identifier)
+    const line = editor.document.lineAt(1).text; // "/001 metadata-rename-test.md"
+    const prefixLength = 5; // "/001 "
+    await editor.edit((editBuilder) => {
+      editBuilder.replace(
+        new vscode.Range(
+          new vscode.Position(1, prefixLength),
+          new vscode.Position(1, line.length)
+        ),
+        "metadata-renamed.md"
+      );
+    });
+    await saveFile();
+
+    await assertProjectFileStructure(["metadata-renamed.md"]);
+
+    // Restore columns setting
+    await vscode.workspace
+      .getConfiguration("oil-code")
+      .update("columns", ["icon"], vscode.ConfigurationTarget.Global);
+  });
+
+  test("When columns is icon-only, buffer text stays plain /NNN filename format", async () => {
+    // Verifies that metadata is never embedded in buffer text (always decoration-only).
+    // Cross-bundle internal state (metadataCache) cannot be read from test code because
+    // the extension is bundled by esbuild into a separate module instance.
+    await vscode.workspace
+      .getConfiguration("oil-code")
+      .update("columns", ["icon"], vscode.ConfigurationTarget.Global);
+
+    await vscode.commands.executeCommand("oil-code.open");
+    await waitForDocumentText("/000 ../");
+
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "Oil editor should be active");
+
+    const text = editor.document.getText();
+    const lines = text.split(newline).filter((l) => l.trim().length > 0);
+    for (const line of lines) {
+      assert.match(
+        line,
+        /^\/\d{3} /,
+        `Each line must start with /NNN prefix only — no metadata in buffer text. Got: ${line}`
+      );
+    }
+  });
+
+  test("metadata size column stays fixed-width around unit boundaries", () => {
+    const sizes = [
+      0,
+      999,
+      1023,
+      1024,
+      1024 * 999,
+      1024 * 1024 - 1,
+      1024 * 1024,
+      1024 * 1024 * 999,
+    ];
+
+    for (const size of sizes) {
+      assert.ok(
+        formatSize(size).length <= 4,
+        `Expected ${size} bytes to fit the 4-character size column, got ${formatSize(size)}`
+      );
+    }
+  });
+
+  test("metadata formatter pads columns consistently with non-breaking spaces", () => {
+    const formatted = formatMetadataColumns(
+      {
+        permissions: "-rw-r--r--",
+        size: "1K",
+        mtime: "Jan\u00A005\u00A014:23",
+      },
+      ["permissions", "size", "mtime"]
+    );
+
+    assert.strictEqual(
+      formatted,
+      "\u00A0\u00A0-rw-r--r--\u00A0\u00A0\u00A0\u00A01K\u00A0\u00A0Jan\u00A005\u00A014:23\u00A0\u00A0"
     );
   });
 });

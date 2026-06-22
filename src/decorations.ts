@@ -1,6 +1,11 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { getNerdFontFileIcon } from "./nerd-fonts";
+import { peekOilState } from "./state/oilState";
+import { getDetailsVisible } from "./state/columnState";
+import { getColumnsSettings } from "./utils/settings";
+import { formatMetadataColumns } from "./utils/metadataUtils";
+import { oilUriToDiskPath, normalizePathToUri, removeTrailingSlash } from "./utils/pathUtils";
 
 // Create decoration type for hidden prefix
 const hiddenPrefixDecoration = vscode.window.createTextEditorDecorationType({
@@ -111,6 +116,20 @@ function getFileIcon(fileName: string, isDirectory: boolean): string {
 // Decoration types for different file types (created on demand)
 const fileIconDecorations = new Map<string, vscode.TextEditorDecorationType>();
 
+// Single decoration type for all metadata before-text (style only; contentText is per-instance).
+// Applied AFTER icon decorations so VSCode stacks it between the icon and the filename text.
+let metadataDecorationType: vscode.TextEditorDecorationType | null = null;
+function getMetadataDecorationType(): vscode.TextEditorDecorationType {
+  if (!metadataDecorationType) {
+    metadataDecorationType = vscode.window.createTextEditorDecorationType({
+      before: {
+        color: new vscode.ThemeColor("editorInlayHint.foreground"),
+      },
+    });
+  }
+  return metadataDecorationType;
+}
+
 // Apply decorations to hide prefixes
 export function updateDecorations(editor: vscode.TextEditor | undefined) {
   if (!editor || editor.document.languageId !== "oil") {
@@ -125,8 +144,34 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
     editor.setDecorations(decoration, []);
   });
 
+  // Clear previous metadata decorations (avoid creating the decoration type too early)
+  if (metadataDecorationType) {
+    editor.setDecorations(metadataDecorationType, []);
+  }
+
   // Track icon decorations for this update
   const iconDecorations = new Map<string, vscode.Range[]>();
+
+  // Determine if metadata columns should be rendered
+  const oilState = peekOilState();
+  const columns = getColumnsSettings();
+  const detailsVisible = getDetailsVisible();
+  const metaColumns = columns.filter((c) => c !== "icon");
+  const showMetadata = oilState !== undefined && detailsVisible && metaColumns.length > 0;
+
+  // Resolve the metadata map for the current directory (once, before the line loop)
+  let metadataMap: Map<string, import("./constants").FileMetadata> | undefined;
+  if (showMetadata) {
+    try {
+      const diskPath = oilUriToDiskPath(document.uri);
+      const folderPathUri = removeTrailingSlash(normalizePathToUri(diskPath));
+      metadataMap = oilState!.metadataCache.get(folderPathUri);
+    } catch {
+      // Not a valid oil URI — skip metadata rendering
+    }
+  }
+
+  const metaDecorations: vscode.DecorationOptions[] = [];
 
   // Add icon after the prefix and space
   // Get appropriate icon based on configuration
@@ -196,6 +241,23 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
           )
         );
 
+      // Add metadata before-decoration for this line (renders between icon and filename)
+      if (showMetadata && metadataMap) {
+        const meta = metadataMap.get(fileName);
+        if (meta) {
+          const metaText = formatMetadataColumns(meta, metaColumns);
+          if (metaText) {
+            const filenameStartPos = new vscode.Position(i, prefixLength);
+            metaDecorations.push({
+              range: new vscode.Range(filenameStartPos, filenameStartPos),
+              renderOptions: {
+                before: { contentText: metaText },
+              },
+            });
+          }
+        }
+      }
+
       // If cursor is within the prefix area, move it to the first visible character
       for (let selection of editor.selections) {
         if (
@@ -226,6 +288,9 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
       editor.setDecorations(decoration, ranges);
     }
   }
+
+  // Apply metadata after-decorations
+  editor.setDecorations(getMetadataDecorationType(), metaDecorations);
 }
 
 // Disposable for cleanup

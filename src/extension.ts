@@ -24,6 +24,7 @@ import { openCwd } from "./commands/openCwd";
 import { preview } from "./commands/preview";
 import { refresh } from "./commands/refresh";
 import { cd } from "./commands/cd";
+import { toggleDetails } from "./commands/toggleDetails";
 import { logger } from "./logger";
 
 // In your extension's activate function
@@ -79,7 +80,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("oil-code.openCwd", openCwd),
     vscode.commands.registerCommand("oil-code.preview", preview),
     vscode.commands.registerCommand("oil-code.refresh", refresh),
-    vscode.commands.registerCommand("oil-code.cd", cd)
+    vscode.commands.registerCommand("oil-code.cd", cd),
+    vscode.commands.registerCommand("oil-code.toggleDetails", toggleDetails)
   );
 
   // Make initial attempt to register Vim keymaps with retries

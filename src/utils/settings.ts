@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { MetadataColumn } from "../constants";
 
 export function getDisableVimKeymapsSetting(): boolean {
   const config = vscode.workspace.getConfiguration("oil-code");
@@ -28,6 +29,11 @@ export function getEnableAlternateConfirmationSetting(): boolean {
 export function getPreviewByDefaultSetting(): boolean {
   const config = vscode.workspace.getConfiguration("oil-code");
   return config.get<boolean>("previewByDefault") || false;
+}
+
+export function getColumnsSettings(): MetadataColumn[] {
+  const config = vscode.workspace.getConfiguration("oil-code");
+  return config.get<MetadataColumn[]>("columns") ?? ["icon"];
 }
 
 let restoreAutoSave = false;

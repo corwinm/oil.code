@@ -104,6 +104,20 @@ export async function registerVSCodeVimKeymap(): Promise<boolean> {
         keymapChanged = true;
       }
 
+      // Check for and add the Oil toggleDetails binding if not present
+      const hasOilToggleDetailsBinding = normalModeKeymap.some((binding) =>
+        binding.commands?.some(
+          (cmd: { command: string }) => cmd.command === "oil-code.toggleDetails"
+        )
+      );
+      if (!hasOilToggleDetailsBinding) {
+        updatedKeymap.push({
+          before: ["g", "d"],
+          commands: [{ command: "oil-code.toggleDetails" }],
+        });
+        keymapChanged = true;
+      }
+
       // Update the configuration if changes were made
       if (keymapChanged) {
         await vimConfig.update(
