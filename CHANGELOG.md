@@ -6,6 +6,18 @@
 
 ### Bug Fixes
 
+* align vscode typings with engine ([#79](https://github.com/corwinm/oil.code/issues/79)) ([53759d6](https://github.com/corwinm/oil.code/commit/53759d659ce6a88d6ead9b9ea14f6b8ab5581443))
+* update esbuild security patch ([#73](https://github.com/corwinm/oil.code/issues/73)) ([60235f2](https://github.com/corwinm/oil.code/commit/60235f2a561a374f9cc52dee7bb48b33894d4606))
+* update shell-quote transitive dependency ([#72](https://github.com/corwinm/oil.code/issues/72)) ([412781b](https://github.com/corwinm/oil.code/commit/412781b83a8e217c33d7283e5702aac56a0f9369))
+
+## [0.2.0](https://github.com/corwinm/oil.code/compare/v0.1.1...v0.2.0) (2026-06-23)
+
+### Features
+
+* add configurable metadata columns ([#77](https://github.com/corwinm/oil.code/issues/77)) ([48cf3ab](https://github.com/corwinm/oil.code/commit/48cf3ab71a2a4db464062d0aacb87b9e682174f8)), closes [#53](https://github.com/corwinm/oil.code/issues/53) [#54](https://github.com/corwinm/oil.code/issues/54)
+
+### Bug Fixes
+
 * update esbuild security patch ([#73](https://github.com/corwinm/oil.code/issues/73)) ([60235f2](https://github.com/corwinm/oil.code/commit/60235f2a561a374f9cc52dee7bb48b33894d4606))
 * update shell-quote transitive dependency ([#72](https://github.com/corwinm/oil.code/issues/72)) ([412781b](https://github.com/corwinm/oil.code/commit/412781b83a8e217c33d7283e5702aac56a0f9369))
 
