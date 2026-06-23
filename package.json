@@ -5,7 +5,7 @@
   "icon": "images/oil.code.logo.png",
   "repository": "https://github.com/corwinm/oil.code",
   "publisher": "haphazarddev",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "engines": {
     "vscode": "^1.96.2"
   },
@@ -189,7 +189,12 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["icon", "permissions", "size", "mtime"],
+            "enum": [
+              "icon",
+              "permissions",
+              "size",
+              "mtime"
+            ],
             "enumDescriptions": [
               "File type icon",
               "Unix-style file permissions (e.g. -rw-r--r--)",
@@ -197,7 +202,9 @@
               "Last modified time (e.g. Mar 14 14:23)"
             ]
           },
-          "default": ["icon"],
+          "default": [
+            "icon"
+          ],
           "description": "Columns to display in oil directory listings. 'icon' controls the file type icon. Reload the oil buffer after changing this setting."
         }
       }
