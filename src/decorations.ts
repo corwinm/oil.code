@@ -113,21 +113,29 @@ function getFileIcon(fileName: string, isDirectory: boolean): string {
   }
 }
 
-// Decoration types for different file types (created on demand)
-const fileIconDecorations = new Map<string, vscode.TextEditorDecorationType>();
-
-// Single decoration type for all metadata before-text (style only; contentText is per-instance).
-// Applied AFTER icon decorations so VSCode stacks it between the icon and the filename text.
-let metadataDecorationType: vscode.TextEditorDecorationType | null = null;
-function getMetadataDecorationType(): vscode.TextEditorDecorationType {
-  if (!metadataDecorationType) {
-    metadataDecorationType = vscode.window.createTextEditorDecorationType({
-      before: {
-        color: new vscode.ThemeColor("editorInlayHint.foreground"),
-      },
-    });
+export function buildEntryDecorationContent({
+  icon,
+  metadataText,
+}: {
+  icon: string;
+  metadataText?: string;
+}): string {
+  if (metadataText) {
+    return `${icon.trimEnd()}${metadataText}`;
   }
-  return metadataDecorationType;
+
+  return /\s$/.test(icon) ? icon : `${icon} `;
+}
+
+// Single decoration type for all entry before-text. The icon and metadata columns
+// are emitted together so VS Code cannot reorder multiple same-position
+// decorations while navigating between directories.
+let entryDecorationType: vscode.TextEditorDecorationType | null = null;
+function getEntryDecorationType(): vscode.TextEditorDecorationType {
+  if (!entryDecorationType) {
+    entryDecorationType = vscode.window.createTextEditorDecorationType({});
+  }
+  return entryDecorationType;
 }
 
 // Apply decorations to hide prefixes
@@ -139,18 +147,10 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
   const document = editor.document;
   const hiddenRanges: vscode.Range[] = [];
 
-  // Clear previous icon decorations
-  fileIconDecorations.forEach((decoration) => {
-    editor.setDecorations(decoration, []);
-  });
-
-  // Clear previous metadata decorations (avoid creating the decoration type too early)
-  if (metadataDecorationType) {
-    editor.setDecorations(metadataDecorationType, []);
+  // Clear previous entry decorations
+  if (entryDecorationType) {
+    editor.setDecorations(entryDecorationType, []);
   }
-
-  // Track icon decorations for this update
-  const iconDecorations = new Map<string, vscode.Range[]>();
 
   // Determine if metadata columns should be rendered
   const oilState = peekOilState();
@@ -171,9 +171,9 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
     }
   }
 
-  const metaDecorations: vscode.DecorationOptions[] = [];
+  const entryDecorations: vscode.DecorationOptions[] = [];
 
-  // Add icon after the prefix and space
+  // Add icon and optional metadata after the hidden prefix
   // Get appropriate icon based on configuration
   const config = vscode.workspace.getConfiguration("oil-code");
   const hasNerdFont = config.get("hasNerdFont") === true;
@@ -195,68 +195,40 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
       const endPos = new vscode.Position(i, prefixLength);
       hiddenRanges.push(new vscode.Range(startPos, endPos));
 
-      let icon;
-      let fontColor = "inherit";
-      let iconKey = "";
+      let icon: string;
+      let fontColor: string | vscode.ThemeColor | undefined;
       if (hasNerdFont) {
-        const {
-          icon: nerdIcon,
-          color,
-          extension,
-        } = getNerdFontFileIcon(fileName, isDirectory);
+        const { icon: nerdIcon, color } = getNerdFontFileIcon(fileName, isDirectory);
         icon = nerdIcon;
         fontColor = color;
-        iconKey = extension;
       } else {
         icon = getFileIcon(fileName, isDirectory);
-        iconKey = isDirectory ? "directory" : path.extname(fileName) || "file";
       }
 
-      // Create decoration type if it doesn't exist
-      if (!fileIconDecorations.has(iconKey)) {
-        fileIconDecorations.set(
-          iconKey,
-          vscode.window.createTextEditorDecorationType({
-            before: {
-              contentText: icon,
-              width: "1.5em",
-              color: fontColor,
-            },
-          })
-        );
-      }
-
-      // Get or create the ranges array for this icon type
-      if (!iconDecorations.has(iconKey)) {
-        iconDecorations.set(iconKey, []);
-      }
-
-      // Add decoration range at the beginning of visible part
-      iconDecorations
-        .get(iconKey)!
-        .push(
-          new vscode.Range(
-            new vscode.Position(i, prefixLength),
-            new vscode.Position(i, prefixLength)
-          )
-        );
-
-      // Add metadata before-decoration for this line (renders between icon and filename)
+      let metadataText = "";
       if (showMetadata && metadataMap) {
         const meta = metadataMap.get(fileName);
         if (meta) {
-          const metaText = formatMetadataColumns(meta, metaColumns);
-          if (metaText) {
-            const filenameStartPos = new vscode.Position(i, prefixLength);
-            metaDecorations.push({
-              range: new vscode.Range(filenameStartPos, filenameStartPos),
-              renderOptions: {
-                before: { contentText: metaText },
-              },
-            });
+          metadataText = formatMetadataColumns(meta, metaColumns);
+          if (metadataText) {
+            // A combined icon+metadata decoration must use one color. Prefer the
+            // metadata/inlay hint color when details are visible so the data
+            // columns read as subdued metadata instead of file-type glyphs.
+            fontColor = new vscode.ThemeColor("editorInlayHint.foreground");
           }
         }
       }
+
+      const filenameStartPos = new vscode.Position(i, prefixLength);
+      entryDecorations.push({
+        range: new vscode.Range(filenameStartPos, filenameStartPos),
+        renderOptions: {
+          before: {
+            contentText: buildEntryDecorationContent({ icon, metadataText }),
+            color: fontColor,
+          },
+        },
+      });
 
       // If cursor is within the prefix area, move it to the first visible character
       for (let selection of editor.selections) {
@@ -281,16 +253,9 @@ export function updateDecorations(editor: vscode.TextEditor | undefined) {
   // Apply the hidden prefix decoration
   editor.setDecorations(hiddenPrefixDecoration, hiddenRanges);
 
-  // Apply file type icon decorations
-  for (const [iconKey, ranges] of iconDecorations.entries()) {
-    const decoration = fileIconDecorations.get(iconKey);
-    if (decoration) {
-      editor.setDecorations(decoration, ranges);
-    }
-  }
-
-  // Apply metadata after-decorations
-  editor.setDecorations(getMetadataDecorationType(), metaDecorations);
+  // Apply entry before-text decorations after hiding prefixes. Icon and metadata
+  // share one per-line decoration to keep VS Code from reordering columns.
+  editor.setDecorations(getEntryDecorationType(), entryDecorations);
 }
 
 // Disposable for cleanup
@@ -408,8 +373,10 @@ export function activateDecorations(context: vscode.ExtensionContext) {
   context.subscriptions.push(decorationUpdateListener, {
     dispose: () => {
       hiddenPrefixDecoration.dispose();
-      fileIconDecorations.forEach((decoration) => decoration.dispose());
-      fileIconDecorations.clear();
+      if (entryDecorationType) {
+        entryDecorationType.dispose();
+        entryDecorationType = null;
+      }
 
       if (decorationUpdateListener) {
         decorationUpdateListener.dispose();

@@ -9,6 +9,7 @@ import { sleep } from "./utils/sleep";
 import { assertProjectFileStructure } from "./utils/assertProjectFileStructure";
 import { moveCursorToLine } from "./utils/moveCursorToLine";
 import { assertSelectionOnLine } from "./utils/assertSelectionOnLine";
+import { buildEntryDecorationContent } from "../decorations";
 import { formatMetadataColumns, formatSize } from "../utils/metadataUtils";
 
 async function cleanupTestDir() {
@@ -1236,5 +1237,14 @@ suite("oil.code", () => {
       formatted,
       "\u00A0\u00A0-rw-r--r--\u00A0\u00A0\u00A0\u00A01K\u00A0\u00A0Jan\u00A005\u00A014:23\u00A0\u00A0"
     );
+  });
+
+  test("decorated listing columns are emitted as one stable before-text string", () => {
+    const content = buildEntryDecorationContent({
+      icon: "📄",
+      metadataText: "\u00A0\u00A0999B\u00A0\u00A0",
+    });
+
+    assert.strictEqual(content, "📄\u00A0\u00A0999B\u00A0\u00A0");
   });
 });
