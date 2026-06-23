@@ -28,6 +28,7 @@ export async function help() {
       "alt+`",
       "Change VSCode working directory to current oil directory",
     ],
+    ["toggleDetails", "gd", "alt+shift+d", "Toggle detail columns visibility"],
   ];
 
   // Display the message in a Markdown preview panel

@@ -52,6 +52,7 @@ export async function refresh() {
   try {
     // Clear the visited path cache for the current directory to force refresh from disk
     oilState.visitedPaths.delete(currentPath);
+    oilState.metadataCache.delete(currentPath);
 
     // Get updated directory content from disk
     const directoryContent = await getDirectoryListing(

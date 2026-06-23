@@ -1,5 +1,13 @@
 import * as vscode from "vscode";
 
+export type MetadataColumn = "icon" | "permissions" | "size" | "mtime";
+
+export interface FileMetadata {
+  permissions: string;
+  size: string;
+  mtime: string;
+}
+
 export interface OilEntry {
   identifier: string;
   value: string;
@@ -13,6 +21,7 @@ export interface OilState {
   identifierCounter: number;
   visitedPaths: Map<string, string[]>;
   editedPaths: Map<string, string[]>;
+  metadataCache: Map<string, Map<string, FileMetadata>>;
   openAfterSave?: string;
 }
 

@@ -37,6 +37,7 @@ To open oil.code:
 | `ctrl+p`                   | `alt+p`             | `oil-code.preview`        | Toggle preview window of entry under the cursor  |
 | `ctrl+l`                   | `alt+l`             | `oil-code.refresh`        | Refresh directory listing from disk              |
 | <code>\`</code>            | <code>alt+\`</code> | `oil-code.cd`             | Change Directory to current                      |
+| `gd`                       | `alt+shift+d`       | `oil-code.toggleDetails`  | Toggle detail columns visibility                 |
 | -- No Default --           | `alt+shift+h`       | `oil-code.help`           | Display oil.code default keymaps                 |
 
 ### [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim) Keymaps
@@ -67,6 +68,7 @@ if vim.g.vscode then
             map("n", "<C-t>", function() vscode.action('oil-code.selectTab') end)
             map("n", "<C-l>", function() vscode.action('oil-code.refresh') end)
             map("n", "`", function() vscode.action('oil-code.cd') end)
+            map("n", "gd", function() vscode.action('oil-code.toggleDetails') end)
         end,
     })
 end
@@ -94,6 +96,14 @@ If you're using VSCodeVim and want to customize the keymaps for oil.code:
         "commands": [
             {
                 "command": "oil-code.select"
+            }
+        ]
+    },
+    {
+        "before": ["g", "d"],
+        "commands": [
+            {
+                "command": "oil-code.toggleDetails"
             }
         ]
     }
@@ -169,6 +179,23 @@ To use an improved set of icons, you can use a [Nerd font](https://www.nerdfonts
 You can set the VSCode text editor to use an installed Nerd Font by setting `"editor.fontFamily": "JetBrainsMono Nerd Font"` where "JetBrainsMono Nerd Font" is an example of a Nerd Font.
 
 Once you have a Nerd Font set for your editor font, to use these icons in your oil view, set `"oil-code.hasNerdFont": true`.
+
+## Detail Columns
+
+By default, oil.code shows file icons only. You can add metadata columns to the directory listing with `"oil-code.columns"`:
+
+```json
+"oil-code.columns": ["icon", "permissions", "size", "mtime"]
+```
+
+Supported columns:
+
+- `icon` — file or directory icon
+- `permissions` — Unix-style permissions such as `-rw-r--r--`
+- `size` — human-readable file size
+- `mtime` — last modified time
+
+The metadata is rendered as non-editable decoration text, so the oil buffer keeps the same `/NNN filename` format for file operations. Use `gd` in Vim mode or `alt+shift+d` to toggle detail column visibility for the current session.
 
 ## Confirmation Dialog
 

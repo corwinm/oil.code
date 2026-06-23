@@ -18,6 +18,10 @@ export function setOilState(state: OilState | undefined) {
   oilState = state;
 }
 
+export function peekOilState(): OilState | undefined {
+  return oilState;
+}
+
 export function getCurrentPath(): string | undefined {
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor && oilState) {
