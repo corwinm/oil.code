@@ -62,7 +62,7 @@
       "@semantic-release/exec",
       {
         "prepareCmd": "pnpm run verify:release && xvfb-run -a pnpm test && mkdir -p dist && pnpm exec vsce package --no-dependencies --out dist/oil-code-${nextRelease.version}.vsix",
-        "publishCmd": "if [ -z \"$VSCE_PAT\" ]; then echo 'VSCE_PAT is required to publish to VS Marketplace'; exit 1; fi && if [ -z \"$OPEN_VSX_TOKEN\" ]; then echo 'OPEN_VSX_TOKEN is required to publish to Open VSX'; exit 1; fi && pnpm exec vsce publish --packagePath dist/oil-code-${nextRelease.version}.vsix && pnpm exec ovsx publish dist/oil-code-${nextRelease.version}.vsix -p \"$OPEN_VSX_TOKEN\""
+        "publishCmd": "if [ -z \"$OPEN_VSX_TOKEN\" ]; then echo 'OPEN_VSX_TOKEN is required to publish to Open VSX'; exit 1; fi && pnpm exec vsce publish --azure-credential --packagePath dist/oil-code-${nextRelease.version}.vsix && pnpm exec ovsx publish dist/oil-code-${nextRelease.version}.vsix -p \"$OPEN_VSX_TOKEN\""
       }
     ],
     [

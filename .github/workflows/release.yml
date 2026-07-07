@@ -13,6 +13,7 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
+  id-token: write
 
 jobs:
   release:
@@ -38,6 +39,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Authenticate to Azure for VS Marketplace publishing
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
@@ -52,6 +61,5 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
           OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
           NODE_ENV: production
