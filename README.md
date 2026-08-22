@@ -1,3 +1,5 @@
+
+
 <h1 align="center">oil.code</h1>
 <p align="center">
 <img src="./images/oil.code.logo.png" height="128">
@@ -139,7 +141,7 @@ Key:
 | ---------------------------------------------------------------- | -------- |
 | Use as default file explorer                                     | ✅[^1]   |
 | Create new file                                                  | ✅       |
-| Delete file                                                      | ✅       |
+| Delete file                                                      | ✅       | ✅       |
 | Move file                                                        | ✅       |
 | Rename file                                                      | ✅       |
 | Move and Rename file                                             | ✅       |
@@ -166,7 +168,7 @@ Key:
 | ["g."] = { "actions.toggle_hidden", mode = "n" }                 | ❌       |
 | ["g\\"] = { "actions.toggle_trash", mode = "n" }                 | ❓       |
 
-[^1]: If VSCode is opened and no files are opened, the oil window will open. This can be disabled in settings.
+[^1]: If VSCode is opened and no files are opened, the oil window will open. This can be disabled by setting `oil-code.disableOpenCwdNothingOpen` to `true` in settings.
 [^2]: Implemented but I was not able to set the default keymap to match Oil.nvim
 [^3]: Keymap might have conflicts with VSCode keymaps or and may require additional config
 [^4]: `oil-code.cd` is implemented but the workspace reloads and pending changes do not persist.
