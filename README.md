@@ -116,13 +116,6 @@ Oil.nvim is a favorite plugin of mine and I find myself going back and forth bet
 
 Odds are good that if you found this plugin, you are like me and have experienced Oil.nvim and have found yourself back in VSCode and miss oil dearly.
 
-## Release publishing
-
-- VS Marketplace publishing uses Microsoft Entra ID via GitHub Actions OIDC and `vsce publish --azure-credential`.
-- Open VSX publishing still uses `OPEN_VSX_TOKEN`.
-- Required GitHub secrets for release publishing: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, and `OPEN_VSX_TOKEN`.
-- The Azure identity must be federated with the `Release` workflow and added to the VS Marketplace publisher with the Contributor role.
-
 ## oil.nvim feature comparison
 
 The goal of this project isn't to be an exact implementation of oil.nvim for VSCode but rather to provide the most used and useful parts of it. If you use something that hasn't been implemented, please open an issue and let me know what is missing and how you typically use it.
