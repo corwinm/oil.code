@@ -1,3 +1,12 @@
+## [0.2.1](https://github.com/corwinm/oil.code/compare/v0.2.0...v0.2.1) (2026-11-15)
+
+### Bug Fixes
+
+* patch vulnerable security tooling transitives ([#90](https://github.com/corwinm/oil.code/issues/90)) ([c7d49e2](https://github.com/corwinm/oil.code/commit/c7d49e2593bd2e33f49b6a88b9ee67e0619ecd60))
+* update js-yaml security override ([#85](https://github.com/corwinm/oil.code/issues/85)) ([dcfc27e](https://github.com/corwinm/oil.code/commit/dcfc27e5a212438fa3a1f67a2f14a9a1bead0511))
+* update js-yaml security override ([#89](https://github.com/corwinm/oil.code/issues/89)) ([e52ad16](https://github.com/corwinm/oil.code/commit/e52ad167b205842cf0916567f95eb282b224d833))
+* update serialize-javascript security override ([#92](https://github.com/corwinm/oil.code/issues/92)) ([86daa6d](https://github.com/corwinm/oil.code/commit/86daa6d911cc21a051bf31d0d1718245420c8502))
+
 ## [0.2.0](https://github.com/corwinm/oil.code/compare/v0.1.1...v0.2.0) (2026-06-23)
 
 ### Features
