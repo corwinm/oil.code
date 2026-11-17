@@ -15,6 +15,7 @@ overrides:
   js-yaml@>=4.0.0 <4.3.2: 4.3.2
   markdown-it>linkify-it: 5.0.2
   typed-rest-client>qs: 6.16.0
+  ovsx>follow-redirects: 1.16.2
   npm-run-all>shell-quote: 1.11.0
 
 importers:
@@ -1577,8 +1578,8 @@ packages:
   flatted@3.4.2:
     resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
 
-  follow-redirects@1.16.1:
-    resolution: {integrity: sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==}
+  follow-redirects@1.16.2:
+    resolution: {integrity: sha512-/kVP2U8z596Ia0gwFrwyIeo74ta5aVmSeU1FfAUMAmcEP5EP7zydmag3SLiN64NaRKef3lxsq7i/g7ltJQDGow==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -5206,7 +5207,7 @@ snapshots:
 
   flatted@3.4.2: {}
 
-  follow-redirects@1.16.1: {}
+  follow-redirects@1.16.2: {}
 
   for-each@0.3.5:
     dependencies:
@@ -6111,7 +6112,7 @@ snapshots:
     dependencies:
       '@vscode/vsce': 3.9.2
       commander: 6.2.1
-      follow-redirects: 1.16.1
+      follow-redirects: 1.16.2
       is-ci: 2.0.0
       leven: 3.1.0
       semver: 7.8.1
